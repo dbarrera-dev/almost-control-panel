@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Almost Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@300;400;500;600;700;900&family=Permanent+Marker&family=Boogaloo&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg0: #0a0a0a;
+  --bg1: #111111;
+  --bg2: #161616;
+  --bg3: #1e1e1e;
+  --bg4: #242424;
+  --border: #222222;
+  --border2: #2e2e2e;
+  --orange: #D96B00;
+  --orange2: #FF8C00;
+  --orange3: #FFB347;
+  --gold: #FFD700;
+  --gold2: #FFC200;
+  --green: #4ade80;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --text: #f0f0f0;
+  --text2: #888888;
+  --text3: #444444;
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100vh; overflow:hidden; background:var(--bg0); color:var(--text); font-family:'Oswald',sans-serif; user-select:none; }
+
+/* Grain texture */
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:9998; opacity:.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+}
+
+/* ── Titlebar ── */
+#tb {
+  height:48px; display:flex; align-items:center; gap:16px;
+  padding:0 20px; background:var(--bg1); border-bottom:2px solid var(--border);
+  -webkit-app-region:drag; position:relative; z-index:200;
+}
+.tb-brand {
+  display:flex; align-items:center; gap:12px;
+  font-family:'Bebas Neue',cursive; font-size:22px; letter-spacing:4px; color:var(--gold);
+}
+.tb-brand-dot {
+  width:10px; height:10px; border-radius:50%;
+  background:var(--orange); box-shadow:0 0 10px var(--orange);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+.tb-sub { font-size:10px; letter-spacing:3px; color:var(--text3); font-weight:400; align-self:flex-end; padding-bottom:3px; }
+.tb-spacer { flex:1; }
+.tb-conn {
+  display:flex; align-items:center; gap:7px; -webkit-app-region:no-drag;
+  font-size:10px; letter-spacing:2px; padding:5px 14px; border-radius:3px;
+  border:1px solid var(--border2); background:var(--bg2); transition:all .3s;
+}
+.tb-conn.on { border-color:rgba(74,222,128,.3); background:rgba(74,222,128,.06); color:var(--green); }
+.tb-conn.on .cdot { background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 1.5s infinite; }
+.cdot { width:7px; height:7px; border-radius:50%; background:var(--text3); transition:all .3s; }
+.tb-chan { font-size:10px; color:var(--orange3); letter-spacing:1px; -webkit-app-region:no-drag; }
+.tb-btns { display:flex; gap:4px; -webkit-app-region:no-drag; }
+.tb-btn {
+  width:32px; height:32px; border-radius:4px; border:1px solid var(--border2);
+  background:transparent; color:var(--text2); cursor:pointer; font-size:14px;
+  display:flex; align-items:center; justify-content:center; transition:all .15s;
+}
+.tb-btn:hover { background:var(--bg3); color:var(--text); }
+.tb-btn.x:hover { background:var(--red); border-color:var(--red); color:white; }
+
+/* ── Tabs ── */
+#tabs {
+  display:flex; gap:0; padding:0 20px;
+  background:var(--bg1); border-bottom:2px solid var(--border);
+}
+.tab {
+  display:flex; align-items:center; gap:9px; padding:13px 22px 15px;
+  cursor:pointer; color:var(--text3); font-weight:700; font-size:12px;
+  letter-spacing:3px; text-transform:uppercase;
+  border-bottom:3px solid transparent; transition:all .2s;
+}
+.tab:hover { color:var(--text2); }
+.tab.on { color:var(--orange2); border-bottom-color:var(--orange2); }
+.tab .ti { font-size:16px; }
+.tab-badge {
+  min-width:20px; height:20px; border-radius:10px;
+  background:var(--orange); color:white; font-size:9px;
+  display:flex; align-items:center; justify-content:center; padding:0 6px;
+}
+
+/* ── Layout ── */
+#layout { display:grid; grid-template-columns:1fr 260px; height:calc(100vh - 96px); }
+#content { overflow-y:auto; padding:28px 28px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+#sidebar { background:var(--bg1); border-left:2px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+
+::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+/* ── Views ── */
+.view { display:none; }
+.view.on { display:block; animation:fadeUp .2s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+/* ── Section header ── */
+.sh { margin-bottom:24px; }
+.sh-badge {
+  display:inline-block; font-size:9px; font-weight:900; letter-spacing:4px;
+  padding:3px 10px; border-radius:2px; margin-bottom:8px;
+}
+.sh-badge.orange { background:var(--orange); color:white; }
+.sh-badge.gold   { background:rgba(255,215,0,.15); color:var(--gold); border:1px solid rgba(255,215,0,.3); }
+.sh-badge.green  { background:rgba(74,222,128,.1); color:var(--green); border:1px solid rgba(74,222,128,.25); }
+.sh h2 { font-family:'Bebas Neue',cursive; font-size:32px; letter-spacing:3px; line-height:1; }
+.sh p  { font-size:12px; color:var(--text3); margin-top:5px; font-weight:400; letter-spacing:1px; }
+
+/* ── Cards ── */
+.card { background:var(--bg2); border:1.5px solid var(--border); border-radius:8px; padding:20px; margin-bottom:16px; transition:border-color .2s; }
+.card:hover { border-color:var(--border2); }
+.card-title { font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--text3); margin-bottom:14px; font-weight:700; }
+
+/* ── Stats ── */
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px; }
+.stat { background:var(--bg2); border:1.5px solid var(--border); border-radius:8px; padding:14px; text-align:center; position:relative; overflow:hidden; }
+.stat::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg, var(--orange), var(--gold)); }
+.stat-n { font-family:'Bebas Neue',cursive; font-size:38px; color:var(--orange2); line-height:1; }
+.stat-l { font-size:9px; letter-spacing:2px; color:var(--text3); margin-top:4px; }
+
+/* ── Inputs ── */
+.ig { margin-bottom:14px; }
+label { display:block; font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--text3); margin-bottom:6px; font-weight:700; }
+input[type=text], input[type=password], input[type=number] {
+  width:100%; background:var(--bg3); border:1.5px solid var(--border2); border-radius:6px;
+  padding:10px 14px; color:var(--text); font-family:'Oswald',sans-serif; font-size:14px; font-weight:500;
+  outline:none; transition:border-color .2s;
+}
+input:focus { border-color:var(--orange); }
+input::placeholder { color:var(--text3); font-weight:400; }
+.num-small { width:80px !important; text-align:center; font-family:'Bebas Neue',cursive; font-size:22px; }
+.counter-row { display:flex; align-items:center; gap:10px; }
+.counter-btn {
+  width:40px; height:40px; background:var(--bg3); border:1.5px solid var(--border2);
+  border-radius:6px; color:var(--text); font-size:20px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:all .15s;
+}
+.counter-btn:hover { background:var(--orange); border-color:var(--orange); }
+.counter-label { font-size:12px; color:var(--text3); }
+
+/* ── Buttons ── */
+.btn { padding:10px 22px; border-radius:6px; border:none; cursor:pointer; font-family:'Oswald',sans-serif; font-weight:700; font-size:13px; letter-spacing:2px; text-transform:uppercase; transition:all .15s; display:inline-flex; align-items:center; gap:8px; }
+.btn-orange { background:var(--orange); color:white; box-shadow:0 3px 16px rgba(217,107,0,.35); }
+.btn-orange:hover { background:var(--orange2); transform:translateY(-1px); box-shadow:0 5px 20px rgba(217,107,0,.5); }
+.btn-gold { background:rgba(255,215,0,.12); color:var(--gold); border:1.5px solid rgba(255,215,0,.3); }
+.btn-gold:hover { background:rgba(255,215,0,.2); }
+.btn-danger { background:rgba(248,113,113,.1); color:var(--red); border:1.5px solid rgba(248,113,113,.25); }
+.btn-danger:hover { background:rgba(248,113,113,.2); }
+.btn-ghost { background:transparent; color:var(--text2); border:1.5px solid var(--border2); }
+.btn-ghost:hover { background:var(--bg3); color:var(--text); }
+.btn:disabled { opacity:.4; cursor:not-allowed; transform:none !important; }
+.btn-connect-main {
+  width:100%; padding:12px; border-radius:6px; border:none; cursor:pointer;
+  font-family:'Oswald',sans-serif; font-weight:900; font-size:13px; letter-spacing:3px;
+  text-transform:uppercase; transition:all .2s; display:flex; align-items:center; justify-content:center; gap:9px;
+  background:var(--orange); color:white; box-shadow:0 4px 20px rgba(217,107,0,.4);
+}
+.btn-connect-main:hover { background:var(--orange2); transform:translateY(-1px); }
+.btn-connect-main.disc { background:rgba(248,113,113,.1); color:var(--red); border:1.5px solid rgba(248,113,113,.3); box-shadow:none; }
+.btn-connect-main.disc:hover { background:rgba(248,113,113,.2); transform:none; }
+.btn-connect-main:disabled { opacity:.4; cursor:not-allowed; transform:none !important; }
+
+/* ── Grid ── */
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+/* ── Torneo banner ── */
+.t-banner {
+  background:linear-gradient(135deg, rgba(217,107,0,.12), rgba(255,215,0,.05));
+  border:1.5px solid rgba(217,107,0,.3); border-radius:8px;
+  padding:16px 20px; margin-bottom:18px; display:flex; align-items:center; gap:14px;
+}
+.t-banner-name { font-family:'Bebas Neue',cursive; font-size:20px; letter-spacing:2px; color:var(--orange2); }
+.t-banner-sub { font-size:11px; color:var(--text2); margin-top:2px; letter-spacing:1px; }
+
+/* ── Participants ── */
+.plist { display:flex; flex-direction:column; gap:5px; max-height:320px; overflow-y:auto; scrollbar-width:thin; }
+.pitem {
+  display:flex; align-items:center; gap:10px; padding:8px 12px;
+  background:var(--bg3); border:1.5px solid var(--border); border-radius:6px;
+  transition:all .15s; animation:slideIn .25s ease;
+}
+@keyframes slideIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none} }
+.pitem:hover { border-color:rgba(217,107,0,.3); }
+.pav { width:28px; height:28px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:11px; color:white; }
+.pnick { font-size:13px; font-weight:700; flex:1; letter-spacing:.5px; }
+.ptime { font-size:10px; color:var(--text3); }
+.prm { opacity:0; background:none; border:none; color:var(--red); cursor:pointer; padding:3px 6px; border-radius:4px; font-size:14px; transition:all .15s; }
+.pitem:hover .prm { opacity:1; }
+.prm:hover { background:rgba(248,113,113,.15); }
+
+/* ── Teams ── */
+.tgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(175px,1fr)); gap:10px; }
+.tcard { background:var(--bg3); border:1.5px solid var(--border); border-radius:8px; overflow:hidden; animation:slideIn .3s ease; }
+.thead-c { padding:8px 12px; background:rgba(217,107,0,.15); border-bottom:1px solid var(--border); font-size:11px; font-weight:900; letter-spacing:2px; text-transform:uppercase; color:var(--orange2); }
+.tmembers { padding:8px 12px; }
+.tmember { padding:5px 0; font-size:13px; border-bottom:1px solid rgba(34,34,34,.5); display:flex; align-items:center; gap:7px; }
+.tmember:last-child { border-bottom:none; }
+.tmember::before { content:'▸'; color:var(--orange3); font-size:9px; }
+
+/* ── History ── */
+.htable { width:100%; border-collapse:collapse; }
+.htable th { text-align:left; padding:9px 14px; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--text3); border-bottom:1.5px solid var(--border); }
+.htable td { padding:11px 14px; font-size:13px; border-bottom:1px solid rgba(34,34,34,.5); }
+.htable tr:hover td { background:rgba(217,107,0,.03); }
+.htable tr.h-detail td { background:rgba(255,255,255,.02); padding:10px 14px 14px; }
+.ov-url-row { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
+.ov-url-row input { flex:1; font-size:11px; }
+.ov-url-btn { background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:6px; padding:5px 9px; font-size:15px; cursor:pointer; color:var(--text2); transition:background .15s,border-color .15s; flex-shrink:0; line-height:1; }
+.ov-url-btn:hover:not(:disabled) { background:rgba(217,107,0,.15); border-color:var(--orange2); }
+.ov-url-btn:disabled { opacity:.3; cursor:default; }
+.ov-url-saved { flex:1; display:flex; align-items:center; gap:6px; min-width:0; }
+.ov-url-saved-ok { color:#22c55e; font-size:10px; font-weight:700; flex-shrink:0; }
+.ov-url-saved-host { font-size:11px; color:var(--text3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ov-edit-btn { background:none; border:none; color:var(--text3); cursor:pointer; font-size:12px; padding:4px 6px; flex-shrink:0; opacity:.6; transition:opacity .15s; }
+.ov-edit-btn:hover { opacity:1; color:var(--text2); }
+.cd-controls { display:flex; align-items:center; gap:10px; margin-top:14px; }
+.cd-status { font-size:10px; letter-spacing:2px; text-transform:uppercase; font-weight:700; color:var(--text3); }
+.cd-status.running { color:#22c55e; }
+.cd-timer-live { font-family:'Bebas Neue',cursive; font-size:28px; color:var(--text1); min-width:70px; }
+.h-ptags { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.h-ptag { background:rgba(217,107,0,.12); color:var(--orange2); border:1px solid rgba(217,107,0,.25); border-radius:4px; padding:2px 8px; font-size:11px; font-weight:700; }
+/* ── 1v1 Duelos ── */
+.duelo-add-row { display:flex; gap:10px; margin-bottom:4px; }
+.duelo-add-row input { flex:1; }
+.duelo-section-label { font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--text3); font-weight:700; margin:18px 0 10px; }
+.duelo-section-label:first-child { margin-top:0; }
+.duelo-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,.03); border:1px solid var(--border); margin-bottom:6px; transition:background .15s; }
+.duelo-item:hover { background:rgba(255,255,255,.05); }
+.duelo-item.done { background:rgba(255,255,255,.015); border-color:rgba(255,255,255,.05); }
+.duelo-av { width:32px; height:32px; border-radius:50%; background:rgba(124,58,237,.4); border:1.5px solid rgba(124,58,237,.6); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color:#c4b5fd; flex-shrink:0; }
+.duelo-item.done .duelo-av { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.1); color:var(--text3); }
+.duelo-nick { flex:1; font-size:14px; font-weight:700; color:var(--text1); transition:all .2s; }
+.duelo-item.done .duelo-nick { text-decoration:line-through; color:var(--text3); font-weight:400; }
+.duelo-date { font-size:10px; color:var(--text3); flex-shrink:0; }
+.duelo-check { background:rgba(124,58,237,.15); border:1.5px solid rgba(124,58,237,.4); color:#a78bfa; border-radius:6px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer; transition:all .15s; flex-shrink:0; }
+.duelo-check:hover { background:rgba(124,58,237,.35); border-color:#a78bfa; }
+.duelo-item.done .duelo-check { background:rgba(34,197,94,.1); border-color:rgba(34,197,94,.3); color:#4ade80; }
+.duelo-item.done .duelo-check:hover { background:rgba(34,197,94,.25); }
+.duelo-del { background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; padding:4px 6px; opacity:.5; transition:opacity .15s; flex-shrink:0; }
+.duelo-del:hover { opacity:1; color:var(--red); }
+.duelo-empty { text-align:center; padding:24px 16px; color:var(--text3); font-size:12px; }
+.badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:9px; letter-spacing:1px; }
+.badge-on  { background:rgba(74,222,128,.1); color:var(--green); border:1px solid rgba(74,222,128,.25); }
+.badge-off { background:rgba(68,68,68,.1); color:var(--text3); border:1px solid var(--border); }
+
+/* ── Preview box ── */
+.preview-wrap { margin:16px 0; }
+.preview-label { font-size:9px; letter-spacing:4px; color:var(--text3); margin-bottom:8px; display:block; }
+.preview-box { border-radius:10px; padding:22px; display:flex; flex-direction:column; align-items:center; gap:7px; }
+.preview-box.yc  { background:linear-gradient(135deg, #D96B00, #F07000); }
+.preview-box.brb { background:linear-gradient(135deg, #C85000, #D96B00); }
+.preview-box.fin { background:linear-gradient(135deg, #A03000, #C04000); }
+.pv-title { font-family:'Permanent Marker',cursive; font-size:30px; color:#111; transform:rotate(-1.5deg); }
+.pv-msg   { font-family:'Boogaloo',cursive; font-size:13px; color:rgba(255,255,255,.7); letter-spacing:4px; text-transform:uppercase; }
+.pv-timer { font-family:'Permanent Marker',cursive; font-size:38px; color:white; text-shadow:3px 3px 0 rgba(0,0,0,.3); }
+.pv-cta   { font-size:12px; letter-spacing:4px; color:var(--gold); font-weight:700; }
+
+/* ── Bracket ── */
+.round-tabs { display:flex; gap:4px; margin-bottom:20px; }
+.round-tab {
+  padding:8px 18px; background:var(--bg2); border:1.5px solid var(--border2);
+  border-radius:6px; color:var(--text3); font-family:'Oswald',sans-serif;
+  font-weight:700; font-size:11px; letter-spacing:2px; cursor:pointer; transition:all .2s;
+}
+.round-tab:hover { border-color:var(--border); color:var(--text2); }
+.round-tab.on { background:var(--orange); border-color:var(--orange); color:white; }
+.match-forms { display:flex; flex-direction:column; gap:14px; margin-bottom:20px; }
+.match-card { background:var(--bg2); border:1.5px solid var(--border); border-radius:8px; overflow:hidden; }
+.match-card.gf { border-color:rgba(255,215,0,.25); box-shadow:0 0 24px rgba(255,215,0,.04); }
+.match-head { display:flex; align-items:center; gap:10px; padding:9px 14px; background:var(--bg3); border-bottom:1px solid var(--border); }
+.match-lbl { font-size:10px; letter-spacing:3px; color:var(--orange2); font-weight:900; }
+.match-lbl.gf { color:var(--gold); font-size:12px; }
+.match-idx { font-size:9px; color:var(--text3); }
+.match-done { margin-left:auto; font-size:9px; letter-spacing:2px; color:var(--green); font-weight:700; }
+.match-teams { display:flex; align-items:center; gap:0; padding:14px; }
+.match-team {
+  flex:1; display:flex; flex-direction:column; gap:7px;
+  padding:10px; border-radius:6px; background:var(--bg3);
+  border:1.5px solid var(--border2); transition:all .2s;
+}
+.match-team.win { border-color:rgba(255,215,0,.35); background:rgba(255,215,0,.04); }
+.match-team.lose { opacity:.4; }
+.match-team-lbl { font-size:9px; letter-spacing:3px; color:var(--text3); }
+.match-input {
+  background:var(--bg0); border:1px solid var(--border2); border-radius:5px;
+  padding:7px 10px; color:var(--text); font-family:'Oswald',sans-serif;
+  font-size:13px; font-weight:700; outline:none; text-transform:uppercase;
+}
+.match-input:focus { border-color:var(--orange); }
+.match-input::placeholder { color:var(--text3); font-weight:400; text-transform:none; }
+.match-score {
+  background:var(--bg0); border:1px solid var(--border2); border-radius:5px;
+  padding:5px 8px; color:var(--gold); font-family:'Bebas Neue',cursive;
+  font-size:26px; outline:none; text-align:center; width:65px;
+}
+.match-score:focus { border-color:var(--gold); }
+.match-vs { padding:0 10px; font-family:'Bebas Neue',cursive; font-size:12px; letter-spacing:2px; color:var(--text3); display:flex; align-items:center; }
+.match-winner-row { display:flex; align-items:center; gap:7px; flex-wrap:wrap; padding:10px 14px; border-top:1px solid var(--border); background:rgba(0,0,0,.15); }
+.match-wlbl { font-size:9px; letter-spacing:3px; color:var(--text3); }
+.win-btn {
+  padding:5px 12px; background:var(--bg3); border:1.5px solid var(--border2);
+  border-radius:5px; color:var(--text3); font-family:'Oswald',sans-serif;
+  font-size:10px; font-weight:700; letter-spacing:1px; cursor:pointer; transition:all .2s; text-transform:uppercase;
+}
+.win-btn:hover { border-color:var(--border); color:var(--text2); }
+.win-btn.on { background:rgba(255,215,0,.12); border-color:var(--gold); color:var(--gold); }
+.win-btn.clear.on { background:var(--bg3); border-color:var(--text3); color:var(--text3); }
+.match-save {
+  width:100%; padding:10px; background:var(--bg3); border:none; border-top:1px solid var(--border);
+  color:var(--orange2); font-family:'Oswald',sans-serif; font-weight:700;
+  font-size:11px; letter-spacing:3px; cursor:pointer; transition:all .2s; text-transform:uppercase;
+}
+.match-save:hover:not(:disabled) { background:var(--orange); color:white; }
+.match-save.gf { background:rgba(255,215,0,.05); color:var(--gold); }
+.match-save.gf:hover:not(:disabled) { background:rgba(255,215,0,.15); color:var(--gold); }
+.match-save:disabled { opacity:.4; cursor:not-allowed; }
+
+/* ── Log sidebar ── */
+.sb-head { padding:14px 16px; border-bottom:2px solid var(--border); display:flex; align-items:center; gap:8px; font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--text3); }
+.sb-live { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 1.5s infinite; }
+#llist { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:3px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+.le { padding:6px 9px; border-radius:5px; font-size:10px; line-height:1.4; animation:fadeUp .2s ease; font-family:monospace; }
+.le.join  { background:rgba(74,222,128,.06);  color:#6ee7b7; border-left:2px solid var(--green); }
+.le.leave { background:rgba(248,113,113,.06); color:#fca5a5; border-left:2px solid var(--red); }
+.le.warn  { background:rgba(251,191,36,.06);  color:#fcd34d; border-left:2px solid #f59e0b; }
+.le.info  { background:rgba(96,165,250,.06);  color:#93c5fd; border-left:2px solid var(--blue); }
+
+/* ── Config sidebar section ── */
+.sb-cfg { padding:14px; border-top:2px solid var(--border); }
+
+/* ── Alert ── */
+.alert { padding:10px 14px; border-radius:6px; font-size:12px; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.alert-ok  { background:rgba(74,222,128,.07); border:1px solid rgba(74,222,128,.25); color:#4ade80; }
+.alert-err { background:rgba(248,113,113,.07); border:1px solid rgba(248,113,113,.25); color:#f87171; }
+
+/* ── Toast ── */
+#toast {
+  position:fixed; bottom:28px; right:28px; z-index:9999;
+  display:flex; align-items:center; gap:10px; padding:13px 20px; border-radius:8px;
+  font-size:13px; letter-spacing:1px; font-weight:700;
+  box-shadow:0 8px 30px rgba(0,0,0,.5); animation:slideUp .3s ease;
+  pointer-events:none;
+}
+#toast.ok  { background:#1a3a1a; border:1.5px solid var(--green); color:var(--green); }
+#toast.err { background:#3a1a1a; border:1.5px solid var(--red); color:var(--red); }
+@keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+
+/* ── Empty ── */
+.empty { text-align:center; padding:36px 20px; color:var(--text3); }
+.empty-ico { font-size:40px; margin-bottom:10px; }
+.empty p { font-size:11px; line-height:1.8; }
+
+/* ── Spotify ── */
+.sp-art { width:84px; height:84px; border-radius:10px; object-fit:cover; border:1.5px solid var(--border); flex-shrink:0; transition:border-color .4s, box-shadow .4s; }
+.sp-art.playing { border-color:rgba(29,185,84,.5); box-shadow:0 0 22px rgba(29,185,84,.2); }
+.sp-np-card { transition:border-color .4s, box-shadow .4s; }
+.sp-np-card.playing { border-color:rgba(29,185,84,.22) !important; box-shadow:0 0 32px rgba(29,185,84,.04); }
+.sp-track-name { font-family:'Bebas Neue',cursive; font-size:23px; letter-spacing:1.5px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.15; }
+.sp-artist { font-size:13px; color:var(--text2); margin-top:3px; }
+.sp-album  { font-size:11px; color:var(--text3); margin-top:2px; }
+.sp-playing-row { display:flex; align-items:center; gap:8px; margin-top:10px; }
+.sp-eq { display:flex; align-items:flex-end; gap:2px; height:14px; }
+.sp-eq span { width:3px; border-radius:2px; background:#1DB954; }
+.sp-eq span:nth-child(1) { animation:speq 1s ease-in-out infinite; }
+.sp-eq span:nth-child(2) { animation:speq 1s ease-in-out .18s infinite; }
+.sp-eq span:nth-child(3) { animation:speq 1s ease-in-out .36s infinite; }
+@keyframes speq { 0%,100%{height:3px} 50%{height:14px} }
+.sp-playing-lbl { font-size:9px; letter-spacing:3px; color:#1DB954; font-weight:700; }
+.sp-cmd-pill { display:inline-flex; align-items:center; padding:5px 14px; background:rgba(29,185,84,.07); border:1px solid rgba(29,185,84,.18); border-radius:20px; color:#4ade80; font-size:12px; font-weight:700; letter-spacing:.5px; }
+.sp-dot { width:8px; height:8px; border-radius:50%; background:var(--text3); flex-shrink:0; transition:background .3s; }
+.sp-dot.on { background:#1DB954; box-shadow:0 0 8px rgba(29,185,84,.5); animation:pulse 2s infinite; }
+.hidden { display:none !important; }
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.mt3 { margin-top:12px; } .mt4 { margin-top:16px; }
+</style>
+</head>
+<body>
+
+<!-- Titlebar -->
+<div id="tb">
+  <div class="tb-brand">
+    <img id="brandLogo" class="hidden" style="width:30px;height:30px;border-radius:6px;object-fit:cover;flex-shrink:0" alt="logo" />
+    <div class="tb-brand-dot" id="brandDot"></div>
+    ALMOST
+    <span class="tb-sub">PANEL DE CONTROL</span>
+  </div>
+  <div class="tb-spacer"></div>
+  <div class="tb-conn" id="connPill"><div class="cdot" id="connDot"></div><span id="connTxt">Desconectado</span></div>
+  <span id="connChan" class="tb-chan hidden"></span>
+  <div class="tb-btns">
+    <button class="tb-btn" onclick="api.minimize()">─</button>
+    <button class="tb-btn" onclick="api.maximize()">□</button>
+    <button class="tb-btn x" onclick="api.close()">✕</button>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div id="tabs">
+  <div class="tab on" id="tab-torneo" onclick="goTab('torneo')">
+    <span class="ti">🏆</span> Torneos
+    <span class="tab-badge hidden" id="tbadge">0</span>
+  </div>
+  <div class="tab" id="tab-overlays" onclick="goTab('overlays')">
+    <span class="ti">🎬</span> Overlays
+  </div>
+  <div class="tab" id="tab-spotify" onclick="goTab('spotify')">
+    <span class="ti">🎵</span> Spotify
+    <span class="tab-badge hidden" id="spBadgeTab" style="background:#1DB954">●</span>
+  </div>
+  <div class="tab" id="tab-duelos" onclick="goTab('duelos')">
+    <span class="ti">⚔️</span> 1v1
+    <span class="tab-badge hidden" id="dueloBadge" style="background:#7c3aed">0</span>
+  </div>
+  <div class="tab" id="tab-config" onclick="goTab('config')">
+    <span class="ti">⚙️</span> Config
+  </div>
+</div>
+
+<!-- Layout -->
+<div id="layout">
+<div id="content">
+
+  <!-- ═══════════════ TORNEOS ═══════════════ -->
+  <div class="view on" id="view-torneo">
+
+    <!-- No torneo -->
+    <div id="noT">
+      <div class="sh"><div class="sh-badge orange">TORNEOS</div><h2>Panel de Torneos</h2><p>Crea un torneo · la gente se une con !join en el chat</p></div>
+      <div class="card">
+        <div class="card-title">Nuevo Torneo</div>
+        <div class="ig"><label>Nombre del torneo</label><input id="tNombre" type="text" placeholder="Ej: Torneo Verano 2025" /></div>
+        <button class="btn btn-orange" onclick="crearTorneo()">🏆 Crear Torneo</button>
+      </div>
+      <div class="empty"><div class="empty-ico">🎯</div><p>Crea un torneo para empezar.<br>Los participantes se unen con <strong>!join</strong> en el chat.</p></div>
+    </div>
+
+    <!-- Active torneo -->
+    <div id="actT" class="hidden">
+      <div class="t-banner">
+        <span style="font-size:26px">🏆</span>
+        <div><div class="t-banner-name" id="tNombreA">—</div><div class="t-banner-sub" id="tSubA">Esperando participantes...</div></div>
+        <div style="margin-left:auto"><button class="btn btn-danger" onclick="cerrarTorneo()">⏹ Cerrar</button></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="stat-n" id="sN">0</div><div class="stat-l">Participantes</div></div>
+        <div class="stat"><div class="stat-n" id="sE">—</div><div class="stat-l">Equipos</div></div>
+        <div class="stat"><div class="stat-n" id="sJ">0</div><div class="stat-l">Joins totales</div></div>
+      </div>
+
+      <div class="g2">
+        <div class="card" style="overflow:hidden">
+          <div class="card-title" style="display:flex;justify-content:space-between">Participantes <span style="color:var(--orange2)" id="pCount">0</span></div>
+          <div class="plist" id="pList">
+            <div class="empty" style="padding:16px"><div class="empty-ico" style="font-size:26px">👥</div><p>Esperando !join en el chat</p></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Generar Equipos</div>
+          <div class="ig"><label>Jugadores por equipo</label>
+            <div class="counter-row">
+              <button class="counter-btn" onclick="tSize=Math.max(1,tSize-1);document.getElementById('tSizeVal').value=tSize;updateStats()">−</button>
+              <input id="tSizeVal" type="number" class="num-small" value="2" min="1" max="20" oninput="tSize=parseInt(this.value)||2;updateStats()" />
+              <button class="counter-btn" onclick="tSize=Math.min(20,tSize+1);document.getElementById('tSizeVal').value=tSize;updateStats()">+</button>
+            </div>
+          </div>
+          <button class="btn btn-gold" onclick="generarEquipos()">🎲 Sortear Equipos</button>
+          <div id="eResult" class="hidden mt4">
+            <div class="card-title" style="margin-bottom:10px">Resultado</div>
+            <div class="tgrid" id="tGrid"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Historial — siempre visible, fuera de #actT -->
+    <div class="card mt4" id="historialCard">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        Historial de Torneos
+        <button class="btn btn-ghost" style="padding:4px 12px;font-size:10px" onclick="loadHistorial()">↻ Actualizar</button>
+      </div>
+      <table class="htable">
+        <thead><tr><th>Nombre</th><th>Fecha</th><th>Estado</th><th>Jugadores</th><th></th></tr></thead>
+        <tbody id="hBody"><tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3);font-size:11px">Conectate para ver el historial</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════ OVERLAYS ═══════════════ -->
+  <div class="view" id="view-overlays">
+    <div class="sh"><div class="sh-badge orange">OVERLAYS</div><h2>Panel de Overlays</h2><p>Los cambios se guardan en Supabase y se reflejan en OBS al instante</p></div>
+
+    <!-- Overlay sub-tabs -->
+    <div class="round-tabs" style="margin-bottom:20px">
+      <button class="round-tab on" id="otab-yc"  onclick="goOverlay('yc')">▶ Ya Comenzamos</button>
+      <button class="round-tab"    id="otab-brb" onclick="goOverlay('brb')">⏸ BRB</button>
+      <button class="round-tab"    id="otab-fin" onclick="goOverlay('fin')">⏹ Fin Stream</button>
+      <button class="round-tab"    id="otab-rl"  onclick="goOverlay('rl')">🚀 Bracket RL</button>
+    </div>
+
+    <!-- YA COMENZAMOS -->
+    <div id="ov-yc">
+      <div class="card">
+        <div class="ov-url-row">
+          <div class="card-title" style="margin:0;flex-shrink:0">Ya Comenzamos — Textos</div>
+          <input id="ovUrl-yc" type="text" placeholder="Pegá la URL del overlay..." class="hidden" onblur="confirmOverlayUrl('yc')" onkeydown="if(event.key==='Enter')this.blur()" />
+          <div id="ovUrlSaved-yc" class="ov-url-saved hidden"><span class="ov-url-saved-ok">✓</span><span id="ovUrlHost-yc" class="ov-url-saved-host"></span></div>
+          <button id="ovEdit-yc" class="ov-edit-btn hidden" onclick="editOverlayUrl('yc')" title="Editar URL">✎</button>
+          <button id="ovOpen-yc" class="ov-url-btn" onclick="abrirOverlay('yc')" title="Abrir en navegador" disabled>🌐</button>
+        </div>
+        <div class="g2">
+          <div class="ig"><label>Título</label><input id="ycTitle" type="text" placeholder="YA COMENZAMOS" /></div>
+          <div class="ig"><label>Mensaje / subtítulo</label><input id="ycMsg" type="text" placeholder="El stream inicia en" /></div>
+        </div>
+        <div class="ig">
+          <label>Minutos del contador</label>
+          <div class="counter-row">
+            <button class="counter-btn" onclick="ycMin=Math.max(1,ycMin-1);document.getElementById('ycMinVal').value=ycMin;updateYcPreview()">−</button>
+            <input id="ycMinVal" type="number" class="num-small" value="5" min="1" max="60" oninput="ycMin=parseInt(this.value)||5;updateYcPreview()" />
+            <button class="counter-btn" onclick="ycMin=Math.min(60,ycMin+1);document.getElementById('ycMinVal').value=ycMin;updateYcPreview()">+</button>
+            <span class="counter-label" id="ycSecLabel">5 min (300s)</span>
+          </div>
+        </div>
+        <div class="preview-wrap">
+          <span class="preview-label">PREVIEW</span>
+          <div class="preview-box yc">
+            <span class="pv-title" id="pvYcTitle">YA COMENZAMOS</span>
+            <span class="pv-msg"   id="pvYcMsg">El stream inicia en</span>
+            <span class="pv-timer" id="pvYcTimer">05:00</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-orange" onclick="saveOverlay('ya_comenzamos')">💾 Guardar</button>
+          <button class="btn" id="cdStartBtn" style="background:rgba(34,197,94,.15);border:1.5px solid rgba(34,197,94,.4);color:#4ade80" onclick="cdStart()">▶ Iniciar</button>
+          <button class="btn btn-ghost" onclick="cdReset()">↺ Resetear</button>
+          <span id="cdStatus" class="cd-status">Detenido</span>
+          <span id="cdTimerLive" class="cd-timer-live">--:--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BRB -->
+    <div id="ov-brb" class="hidden">
+      <div class="card">
+        <div class="ov-url-row">
+          <div class="card-title" style="margin:0;flex-shrink:0">BRB — Vuelvo Enseguida</div>
+          <input id="ovUrl-brb" type="text" placeholder="Pegá la URL del overlay..." class="hidden" onblur="confirmOverlayUrl('brb')" onkeydown="if(event.key==='Enter')this.blur()" />
+          <div id="ovUrlSaved-brb" class="ov-url-saved hidden"><span class="ov-url-saved-ok">✓</span><span id="ovUrlHost-brb" class="ov-url-saved-host"></span></div>
+          <button id="ovEdit-brb" class="ov-edit-btn hidden" onclick="editOverlayUrl('brb')" title="Editar URL">✎</button>
+          <button id="ovOpen-brb" class="ov-url-btn" onclick="abrirOverlay('brb')" title="Abrir en navegador" disabled>🌐</button>
+        </div>
+        <div class="g2">
+          <div class="ig"><label>Título</label><input id="brbTitle" type="text" placeholder="VUELVO ENSEGUIDA" /></div>
+          <div class="ig"><label>Mensaje</label><input id="brbMsg" type="text" placeholder="Ya vuelvo..." /></div>
+        </div>
+        <div class="preview-wrap">
+          <span class="preview-label">PREVIEW</span>
+          <div class="preview-box brb">
+            <span class="pv-title" id="pvBrbTitle">VUELVO ENSEGUIDA</span>
+            <span class="pv-msg"   id="pvBrbMsg">Ya vuelvo...</span>
+          </div>
+        </div>
+        <button class="btn btn-orange" onclick="saveOverlay('brb')">💾 Guardar BRB</button>
+      </div>
+    </div>
+
+    <!-- FIN STREAM -->
+    <div id="ov-fin" class="hidden">
+      <div class="card">
+        <div class="ov-url-row">
+          <div class="card-title" style="margin:0;flex-shrink:0">Fin del Stream</div>
+          <input id="ovUrl-fin" type="text" placeholder="Pegá la URL del overlay..." class="hidden" onblur="confirmOverlayUrl('fin')" onkeydown="if(event.key==='Enter')this.blur()" />
+          <div id="ovUrlSaved-fin" class="ov-url-saved hidden"><span class="ov-url-saved-ok">✓</span><span id="ovUrlHost-fin" class="ov-url-saved-host"></span></div>
+          <button id="ovEdit-fin" class="ov-edit-btn hidden" onclick="editOverlayUrl('fin')" title="Editar URL">✎</button>
+          <button id="ovOpen-fin" class="ov-url-btn" onclick="abrirOverlay('fin')" title="Abrir en navegador" disabled>🌐</button>
+        </div>
+        <div class="g2">
+          <div class="ig"><label>Título</label><input id="finTitle" type="text" placeholder="FIN DEL STREAM" /></div>
+          <div class="ig"><label>Mensaje</label><input id="finMsg" type="text" placeholder="¡Gracias por quedarte!" /></div>
+        </div>
+        <div class="preview-wrap">
+          <span class="preview-label">PREVIEW</span>
+          <div class="preview-box fin">
+            <span class="pv-title" id="pvFinTitle">FIN DEL STREAM</span>
+            <span class="pv-msg"   id="pvFinMsg">¡Gracias por quedarte!</span>
+            <span class="pv-cta">seguime en redes ↓</span>
+          </div>
+        </div>
+        <button class="btn btn-orange" onclick="saveOverlay('fin_stream')">💾 Guardar Fin Stream</button>
+      </div>
+    </div>
+
+    <!-- BRACKET RL -->
+    <div id="ov-rl" class="hidden">
+      <div class="card" style="margin-bottom:16px">
+        <div class="ov-url-row" style="margin:0">
+          <div class="card-title" style="margin:0;flex-shrink:0">Bracket RL</div>
+          <input id="ovUrl-rl" type="text" placeholder="Pegá la URL del overlay..." class="hidden" onblur="confirmOverlayUrl('rl')" onkeydown="if(event.key==='Enter')this.blur()" />
+          <div id="ovUrlSaved-rl" class="ov-url-saved hidden"><span class="ov-url-saved-ok">✓</span><span id="ovUrlHost-rl" class="ov-url-saved-host"></span></div>
+          <button id="ovEdit-rl" class="ov-edit-btn hidden" onclick="editOverlayUrl('rl')" title="Editar URL">✎</button>
+          <button id="ovOpen-rl" class="ov-url-btn" onclick="abrirOverlay('rl')" title="Abrir en navegador" disabled>🌐</button>
+        </div>
+      </div>
+      <div class="round-tabs">
+        <button class="round-tab on" id="brtab-qf" onclick="goBracketRound('qf')">Cuartos (0-3)</button>
+        <button class="round-tab"    id="brtab-sf" onclick="goBracketRound('sf')">Semis (4-5)</button>
+        <button class="round-tab"    id="brtab-gf" onclick="goBracketRound('gf')">Gran Final (6)</button>
+      </div>
+      <div id="br-qf" class="match-forms"></div>
+      <div id="br-sf" class="match-forms hidden"></div>
+      <div id="br-gf" class="match-forms hidden"></div>
+      <div style="padding-top:12px;border-top:1px solid var(--border)">
+        <button class="btn btn-danger" onclick="resetBracket()">↺ Resetear bracket completo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ SPOTIFY ═══════════════ -->
+  <div class="view" id="view-spotify">
+    <div class="sh"><div class="sh-badge green">SPOTIFY</div><h2>Spotify Connect</h2><p>Conecta tu cuenta para activar los comandos de música en el chat</p></div>
+
+    <!-- Status + Now playing row -->
+    <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:stretch">
+      <!-- Status card -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div id="spStatusDot" class="sp-dot"></div>
+            <span style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--text3);font-weight:700">Estado de conexión</span>
+          </div>
+          <span id="spStatusBadge" class="badge badge-off">Sin conectar</span>
+        </div>
+        <div id="spNotConnected">
+          <p style="font-size:12px;color:var(--text3);margin-bottom:16px;font-weight:400;line-height:1.8">Para conectar, hacé clic en el botón. Se abrirá <strong style="color:var(--text2)">almostcoach.com/spotify</strong> en tu navegador para autorizar el acceso.</p>
+          <button class="btn btn-orange" onclick="openSpotifyConnect()">🎵 Conectar con Spotify</button>
+        </div>
+        <div id="spConnected" class="hidden">
+          <p style="font-size:12px;color:var(--text3);margin-bottom:16px;font-weight:400;line-height:1.8">Cuenta conectada correctamente. Los comandos de música están activos en el chat de Twitch.</p>
+          <button class="btn btn-ghost" onclick="openSpotifyConnect()">↻ Reconectar cuenta</button>
+        </div>
+      </div>
+
+      <!-- Now playing card -->
+      <div id="spNowPlayingCard" class="card sp-np-card hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+          <span style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--text3);font-weight:700">Reproduciendo ahora</span>
+          <button class="btn btn-ghost" style="padding:4px 12px;font-size:10px" onclick="loadNowPlaying()">↻ Actualizar</button>
+        </div>
+
+        <!-- Track info -->
+        <div id="spTrackRow" style="display:flex;align-items:center;gap:18px">
+          <img id="spAlbumArt" class="sp-art" src="" alt="" />
+          <div style="flex:1;min-width:0">
+            <div id="spTrackName" class="sp-track-name">—</div>
+            <div id="spArtist" class="sp-artist">—</div>
+            <div id="spAlbum" class="sp-album">—</div>
+            <div id="spPlayingRow" class="sp-playing-row hidden">
+              <div class="sp-eq"><span></span><span></span><span></span></div>
+              <span class="sp-playing-lbl">PLAYING</span>
+            </div>
+            <div id="spPausedMsg" class="hidden" style="margin-top:9px;font-size:10px;color:var(--text3);letter-spacing:2px;font-weight:700">⏸ EN PAUSA</div>
+          </div>
+        </div>
+
+        <!-- Nothing playing -->
+        <div id="spNothingMsg" class="hidden" style="text-align:center;padding:24px 16px">
+          <div style="font-size:28px;margin-bottom:8px">🎵</div>
+          <p style="font-size:11px;color:var(--text3);margin:0">No hay nada reproduciéndose ahora.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Commands card (full width below) -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">📋 Comandos en el chat</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <span class="sp-cmd-pill">!song</span>
+        <span class="sp-cmd-pill">!cancion</span>
+        <span class="sp-cmd-pill">!playlist</span>
+      </div>
+      <p style="font-size:11px;color:var(--text3);font-weight:400;margin:0;line-height:1.7">El bot responde en el chat de Twitch con el nombre de la canción y el artista que estás escuchando.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 1v1 DUELOS ═══════════════ -->
+  <div class="view" id="view-duelos">
+    <div class="sh"><div class="sh-badge" style="background:#7c3aed;color:#e9d5ff">1v1</div><h2>Cola de 1v1</h2><p>Suscriptores que quieren jugar contra vos · tachá los completados</p></div>
+    <div class="card">
+      <div class="duelo-add-row">
+        <input id="dueloInput" type="text" placeholder="Nombre del suscriptor..." onkeydown="if(event.key==='Enter')addDuelo()" />
+        <button class="btn btn-orange" onclick="addDuelo()">+ Agregar</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="duelo-section-label">Pendientes <span id="dueloPendCount" style="color:var(--orange2)"></span></div>
+      <div id="dueloPendList"></div>
+      <div class="duelo-section-label" style="margin-top:24px">Completados <span id="dueloDoneCount" style="color:var(--text3)"></span></div>
+      <div id="dueloDoneList"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ CONFIG ═══════════════ -->
+  <div class="view" id="view-config">
+    <div class="sh"><div class="sh-badge orange">CONFIG</div><h2>Configuración</h2><p>Se guarda localmente · no va al repo</p></div>
+    <div id="cfgAlert" class="hidden"></div>
+    <div class="card">
+      <div class="card-title">🖼 Logo</div>
+      <div class="ig"><label>URL del logo</label><input id="cLogo" type="text" placeholder="https://i.imgur.com/tu-logo.png" oninput="updateLogo(this.value.trim())" /></div>
+      <p style="font-size:11px;color:var(--text3);margin-top:2px;font-weight:400">Se muestra en la barra de título. Puede ser una URL de imagen (PNG, JPG, etc.).</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🟣 Supabase</div>
+      <div class="g2">
+        <div class="ig"><label>URL del proyecto</label><input id="cUrl" type="text" placeholder="https://xxx.supabase.co" /></div>
+        <div class="ig"><label>Anon Key</label><input id="cKey" type="password" placeholder="eyJ..." /></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🤖 Bot de Twitch</div>
+      <div class="g2">
+        <div class="ig"><label>Usuario del bot</label><input id="cUser" type="text" placeholder="MiCanalBot" /></div>
+        <div class="ig"><label>OAuth Token</label><input id="cOauth" type="password" placeholder="oauth:..." /></div>
+      </div>
+      <div class="ig"><label>Canal a leer (sin #)</label><input id="cChan" type="text" placeholder="nombre_del_canal" /></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Comandos del chat</div>
+      <div style="font-size:12px;color:var(--text2);line-height:2.2">
+        <span style="color:var(--orange2);font-weight:700">!join</span> · <span style="color:var(--orange2);font-weight:700">!torneo</span> · <span style="color:var(--orange2);font-weight:700">!unirse</span> → Unirse al torneo<br>
+        <span style="color:var(--red);font-weight:700">!salir</span> · <span style="color:var(--red);font-weight:700">!leave</span> → Abandonar el torneo
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-orange" onclick="saveConfig()">💾 Guardar</button>
+      <button class="btn btn-ghost"  onclick="connectFromConfig()">▶ Conectar Bot</button>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="sb-head"><div class="sb-live"></div>Log en vivo<button class="btn btn-ghost" style="margin-left:auto;padding:3px 8px;font-size:9px" onclick="clearLog()">Limpiar</button></div>
+  <div id="llist"></div>
+  <div class="sb-cfg">
+    <button class="btn-connect-main" id="btnC" onclick="toggleConnect()">▶ Conectar Bot</button>
+  </div>
+</div>
+</div><!-- /layout -->
+
+<!-- Toast -->
+<div id="toast" class="hidden"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────
+let connected=false, torneoId=null, pCount=0, joins=0, tSize=2, pEmpty=true;
+let bracketData=[], overlayRound='qf', ovPanel='yc';
+let ycMin=5;
+let saving=false;
+
+// ── Tabs ──────────────────────────────────────────────────────────
+function goTab(name) {
+  ['torneo','overlays','spotify','duelos','config'].forEach(n => {
+    document.getElementById('view-'+n).classList.toggle('on', n===name);
+    document.getElementById('tab-'+n).classList.toggle('on', n===name);
+  });
+  if(name==='torneo') loadHistorial();
+  if(name==='overlays') {
+    loadOverlayUrl(ovPanel);
+    if(!bracketData.length) loadOverlays();
+  }
+  if(name==='config') loadConfigForm();
+  if(name==='spotify') loadSpotify();
+  if(name==='duelos') renderDuelos();
+}
+
+function goOverlay(name) {
+  ['yc','brb','fin','rl'].forEach(n => {
+    document.getElementById('ov-'+n).classList.toggle('hidden', n!==name);
+    document.getElementById('otab-'+n).classList.toggle('on', n===name);
+  });
+  ovPanel=name;
+  loadOverlayUrl(name);
+}
+
+function goBracketRound(r) {
+  ['qf','sf','gf'].forEach(n => {
+    document.getElementById('br-'+n).classList.toggle('hidden', n!==r);
+    document.getElementById('brtab-'+n).classList.toggle('on', n===r);
+  });
+  overlayRound=r;
+}
+
+// ── Config ────────────────────────────────────────────────────────
+async function loadConfigForm() {
+  const c = await api.getConfig();
+  document.getElementById('cUrl').value   = c.supabaseUrl||'';
+  document.getElementById('cKey').value   = c.supabaseKey||'';
+  document.getElementById('cUser').value  = c.botUsername||'';
+  document.getElementById('cOauth').value = c.botOauth||'';
+  document.getElementById('cChan').value  = c.twitchChannel||'';
+  document.getElementById('cLogo').value  = c.logoUrl||'';
+  updateLogo(c.logoUrl||'');
+}
+
+function updateLogo(url) {
+  const img = document.getElementById('brandLogo');
+  const dot = document.getElementById('brandDot');
+  if(url) {
+    img.src = url;
+    img.classList.remove('hidden');
+    dot.classList.add('hidden');
+  } else {
+    img.classList.add('hidden');
+    dot.classList.remove('hidden');
+  }
+}
+
+function getCfg() {
+  return {
+    supabaseUrl:   document.getElementById('cUrl').value.trim(),
+    supabaseKey:   document.getElementById('cKey').value.trim(),
+    botUsername:   document.getElementById('cUser').value.trim(),
+    botOauth:      document.getElementById('cOauth').value.trim(),
+    twitchChannel: document.getElementById('cChan').value.trim(),
+    logoUrl:       document.getElementById('cLogo').value.trim()
+  };
+}
+
+async function saveConfig() {
+  await api.saveConfig(getCfg());
+  showAlert('cfgAlert','ok','✅ Configuración guardada');
+  toast('Guardado ✅','ok');
+}
+
+// ── Connect ───────────────────────────────────────────────────────
+async function toggleConnect() {
+  if(connected) { await api.disconnectBot(); setConn(false); log('info','Bot desconectado'); return; }
+  await doConnect();
+}
+async function connectFromConfig() { await saveConfig(); await doConnect(); }
+
+async function doConnect() {
+  const cfg = getCfg();
+  if(!cfg.supabaseUrl||!cfg.supabaseKey||!cfg.botUsername||!cfg.botOauth||!cfg.twitchChannel) {
+    log('warn','Completa la configuración antes de conectar'); goTab('config'); return;
+  }
+  const btn=document.getElementById('btnC');
+  btn.disabled=true; btn.textContent='⏳ Conectando...';
+  log('info',`Conectando a #${cfg.twitchChannel}...`);
+  const r = await api.connectBot(cfg);
+  btn.disabled=false;
+  if(r.ok) { setConn(true); log('info',`✅ Conectado a #${cfg.twitchChannel}`); loadOverlays(); await restaurarTorneoActivo(); }
+  else { setConn(false); log('warn',`Error: ${r.error}`); }
+}
+
+function setConn(val) {
+  connected=val;
+  const pill=document.getElementById('connPill');
+  const dot=document.getElementById('connDot');
+  const txt=document.getElementById('connTxt');
+  const ch=document.getElementById('connChan');
+  const btn=document.getElementById('btnC');
+  const chan=document.getElementById('cChan').value.trim();
+  if(val) {
+    pill.classList.add('on'); dot.classList.add('on');
+    txt.textContent='Conectado'; ch.textContent='#'+chan; ch.classList.remove('hidden');
+    btn.textContent='⏹ Desconectar'; btn.className='btn-connect-main disc';
+  } else {
+    pill.classList.remove('on'); dot.classList.remove('on');
+    txt.textContent='Desconectado'; ch.classList.add('hidden');
+    btn.textContent='▶ Conectar Bot'; btn.className='btn-connect-main';
+  }
+}
+
+// ── Torneo ────────────────────────────────────────────────────────
+async function restaurarTorneoActivo() {
+  const r = await api.getTorneoActivo();
+  if (!r.ok) return;
+  const { torneo, participantes } = r;
+  torneoId = torneo.id;
+  pCount = participantes.length;
+  joins = participantes.length;
+  pEmpty = participantes.length === 0;
+  document.getElementById('noT').classList.add('hidden');
+  document.getElementById('actT').classList.remove('hidden');
+  document.getElementById('tNombreA').textContent = torneo.nombre;
+  document.getElementById('pList').innerHTML = pEmpty
+    ? `<div class="empty" style="padding:16px"><div class="empty-ico" style="font-size:24px">👥</div><p>Esperando !join en el chat</p></div>`
+    : '';
+  participantes.forEach(p => addP(p.nick, p.joined_at));
+  updateStats();
+  log('info', `🏆 Torneo "${torneo.nombre}" restaurado (${pCount} participantes)`);
+  loadHistorial();
+}
+
+async function crearTorneo() {
+  const nombre=document.getElementById('tNombre').value.trim();
+  if(!nombre) return;
+  const r=await api.crearTorneo(nombre);
+  if(!r.ok){log('warn','Error: '+r.error);return;}
+  torneoId=r.torneo.id; pCount=0; joins=0; pEmpty=true;
+  document.getElementById('noT').classList.add('hidden');
+  document.getElementById('actT').classList.remove('hidden');
+  document.getElementById('tNombreA').textContent=nombre;
+  document.getElementById('pList').innerHTML=`<div class="empty" style="padding:16px"><div class="empty-ico" style="font-size:24px">👥</div><p>Esperando !join en el chat</p></div>`;
+  document.getElementById('eResult').classList.add('hidden');
+  updateStats(); log('info',`🏆 Torneo "${nombre}" creado`);
+  loadHistorial();
+}
+
+async function cerrarTorneo() {
+  if(!confirm('¿Cerrar el torneo activo?')) return;
+  await api.cerrarTorneoDb(torneoId);
+  torneoId=null; pCount=0; joins=0;
+  document.getElementById('noT').classList.remove('hidden');
+  document.getElementById('actT').classList.add('hidden');
+  document.getElementById('tNombre').value='';
+  document.getElementById('tbadge').classList.add('hidden');
+  log('info','Torneo cerrado');
+  loadHistorial();
+}
+
+function updateStats() {
+  document.getElementById('sN').textContent=pCount;
+  document.getElementById('sJ').textContent=joins;
+  document.getElementById('pCount').textContent=pCount;
+  document.getElementById('tbadge').textContent=pCount;
+  if(pCount>0) document.getElementById('tbadge').classList.remove('hidden');
+  const sz=parseInt(document.getElementById('tSizeVal').value)||2;
+  document.getElementById('sE').textContent=pCount>0?Math.ceil(pCount/sz):'—';
+  document.getElementById('tSubA').textContent=pCount===0?'Esperando participantes...':`${pCount} jugadores · !join activo`;
+}
+
+const COLORS=['#D96B00','#0891b2','#059669','#d97706','#7c3aed','#0e7490','#dc2626','#047857'];
+function getColor(nick){let h=0;for(let c of nick)h+=c.charCodeAt(0);return COLORS[h%COLORS.length];}
+
+function addP(nick, joinedAt) {
+  const list=document.getElementById('pList');
+  if(pEmpty){list.innerHTML='';pEmpty=false;}
+  const item=document.createElement('div'); item.className='pitem'; item.id='p-'+nick;
+  const t=joinedAt?new Date(joinedAt).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'';
+  item.innerHTML=`<div class="pav" style="background:${getColor(nick)}">${nick[0].toUpperCase()}</div><div class="pnick">${nick}</div><div class="ptime">${t}</div><button class="prm" onclick="elimP('${nick}')" title="Eliminar">✕</button>`;
+  list.insertBefore(item,list.firstChild);
+}
+
+function removeP(nick) {
+  const el=document.getElementById('p-'+nick);
+  if(el){el.style.opacity='0';el.style.transform='translateX(10px)';el.style.transition='all .2s';setTimeout(()=>el.remove(),200);}
+}
+
+async function elimP(nick) {
+  if(!torneoId) return;
+  await api.eliminarParticipante({nick,torneoId});
+  removeP(nick); pCount=Math.max(0,pCount-1); updateStats();
+  log('warn',`${nick} eliminado manualmente`);
+}
+
+async function generarEquipos() {
+  if(!torneoId) return;
+  const tamanio=parseInt(document.getElementById('tSizeVal').value)||2;
+  const r=await api.generarEquipos({torneoId,tamanio});
+  if(!r.ok){log('warn',r.error||'Sin participantes');return;}
+  const grid=document.getElementById('tGrid'); grid.innerHTML='';
+  r.equipos.forEach((ms,i)=>{
+    const c=document.createElement('div'); c.className='tcard';
+    c.innerHTML=`<div class="thead-c">⚔️ Equipo ${i+1}</div><div class="tmembers">${ms.map(m=>`<div class="tmember">${m}</div>`).join('')}</div>`;
+    grid.appendChild(c);
+  });
+  document.getElementById('eResult').classList.remove('hidden');
+  log('info',`🎲 ${r.equipos.length} equipos generados`);
+}
+
+async function loadHistorial() {
+  if(!connected) return;
+  const ts=await api.getTorneos();
+  const tbody=document.getElementById('hBody');
+  if(!ts.length){tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3);font-size:11px">Sin torneos todavía</td></tr>`;return;}
+  tbody.innerHTML=ts.map(t=>{
+    const f=new Date(t.creado_at).toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'});
+    const cnt=t.participantes?.[0]?.count??'—';
+    const badge=t.activo?`<span class="badge badge-on">● Activo</span>`:`<span class="badge badge-off">Finalizado</span>`;
+    const delBtn = t.activo ? '' : `<button class="btn btn-danger" style="padding:4px 10px;font-size:10px;margin-left:4px" onclick="eliminarTorneoHistorial('${t.id}','${t.nombre.replace(/'/g,'')}')">🗑</button>`;
+    return `<tr id="hr-${t.id}"><td style="font-weight:700">${t.nombre}</td><td style="color:var(--text2);font-size:11px">${f}</td><td>${badge}</td><td style="color:var(--orange2);font-family:'Bebas Neue',cursive;font-size:20px">${cnt}</td><td style="white-space:nowrap"><button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="verT('${t.id}')">Ver</button>${delBtn}</td></tr><tr id="hd-${t.id}" class="h-detail hidden"><td colspan="5"><div id="hp-${t.id}" class="h-ptags"></div></td></tr>`;
+  }).join('');
+}
+
+async function verT(id) {
+  const detailRow=document.getElementById('hd-'+id);
+  if(!detailRow) return;
+  const isOpen=!detailRow.classList.contains('hidden');
+  if(isOpen){detailRow.classList.add('hidden');return;}
+  const container=document.getElementById('hp-'+id);
+  container.innerHTML=`<span style="font-size:11px;color:var(--text3)">Cargando...</span>`;
+  detailRow.classList.remove('hidden');
+  const ps=await api.getParticipantes(id);
+  if(!ps.length){container.innerHTML=`<span style="font-size:11px;color:var(--text3)">Sin participantes</span>`;return;}
+  container.innerHTML=ps.map(p=>`<span class="h-ptag">${p.nick}</span>`).join('');
+}
+
+async function eliminarTorneoHistorial(id, nombre) {
+  if(!confirm(`¿Eliminar el torneo "${nombre}"?\nEsto borra todos sus participantes y equipos.`)) return;
+  const r = await api.eliminarTorneo(id);
+  if(!r.ok){
+    log('warn','Error al eliminar torneo: '+(r.error||'desconocido'));
+    if(r.errors?.length) r.errors.forEach(e=>log('warn','  → '+e));
+    return;
+  }
+  if(r.warnings?.length) r.warnings.forEach(e=>log('warn','Advertencia: '+e));
+  document.getElementById('hr-'+id)?.remove();
+  document.getElementById('hd-'+id)?.remove();
+  log('info',`Torneo "${nombre}" eliminado`);
+}
+
+// ── 1v1 Duelos ────────────────────────────────────────────────────
+let duelos = [];
+
+function loadDuelos() {
+  try { duelos = JSON.parse(localStorage.getItem('duelos1v1') || '[]'); } catch { duelos = []; }
+}
+
+function saveDuelos() {
+  localStorage.setItem('duelos1v1', JSON.stringify(duelos));
+  const pending = duelos.filter(d => !d.done).length;
+  const badge = document.getElementById('dueloBadge');
+  badge.textContent = pending;
+  badge.classList.toggle('hidden', pending === 0);
+}
+
+function addDuelo() {
+  const inp = document.getElementById('dueloInput');
+  const nick = inp.value.trim();
+  if (!nick) return;
+  duelos.unshift({ id: Date.now(), nick, done: false, addedAt: new Date().toISOString() });
+  saveDuelos(); renderDuelos();
+  inp.value = ''; inp.focus();
+}
+
+function toggleDuelo(id) {
+  const d = duelos.find(x => x.id === id);
+  if (!d) return;
+  d.done = !d.done;
+  if (d.done) d.doneAt = new Date().toISOString();
+  else delete d.doneAt;
+  saveDuelos(); renderDuelos();
+}
+
+function deleteDuelo(id) {
+  duelos = duelos.filter(x => x.id !== id);
+  saveDuelos(); renderDuelos();
+}
+
+function renderDuelos() {
+  loadDuelos();
+  const pending = duelos.filter(d => !d.done);
+  const done    = duelos.filter(d =>  d.done);
+
+  document.getElementById('dueloPendCount').textContent = pending.length ? `(${pending.length})` : '';
+  document.getElementById('dueloDoneCount').textContent = done.length    ? `(${done.length})`    : '';
+
+  const mkItem = (d) => {
+    const date = d.done && d.doneAt
+      ? new Date(d.doneAt).toLocaleDateString('es',{day:'2-digit',month:'short'})
+      : new Date(d.addedAt).toLocaleDateString('es',{day:'2-digit',month:'short'});
+    const checkLabel = d.done ? '↩ Pendiente' : '✓ Listo';
+    return `<div class="duelo-item${d.done?' done':''}" id="di-${d.id}">
+      <div class="duelo-av">${d.nick[0].toUpperCase()}</div>
+      <div class="duelo-nick">${d.nick}</div>
+      <div class="duelo-date">${date}</div>
+      <button class="duelo-check" onclick="toggleDuelo(${d.id})">${checkLabel}</button>
+      <button class="duelo-del" onclick="deleteDuelo(${d.id})" title="Eliminar">✕</button>
+    </div>`;
+  };
+
+  const pendEl = document.getElementById('dueloPendList');
+  const doneEl = document.getElementById('dueloDoneList');
+  pendEl.innerHTML = pending.length ? pending.map(mkItem).join('') : `<div class="duelo-empty">Sin pendientes 🎮</div>`;
+  doneEl.innerHTML = done.length    ? done.map(mkItem).join('')    : `<div class="duelo-empty" style="padding:12px">—</div>`;
+
+  // badge
+  const badge = document.getElementById('dueloBadge');
+  badge.textContent = pending.length;
+  badge.classList.toggle('hidden', pending.length === 0);
+}
+
+// ── Spotify ───────────────────────────────────────────────────────
+let spConnected = false;
+let spPollInterval = null;
+
+async function loadSpotify() {
+  const r = await api.getSpotifyStatus();
+  spConnected = r.ok && r.connected;
+  const dot = document.getElementById('spStatusDot');
+  dot.classList.toggle('on', spConnected);
+  document.getElementById('spStatusBadge').textContent = spConnected ? '● Conectado' : 'Sin conectar';
+  document.getElementById('spStatusBadge').className = spConnected ? 'badge badge-on' : 'badge badge-off';
+  document.getElementById('spNotConnected').classList.toggle('hidden', spConnected);
+  document.getElementById('spConnected').classList.toggle('hidden', !spConnected);
+  document.getElementById('spBadgeTab').classList.toggle('hidden', !spConnected);
+  if(spConnected) {
+    document.getElementById('spNowPlayingCard').classList.remove('hidden');
+    await loadNowPlaying();
+    if(!spPollInterval) spPollInterval = setInterval(loadNowPlaying, 30000);
+  } else {
+    document.getElementById('spNowPlayingCard').classList.add('hidden');
+    clearInterval(spPollInterval); spPollInterval = null;
+  }
+}
+
+async function loadNowPlaying() {
+  const r = await api.spotifyNowPlaying();
+  if(!r.ok) return;
+  const card = document.getElementById('spNowPlayingCard');
+  const trackRow = document.getElementById('spTrackRow');
+  const nothingMsg = document.getElementById('spNothingMsg');
+  const pausedMsg = document.getElementById('spPausedMsg');
+  const playingRow = document.getElementById('spPlayingRow');
+  const art = document.getElementById('spAlbumArt');
+  if(!r.playing && !r.track) {
+    trackRow.style.display = 'none';
+    nothingMsg.classList.remove('hidden');
+    playingRow.classList.add('hidden');
+    pausedMsg.classList.add('hidden');
+    card.classList.remove('playing');
+    art.classList.remove('playing');
+    return;
+  }
+  trackRow.style.display = '';
+  nothingMsg.classList.add('hidden');
+  const t = r.track;
+  art.src = t.image || '';
+  art.classList.toggle('playing', r.playing);
+  document.getElementById('spTrackName').textContent = t.name || '—';
+  document.getElementById('spArtist').textContent = t.artist || '—';
+  document.getElementById('spAlbum').textContent = t.album || '—';
+  playingRow.classList.toggle('hidden', !r.playing);
+  pausedMsg.classList.toggle('hidden', r.playing);
+  card.classList.toggle('playing', r.playing);
+}
+
+async function openSpotifyConnect() {
+  await api.openSpotifyConnect();
+  setTimeout(loadSpotify, 4000);
+}
+
+// ── Overlays ──────────────────────────────────────────────────────
+async function loadOverlays() {
+  const r=await api.overlayLoadAll();
+  if(!r.ok){log('warn','Error cargando overlays: '+(r.error||''));return;}
+  const s=r.settings||{};
+
+  const yc=s.ya_comenzamos||{};
+  document.getElementById('ycTitle').value=yc.title||'YA COMENZAMOS';
+  document.getElementById('ycMsg').value=yc.message||'El stream inicia en';
+  ycMin=Math.floor((yc.countdown_seconds||300)/60);
+  document.getElementById('ycMinVal').value=ycMin;
+  updateYcPreview();
+
+  const brb=s.brb||{};
+  document.getElementById('brbTitle').value=brb.title||'VUELVO ENSEGUIDA';
+  document.getElementById('brbMsg').value=brb.message||'Ya vuelvo...';
+
+  const fin=s.fin_stream||{};
+  document.getElementById('finTitle').value=fin.title||'FIN DEL STREAM';
+  document.getElementById('finMsg').value=fin.message||'¡Gracias por quedarte!';
+
+  bracketData=r.bracket||[];
+  renderBracket();
+
+  // Restaurar estado del contador si estaba corriendo
+  const startedAt = s.countdown_started_at;
+  if (startedAt) {
+    const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+    if (elapsed < ycMin * 60) cdTick(startedAt, ycMin * 60);
+    else { document.getElementById('cdStatus').textContent = '¡Tiempo!'; document.getElementById('cdTimerLive').textContent = '00:00'; }
+  } else {
+    document.getElementById('cdTimerLive').textContent = `${String(ycMin).padStart(2,'0')}:00`;
+  }
+
+  log('info','Overlays cargados desde Supabase ✅');
+}
+
+function abrirOverlay(tab) {
+  const url = localStorage.getItem('ovUrl_'+tab) || '';
+  if (url) api.openUrl(url);
+}
+
+function confirmOverlayUrl(tab) {
+  const url = document.getElementById('ovUrl-'+tab).value.trim();
+  if (url) {
+    localStorage.setItem('ovUrl_'+tab, url);
+    _showOverlayUrlSaved(tab, url);
+  } else {
+    localStorage.removeItem('ovUrl_'+tab);
+    document.getElementById('ovUrl-'+tab).classList.remove('hidden');
+    document.getElementById('ovUrlSaved-'+tab).classList.add('hidden');
+    document.getElementById('ovEdit-'+tab).classList.add('hidden');
+    document.getElementById('ovOpen-'+tab).disabled = true;
+  }
+}
+
+function editOverlayUrl(tab) {
+  document.getElementById('ovUrlSaved-'+tab).classList.add('hidden');
+  document.getElementById('ovEdit-'+tab).classList.add('hidden');
+  const inp = document.getElementById('ovUrl-'+tab);
+  inp.classList.remove('hidden');
+  inp.focus(); inp.select();
+}
+
+function _showOverlayUrlSaved(tab, url) {
+  document.getElementById('ovUrl-'+tab).classList.add('hidden');
+  document.getElementById('ovUrlSaved-'+tab).classList.remove('hidden');
+  document.getElementById('ovEdit-'+tab).classList.remove('hidden');
+  document.getElementById('ovOpen-'+tab).disabled = false;
+  try { document.getElementById('ovUrlHost-'+tab).textContent = new URL(url).hostname; }
+  catch { document.getElementById('ovUrlHost-'+tab).textContent = url.slice(0,40); }
+}
+
+function loadOverlayUrl(tab) {
+  const url = localStorage.getItem('ovUrl_'+tab) || '';
+  if (url) { document.getElementById('ovUrl-'+tab).value = url; _showOverlayUrlSaved(tab, url); }
+  else { document.getElementById('ovUrl-'+tab).classList.remove('hidden'); }
+}
+
+// ── Countdown control ─────────────────────────────────────────────
+let cdInterval = null;
+
+function _ycValue(startedAt) {
+  return {
+    title: document.getElementById('ycTitle').value || 'YA COMENZAMOS',
+    message: document.getElementById('ycMsg').value || 'El stream inicia en',
+    countdown_seconds: ycMin * 60,
+    countdown_started_at: startedAt
+  };
+}
+
+async function cdStart() {
+  const startedAt = new Date().toISOString();
+  const r = await api.overlayUpdate('ya_comenzamos', _ycValue(startedAt));
+  log(r?.ok ? 'info' : 'warn', r?.ok ? `▶ Contador iniciado (${ycMin} min) — Supabase OK` : `Error Supabase: ${r?.error||'desconocido'}`);
+  if (!r?.ok) return;
+  cdTick(startedAt, ycMin * 60);
+}
+
+async function cdReset() {
+  clearInterval(cdInterval); cdInterval = null;
+  await api.overlayUpdate('ya_comenzamos', _ycValue(null));
+  document.getElementById('cdStatus').textContent = 'Detenido';
+  document.getElementById('cdStatus').classList.remove('running');
+  document.getElementById('cdTimerLive').textContent = `${String(ycMin).padStart(2,'0')}:00`;
+  document.getElementById('cdStartBtn').disabled = false;
+  log('info', '↺ Contador reseteado');
+}
+
+function cdTick(startedAt, totalSecs) {
+  clearInterval(cdInterval);
+  document.getElementById('cdStartBtn').disabled = true;
+  document.getElementById('cdStatus').textContent = 'Corriendo';
+  document.getElementById('cdStatus').classList.add('running');
+  cdInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+    const remaining = Math.max(0, totalSecs - elapsed);
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    document.getElementById('cdTimerLive').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    if (remaining === 0) {
+      clearInterval(cdInterval); cdInterval = null;
+      document.getElementById('cdStatus').textContent = '¡Tiempo!';
+      document.getElementById('cdStartBtn').disabled = false;
+    }
+  }, 1000);
+}
+
+function updateYcPreview() {
+  const title=document.getElementById('ycTitle').value||'YA COMENZAMOS';
+  const msg=document.getElementById('ycMsg').value||'El stream inicia en';
+  document.getElementById('pvYcTitle').textContent=title;
+  document.getElementById('pvYcMsg').textContent=msg;
+  document.getElementById('pvYcTimer').textContent=String(ycMin).padStart(2,'0')+':00';
+  document.getElementById('ycSecLabel').textContent=`${ycMin} min (${ycMin*60}s)`;
+}
+
+async function saveOverlay(key) {
+  if(saving) return; saving=true;
+  let value;
+  if(key==='ya_comenzamos') value={title:document.getElementById('ycTitle').value,message:document.getElementById('ycMsg').value,countdown_seconds:ycMin*60};
+  if(key==='brb') value={title:document.getElementById('brbTitle').value,message:document.getElementById('brbMsg').value};
+  if(key==='fin_stream') value={title:document.getElementById('finTitle').value,message:document.getElementById('finMsg').value};
+  const r=await api.overlayUpdate(key,value);
+  saving=false;
+  if(r.ok) toast('Guardado en Supabase ✅','ok');
+  else toast('Error al guardar ❌','err');
+}
+
+// ── Bracket ───────────────────────────────────────────────────────
+function renderBracket() {
+  renderRound('qf',[0,1,2,3],'PARTIDO');
+  renderRound('sf',[4,5],'SEMIFINAL');
+  renderGF();
+}
+
+function renderRound(round, indices, prefix) {
+  const container=document.getElementById('br-'+round); container.innerHTML='';
+  indices.forEach((idx,i)=>{
+    const m=bracketData.find(x=>x.match_index===idx)||{id:null,team_a:'',team_b:'',score_a:0,score_b:0,winner:null,match_index:idx};
+    container.appendChild(buildMatchCard(m, `${prefix} ${i+1}`, false));
+  });
+}
+
+function renderGF() {
+  const container=document.getElementById('br-gf'); container.innerHTML='';
+  const m=bracketData.find(x=>x.match_index===6)||{id:null,team_a:'',team_b:'',score_a:0,score_b:0,winner:null,match_index:6};
+  container.appendChild(buildMatchCard(m,'⭐ GRAN FINAL',true));
+}
+
+function buildMatchCard(m, label, isGF) {
+  const div=document.createElement('div'); div.className='match-card'+(isGF?' gf':''); div.id='mc-'+m.match_index;
+  div.innerHTML=`
+    <div class="match-head">
+      <span class="match-lbl${isGF?' gf':''}">${label}</span>
+      <span class="match-idx">match_index: ${m.match_index}</span>
+      ${m.winner?`<span class="match-done">${isGF?'🏆 CAMPEÓN':'✓ FINALIZADO'}</span>`:''}
+    </div>
+    <div class="match-teams">
+      <div class="match-team${m.winner==='a'?' win':m.winner==='b'?' lose':''}" id="mta-${m.match_index}">
+        <span class="match-team-lbl">${isGF?'FINALISTA A':'EQUIPO A'}</span>
+        <input class="match-input" id="ta-${m.match_index}" type="text" value="${m.team_a||''}" placeholder="${isGF?'Finalista A':'Equipo A'}" oninput="updateWinBtns(${m.match_index})" />
+        <input class="match-score" id="sa-${m.match_index}" type="number" value="${m.score_a||0}" min="0" />
+      </div>
+      <div class="match-vs">VS</div>
+      <div class="match-team${m.winner==='b'?' win':m.winner==='a'?' lose':''}" id="mtb-${m.match_index}">
+        <span class="match-team-lbl">${isGF?'FINALISTA B':'EQUIPO B'}</span>
+        <input class="match-input" id="tb-${m.match_index}" type="text" value="${m.team_b||''}" placeholder="${isGF?'Finalista B':'Equipo B'}" oninput="updateWinBtns(${m.match_index})" />
+        <input class="match-score" id="sb-${m.match_index}" type="number" value="${m.score_b||0}" min="0" />
+      </div>
+    </div>
+    <div class="match-winner-row">
+      <span class="match-wlbl">${isGF?'🏆 CAMPEÓN:':'GANADOR:'}</span>
+      <button class="win-btn${m.winner==='a'?' on':''}" id="wb-a-${m.match_index}" onclick="setWinner(${m.match_index},'a')">${m.team_a||'Equipo A'}</button>
+      <button class="win-btn${m.winner==='b'?' on':''}" id="wb-b-${m.match_index}" onclick="setWinner(${m.match_index},'b')">${m.team_b||'Equipo B'}</button>
+      <button class="win-btn clear${!m.winner?' on':''}" onclick="setWinner(${m.match_index},null)">Sin definir</button>
+    </div>
+    <button class="match-save${isGF?' gf':''}" onclick="saveMatch(${m.match_index})">${isGF?'⭐ Guardar Gran Final':'Guardar '+label}</button>
+  `;
+  return div;
+}
+
+function setWinner(idx, side) {
+  const m=bracketData.find(x=>x.match_index===idx);
+  if(m) m.winner=side;
+  document.querySelectorAll(`[id^="wb-"][id$="-${idx}"]`).forEach(btn=>{
+    btn.classList.toggle('on', (btn.id===`wb-a-${idx}`&&side==='a')||(btn.id===`wb-b-${idx}`&&side==='b'));
+  });
+  document.getElementById(`mta-${idx}`)?.classList.toggle('win', side==='a');
+  document.getElementById(`mta-${idx}`)?.classList.toggle('lose', side==='b');
+  document.getElementById(`mtb-${idx}`)?.classList.toggle('win', side==='b');
+  document.getElementById(`mtb-${idx}`)?.classList.toggle('lose', side==='a');
+}
+
+function updateWinBtns(idx) {
+  const ta=document.getElementById(`ta-${idx}`)?.value||'Equipo A';
+  const tb=document.getElementById(`tb-${idx}`)?.value||'Equipo B';
+  const btnA=document.getElementById(`wb-a-${idx}`); if(btnA) btnA.textContent=ta;
+  const btnB=document.getElementById(`wb-b-${idx}`); if(btnB) btnB.textContent=tb;
+}
+
+async function saveMatch(idx) {
+  const m=bracketData.find(x=>x.match_index===idx);
+  if(!m||!m.id){toast('Partido no encontrado en BD','err');return;}
+  const data={
+    team_a: document.getElementById(`ta-${idx}`)?.value||'',
+    team_b: document.getElementById(`tb-${idx}`)?.value||'',
+    score_a: parseInt(document.getElementById(`sa-${idx}`)?.value)||0,
+    score_b: parseInt(document.getElementById(`sb-${idx}`)?.value)||0,
+    winner: m.winner
+  };
+  Object.assign(m, data);
+  const r=await api.bracketUpdate(m.id, data);
+  if(r.ok) toast('Partido guardado ✅','ok');
+  else toast('Error al guardar ❌','err');
+}
+
+async function resetBracket() {
+  if(!confirm('¿Resetear el bracket completo?')) return;
+  const r=await api.bracketReset();
+  if(r.ok){ bracketData.forEach(m=>{m.team_a='';m.team_b='';m.score_a=0;m.score_b=0;m.winner=null;}); renderBracket(); toast('Bracket reseteado','ok'); }
+  else toast('Error al resetear','err');
+}
+
+// ── Log ───────────────────────────────────────────────────────────
+function log(type,msg) {
+  const list=document.getElementById('llist');
+  const el=document.createElement('div'); el.className='le '+type;
+  const t=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  el.textContent=`[${t}] ${msg}`;
+  list.appendChild(el); list.scrollTop=list.scrollHeight;
+  while(list.children.length>300) list.removeChild(list.firstChild);
+}
+function clearLog(){document.getElementById('llist').innerHTML='';}
+
+// ── Toast ─────────────────────────────────────────────────────────
+let toastTimer=null;
+function toast(msg,type) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className=type;
+  el.classList.remove('hidden');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.add('hidden'),3000);
+}
+
+// ── Alert ─────────────────────────────────────────────────────────
+function showAlert(id,type,msg) {
+  const el=document.getElementById(id);
+  el.className=`alert alert-${type}`;el.textContent=msg;el.classList.remove('hidden');
+  setTimeout(()=>el.classList.add('hidden'),3500);
+}
+
+// ── IPC ───────────────────────────────────────────────────────────
+api.onBotStatus(({connected:c,reason})=>{setConn(c);if(!c)log('warn',`Desconectado: ${reason||''}`);});
+api.onBotLog(({type,msg})=>log(type,msg));
+api.onNewParticipante(({nick,joined_at})=>{if(!torneoId)return;pCount++;joins++;updateStats();addP(nick,joined_at);});
+api.onRemoveParticipante(({nick})=>{removeP(nick);pCount=Math.max(0,pCount-1);updateStats();});
+
+// ── Realtime preview updates ──────────────────────────────────────
+document.getElementById('ycTitle').addEventListener('input', updateYcPreview);
+document.getElementById('ycMsg').addEventListener('input', updateYcPreview);
+document.getElementById('brbTitle').addEventListener('input', ()=>{ document.getElementById('pvBrbTitle').textContent=document.getElementById('brbTitle').value||'VUELVO ENSEGUIDA'; });
+document.getElementById('brbMsg').addEventListener('input', ()=>{ document.getElementById('pvBrbMsg').textContent=document.getElementById('brbMsg').value||'Ya vuelvo...'; });
+document.getElementById('finTitle').addEventListener('input', ()=>{ document.getElementById('pvFinTitle').textContent=document.getElementById('finTitle').value||'FIN DEL STREAM'; });
+document.getElementById('finMsg').addEventListener('input', ()=>{ document.getElementById('pvFinMsg').textContent=document.getElementById('finMsg').value||'¡Gracias por quedarte!'; });
+
+// ── Init ──────────────────────────────────────────────────────────
+(async()=>{
+  await loadConfigForm();
+  const cfg=await api.getConfig();
+  if(cfg.supabaseUrl&&cfg.supabaseKey&&cfg.botUsername&&cfg.botOauth&&cfg.twitchChannel) {
+    log('info','Config encontrada, conectando...');
+    await doConnect();
+  } else {
+    log('info','Almost Control iniciado ✅');
+    log('info','Ve a Config para configurar las credenciales');
+  }
+})();
+</script>
+</body>
+</html>

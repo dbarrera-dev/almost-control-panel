@@ -1,0 +1,40 @@
+{
+  "name": "almost-control",
+  "version": "1.0.0",
+  "description": "Almost98 Control Panel",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64",
+    "publish": "electron-builder --win --x64 --publish always"
+  },
+  "build": {
+    "appId": "com.almost98.control",
+    "productName": "Almost - Panel de control",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "Almost - Panel de control"
+    },
+    "files": ["**/*", "!node_modules/.cache"],
+    "publish": {
+      "provider": "github",
+      "owner": "Dieqoz",
+      "repo": "almost-control-panel"
+    }
+  },
+  "dependencies": {
+    "tmi.js": "^1.8.5",
+    "@supabase/supabase-js": "^2.39.0",
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3"
+  }
+}
