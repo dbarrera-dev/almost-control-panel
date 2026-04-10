@@ -1,0 +1,52 @@
+/* ── Grid ── */
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+/* ── Torneo banner ── */
+.t-banner { background:linear-gradient(135deg, rgba(224,112,0,.08), rgba(255,215,0,.03)); border:1px solid rgba(224,112,0,.2); border-radius:var(--radius); padding:16px 20px; margin-bottom:18px; display:flex; align-items:center; gap:14px; }
+.t-banner-name { font-family:'Bebas Neue',cursive; font-size:22px; letter-spacing:2px; color:var(--orange2); }
+.t-banner-sub { font-size:12px; color:var(--text2); margin-top:3px; letter-spacing:.3px; font-family:'Inter',sans-serif; }
+
+/* ── Participants ── */
+.plist { display:flex; flex-direction:column; gap:4px; max-height:320px; overflow-y:auto; scrollbar-width:thin; }
+.pitem { display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; transition:all .15s; animation:slideIn .22s ease; }
+@keyframes slideIn { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:none} }
+.pitem:hover { border-color:rgba(224,112,0,.2); background:rgba(224,112,0,.03); }
+.pav { width:28px; height:28px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px; color:white; }
+.pnick { font-size:13px; font-weight:600; flex:1; letter-spacing:.2px; color:var(--text1); font-family:'Inter',sans-serif; }
+.ptime { font-size:10px; color:var(--text3); font-family:'Inter',sans-serif; }
+.prm { opacity:0; background:none; border:none; color:var(--red); cursor:pointer; padding:3px 6px; border-radius:4px; font-size:13px; transition:all .15s; }
+.pitem:hover .prm { opacity:.7; }
+.prm:hover { opacity:1 !important; background:rgba(248,113,113,.1); }
+
+/* ── Teams ── */
+.tgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px,1fr)); gap:10px; }
+.tcard { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; animation:slideIn .3s ease; }
+.thead-c { padding:9px 14px; background:rgba(224,112,0,.08); border-bottom:1px solid var(--border); font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--orange2); font-family:'Inter',sans-serif; }
+.tmembers { padding:8px 14px; }
+.tmember { padding:5px 0; font-size:13px; color:var(--text1); border-bottom:1px solid rgba(255,255,255,.03); display:flex; align-items:center; gap:7px; font-family:'Inter',sans-serif; }
+.tmember:last-child { border-bottom:none; }
+.tmember::before { content:''; display:inline-block; width:4px; height:4px; border-radius:50%; background:var(--orange3); opacity:.6; }
+
+/* ── History ── */
+.htable { width:100%; border-collapse:collapse; }
+.htable th { text-align:left; padding:8px 14px; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text2); border-bottom:1px solid var(--border2); font-family:'Inter',sans-serif; font-weight:700; }
+.htable td { padding:10px 14px; font-size:13px; color:var(--text1); border-bottom:1px solid rgba(255,255,255,.03); font-family:'Inter',sans-serif; }
+.htable tr:hover td { background:rgba(224,112,0,.02); }
+.htable tr.h-detail td { background:rgba(255,255,255,.015); padding:10px 14px 14px; }
+.ov-url-row { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+.ov-url-row input { flex:1; font-size:11px; }
+.ov-url-btn { background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:8px; padding:6px 10px; font-size:14px; cursor:pointer; color:var(--text2); transition:background .15s,border-color .15s; flex-shrink:0; line-height:1; }
+.ov-url-btn:hover:not(:disabled) { background:rgba(224,112,0,.1); border-color:var(--orange2); }
+.ov-url-btn:disabled { opacity:.25; cursor:default; }
+.ov-url-saved { flex:1; display:flex; align-items:center; gap:6px; min-width:0; }
+.ov-url-saved-ok { color:#22c55e; font-size:10px; font-weight:700; flex-shrink:0; }
+.ov-url-saved-host { font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:'Inter',sans-serif; }
+.ov-edit-btn { background:none; border:none; color:var(--text3); cursor:pointer; font-size:12px; padding:4px 6px; flex-shrink:0; opacity:.7; transition:opacity .15s; }
+.ov-edit-btn:hover { opacity:1; color:var(--text2); }
+.cd-controls { display:flex; align-items:center; gap:10px; margin-top:14px; }
+.cd-status { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-weight:700; color:var(--text3); font-family:'Inter',sans-serif; }
+.cd-status.running { color:#22c55e; }
+.cd-timer-live { font-family:'Bebas Neue',cursive; font-size:28px; color:var(--text); min-width:70px; }
+.h-ptags { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.h-ptag { background:rgba(224,112,0,.08); color:var(--orange2); border:1px solid rgba(224,112,0,.18); border-radius:4px; padding:2px 8px; font-size:11px; font-weight:600; font-family:'Inter',sans-serif; }
+

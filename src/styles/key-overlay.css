@@ -1,0 +1,18 @@
+/* ── Key Overlay keyboard picker ── */
+#ko-keyboard { background:rgba(0,0,0,.25); border:1px solid var(--border2); border-radius:var(--radius); padding:12px 14px; overflow-x:auto; width:fit-content; max-width:100%; }
+.ko-kb-row { display:flex; gap:3px; margin-bottom:3px; flex-wrap:nowrap; }
+.ko-kb-row:last-child { margin-bottom:0; }
+.ko-key { display:inline-flex; align-items:center; justify-content:center; min-width:28px; height:28px; padding:0 6px; border-radius:6px; font-size:10px; font-weight:600; letter-spacing:.2px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); color:var(--text3); cursor:pointer; transition:background .1s,border-color .1s,color .1s,transform .08s; box-shadow:0 2px 4px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.03); user-select:none; white-space:nowrap; flex-shrink:0; font-family:'Inter',sans-serif; }
+.ko-key:hover { background:rgba(255,255,255,.07); color:var(--text2); border-color:rgba(255,255,255,.15); transform:translateY(-1px); }
+.ko-key:active { transform:translateY(0); }
+.ko-key.kok-on { background:rgba(224,112,0,.16); border-color:rgba(224,112,0,.55); color:#ffa040; box-shadow:0 2px 8px rgba(224,112,0,.15),inset 0 1px 0 rgba(255,255,255,.06); }
+.ko-key-hi { border-color:rgba(224,112,0,.18) !important; color:rgba(224,112,0,.4); }
+.ko-key-hi.kok-on { background:rgba(224,112,0,.22); border-color:rgba(224,112,0,.7) !important; color:#ffb060; box-shadow:0 2px 10px rgba(224,112,0,.22),inset 0 1px 0 rgba(255,255,255,.08); }
+.ko-ph { display:inline-flex; align-items:center; justify-content:center; min-width:28px; height:28px; padding:0 6px; border-radius:6px; font-size:9px; font-weight:600; background:transparent; border:1px dashed rgba(255,255,255,.04); color:rgba(255,255,255,.08); white-space:nowrap; flex-shrink:0; cursor:default; font-family:'Inter',sans-serif; }
+.ko-w125 { min-width:38px; } .ko-w15 { min-width:46px; } .ko-w175 { min-width:54px; }
+.ko-w2   { min-width:62px; } .ko-w225 { min-width:70px; } .ko-w275 { min-width:86px; }
+.ko-wsp  { min-width:100px; } .ko-grp { min-width:7px; flex-shrink:0; }
+.hidden { display:none !important; }
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.mt3 { margin-top:12px; } .mt4 { margin-top:16px; }
+

@@ -1,0 +1,101 @@
+<div class="view" id="view-rl">
+    <div class="sh"><div class="sh-badge orange">ROCKET LEAGUE</div><h2>Overlay RL</h2><p>MMR · Wins · Losses · vía tracker.gg</p></div>
+
+    <!-- Status + URL -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="rlStatusBadge" class="badge badge-off">Cargando...</span>
+        </div>
+      </div>
+      <div id="rlUrlRow" class="info-box">
+        <div class="info-box-label">URL para Browser Source en OBS</div>
+        <div class="info-box-url">
+          <code id="rlUrlText">http://localhost:9003</code>
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px;flex-shrink:0" onclick="rlCopyUrl()">Copiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Config -->
+    <div class="card">
+      <div class="card-title">Cuenta</div>
+      <div class="g2">
+        <div class="ig">
+          <label>Plataforma</label>
+          <select id="rlPlatform" onchange="rlSaveConfig()">
+            <option value="epic">Epic Games</option>
+            <option value="steam">Steam</option>
+            <option value="psn">PlayStation</option>
+            <option value="xbl">Xbox</option>
+          </select>
+        </div>
+        <div class="ig">
+          <label>Username</label>
+          <input type="text" id="rlUsername" placeholder="TuNick" oninput="rlSaveConfig()" />
+        </div>
+      </div>
+      <button class="btn btn-orange" style="margin-top:10px;width:100%" onclick="rlRefresh(this)">↻ Actualizar stats ahora</button>
+    </div>
+
+    <!-- Live stats preview -->
+    <div class="card" id="rlStatsCard" style="display:none">
+      <div class="card-title">Stats actuales</div>
+      <div class="stats" style="margin-bottom:12px">
+        <div class="stat">
+          <div class="stat-n" id="rlSMMR">—</div>
+          <div class="stat-l">MMR</div>
+        </div>
+        <div class="stat" style="--stat-color:#22c55e">
+          <div class="stat-n" style="color:#22c55e" id="rlSWins">—</div>
+          <div class="stat-l">Wins</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n" style="color:#ef4444" id="rlSLosses">—</div>
+          <div class="stat-l">Losses</div>
+        </div>
+      </div>
+      <div style="text-align:center;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:12px">
+        <span style="font-size:14px;font-weight:700;color:var(--text)" id="rlSRank">—</span>
+        <span style="font-size:12px;color:var(--text3);margin-left:4px" id="rlSDiv"></span>
+        <span style="font-size:11px;color:var(--text3);margin-left:8px" id="rlSPlaylist"></span>
+      </div>
+      <div>
+        <span class="section-label" style="margin-bottom:8px">Esta sesión</span>
+        <div style="display:flex;gap:16px;font-size:13px;font-weight:600;margin-bottom:10px">
+          <span id="rlDMmr" style="color:var(--text2)">MMR: —</span>
+          <span id="rlDRecord" style="color:var(--text2)">W/L: —</span>
+        </div>
+        <button class="btn btn-ghost" style="font-size:10px;padding:4px 12px" onclick="rlResetSession()">Reiniciar sesión</button>
+      </div>
+    </div>
+
+    <!-- Overlay style -->
+    <div class="card">
+      <div class="card-title">Estilo del overlay</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="ig">
+          <label>Color acento</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="rlAccent" value="#2563eb" onchange="rlSaveStyle()" style="width:36px;height:28px;border:none;background:none;cursor:pointer;padding:0">
+            <span style="font-size:11px;color:var(--text3)" id="rlAccentVal">#2563eb</span>
+          </div>
+        </div>
+        <div class="ig">
+          <label>Color texto</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="rlTextColor" value="#ffffff" onchange="rlSaveStyle()" style="width:36px;height:28px;border:none;background:none;cursor:pointer;padding:0">
+            <span style="font-size:11px;color:var(--text3)" id="rlTextVal">#ffffff</span>
+          </div>
+        </div>
+        <div class="ig" style="grid-column:1/-1">
+          <label style="display:flex;justify-content:space-between"><span>Radio esquinas</span><span id="rlRadiusVal" style="color:var(--text2)">12px</span></label>
+          <input type="range" id="rlRadius" min="0" max="24" value="12" oninput="rlOnRadius(this.value)" style="width:100%;accent-color:var(--orange)">
+        </div>
+        <div class="ig" style="grid-column:1/-1">
+          <label style="display:flex;justify-content:space-between"><span>Opacidad fondo</span><span id="rlBgOpVal" style="color:var(--text2)">92%</span></label>
+          <input type="range" id="rlBgOp" min="0" max="100" value="92" oninput="rlOnBgOp(this.value)" style="width:100%;accent-color:var(--orange)">
+        </div>
+      </div>
+    </div>
+  </div>

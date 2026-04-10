@@ -1,0 +1,22 @@
+<div id="sidebar">
+  <div class="sb-head"><div class="sb-live"></div>Log en vivo<button class="btn btn-ghost" style="margin-left:auto;padding:3px 8px;font-size:9px" onclick="clearLog()">Limpiar</button></div>
+  <div id="llist"></div>
+  <div class="sb-cfg">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+      <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
+        <span style="font-size:9px;letter-spacing:2px;font-weight:700;text-transform:uppercase;color:var(--text3)">Twitch</span>
+        <div class="cdot" id="sbTwitchDot"></div>
+        <span id="sbTwitchTxt" style="font-size:9px;color:var(--text3);letter-spacing:.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      </div>
+      <button id="btnC" class="btn btn-ghost" style="font-size:10px;padding:5px 12px;flex-shrink:0;letter-spacing:1px" onclick="toggleConnect()">Conectar</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
+        <span style="font-size:9px;letter-spacing:2px;font-weight:700;text-transform:uppercase;color:var(--text3)">Kick</span>
+        <div class="cdot" id="sbKickDot"></div>
+        <span id="sbKickTxt" style="font-size:9px;color:var(--text3);letter-spacing:.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      </div>
+      <button id="kickSbBtn" class="btn btn-ghost" style="font-size:10px;padding:5px 12px;flex-shrink:0;letter-spacing:1px" onclick="toggleKickBot()">Conectar</button>
+    </div>
+  </div>
+</div>

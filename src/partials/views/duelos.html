@@ -1,0 +1,17 @@
+<div class="view" id="view-duelos">
+    <div class="sh"><div class="sh-badge" style="background:#7c3aed;color:#e9d5ff">1v1</div><h2>Cola de 1v1</h2><p>Suscriptores que quieren jugar contra vos · tachá los completados</p></div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">Agregar suscriptor</div>
+      <div class="duelo-add-row">
+        <input id="dueloInput" type="text" placeholder="Nombre del suscriptor..." onkeydown="if(event.key==='Enter')addDuelo()" />
+        <button class="btn btn-orange" onclick="addDuelo()">+ Agregar</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:16px">Cola de duelos</div>
+      <div class="duelo-section-label">Pendientes <span id="dueloPendCount" style="color:var(--orange2)"></span></div>
+      <div id="dueloPendList"></div>
+      <div class="duelo-section-label" style="margin-top:24px">Completados <span id="dueloDoneCount" style="color:var(--text3)"></span></div>
+      <div id="dueloDoneList"></div>
+    </div>
+  </div>

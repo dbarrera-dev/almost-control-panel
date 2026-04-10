@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: #0a0a0f;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+#container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+  align-items: flex-start;
+  max-width: 1400px;
+  width: 100%;
+}
+
+#title-banner {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 8px;
+  opacity: 0;
+  transform: translateY(-16px);
+  transition: opacity .5s ease, transform .5s ease;
+}
+#title-banner.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+#title-text {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 42px;
+  letter-spacing: 4px;
+  color: #fff;
+  text-shadow: 0 0 30px rgba(249,115,22,.6);
+}
+#title-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.team-card {
+  background: rgba(15,15,20,0.92);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 0;
+  min-width: 200px;
+  max-width: 260px;
+  flex: 1;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(24px) scale(0.96);
+  transition: opacity .45s ease, transform .45s ease;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  position: relative;
+}
+.team-card.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.team-header {
+  padding: 12px 16px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  position: relative;
+}
+.team-header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: var(--accent);
+  border-radius: 14px 14px 0 0;
+}
+.team-num {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--accent);
+  min-width: 24px;
+}
+.team-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.team-members {
+  padding: 10px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.member-av {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+.member-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#waiting {
+  color: rgba(255,255,255,0.3);
+  font-size: 14px;
+  text-align: center;
+  padding: 40px;
+  letter-spacing: 1px;
+}
+
+/* VS dividers between cards */
+.vs-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', cursive;
+  font-size: 22px;
+  color: rgba(255,255,255,0.15);
+  letter-spacing: 2px;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity .4s ease .6s;
+}
+.vs-divider.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="container">
+  <div id="waiting">Esperando sorteo...</div>
+</div>
+
+<script>
+const COLORS = [
+  '#f97316','#3b82f6','#22c55e','#a855f7',
+  '#ef4444','#06b6d4','#eab308','#ec4899',
+  '#14b8a6','#f43f5e','#8b5cf6','#10b981'
+];
+
+function getColor(nick) {
+  let h = 0;
+  for (const c of nick) h += c.charCodeAt(0);
+  return COLORS[h % COLORS.length];
+}
+
+function getAccent(index) {
+  return COLORS[index % COLORS.length];
+}
+
+function renderTeams(equipos) {
+  const container = document.getElementById('container');
+  container.innerHTML = '';
+
+  // Title
+  const banner = document.createElement('div');
+  banner.id = 'title-banner';
+  banner.innerHTML = `
+    <div id="title-text">Sorteo de Equipos</div>
+    <div id="title-sub">${equipos.length} equipos · ${equipos.reduce((s,e)=>s+e.length,0)} jugadores</div>
+  `;
+  container.appendChild(banner);
+  setTimeout(() => banner.classList.add('show'), 50);
+
+  // Cards
+  equipos.forEach((members, i) => {
+    // VS divider (not before first)
+    if (i > 0) {
+      const vs = document.createElement('div');
+      vs.className = 'vs-divider';
+      vs.textContent = 'VS';
+      container.appendChild(vs);
+      setTimeout(() => vs.classList.add('show'), 300 + i * 120);
+    }
+
+    const accent = getAccent(i);
+    const card = document.createElement('div');
+    card.className = 'team-card';
+    card.style.setProperty('--accent', accent);
+
+    const membersHtml = members.map(nick => `
+      <div class="member">
+        <div class="member-av" style="background:${getColor(nick)}">${nick[0].toUpperCase()}</div>
+        <div class="member-name">${nick}</div>
+      </div>
+    `).join('');
+
+    card.innerHTML = `
+      <div class="team-header">
+        <div class="team-num">${i + 1}</div>
+        <div class="team-name">Equipo ${i + 1}</div>
+      </div>
+      <div class="team-members">${membersHtml}</div>
+    `;
+
+    container.appendChild(card);
+    setTimeout(() => card.classList.add('show'), 200 + i * 120);
+  });
+}
+
+let _retryDelay = 2000;
+function connect() {
+  const ws = new WebSocket('ws://localhost:9004');
+  ws.onopen  = () => { _retryDelay = 2000; };
+  ws.onmessage = ({ data }) => {
+    try {
+      const msg = JSON.parse(data);
+      if (msg.type === 'teams') renderTeams(msg.data);
+    } catch {}
+  };
+  ws.onclose = () => {
+    _retryDelay = Math.min(_retryDelay * 1.5, 10000);
+    setTimeout(connect, _retryDelay);
+  };
+  ws.onerror = () => {};
+}
+connect();
+</script>
+</body>
+</html>

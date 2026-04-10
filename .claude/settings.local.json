@@ -1,7 +1,43 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node --check main.js)"
+      "Bash(node --check main.js)",
+      "Bash(gh release view v1.0.3 --repo Dieqoz/almost-control-panel)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm run publish)",
+      "Bash(node -e \":*)",
+      "Bash(node /tmp/replace_css.js)",
+      "Bash(node /tmp/patch_torneos.js)",
+      "Bash(cp /tmp/patch_torneos.js \"d:/Proyectos/almost-control/patch_torneos.js\")",
+      "Bash(node patch_torneos.js)",
+      "Bash(rm patch_torneos.js)",
+      "Bash(node fix_quotes.js)",
+      "Bash(rm fix_quotes.js)",
+      "Bash(node fix2.js)",
+      "Bash(rm fix2.js)",
+      "Bash(node fix3.js)",
+      "Bash(rm fix3.js)",
+      "Bash(node /tmp/test_chunk.js)",
+      "Bash(node test_chunk.js)",
+      "Bash(rm test_chunk.js)",
+      "Bash(node -e \"try { new Function\\(''function goTab\\(name\\) {}''\\); console.log\\(''OK''\\); } catch\\(e\\) { console.log\\(''ERROR:'', e.message\\); }\")",
+      "Bash(node -e \"try { new Function\\(''function goTab\\(name\\) {''\\); console.log\\(''OK''\\); } catch\\(e\\) { console.log\\(''ERROR:'', e.message\\); }\")",
+      "Bash(node --check test_script.js)",
+      "Bash(rm test_script.js)",
+      "Bash(grep -n \"msg.event === ''chat.message''\\\\|session_welcome\\\\|kickWs.on\\(''message''\" \"d:/Proyectos/almost-control/main.js\")",
+      "WebSearch",
+      "WebFetch(domain:docs.kick.com)",
+      "WebFetch(domain:dev.kick.com)",
+      "WebFetch(domain:pumpfundler.mintlify.app)",
+      "WebFetch(domain:kickpy.cibere.dev)",
+      "WebFetch(domain:kickecosystem.github.io)",
+      "Read(//tmp/**)",
+      "Bash(grep -o onclick=\"\"[^\"\"]*\"\" /d/Proyectos/almost-control/src/index.html)",
+      "Bash(mkdir -p \"d:/Proyectos/components-kits/stream-kit/apps/studio-manager/src/types\")",
+      "Bash(mkdir -p \"d:/Proyectos/components-kits/stream-kit/apps/studio-manager/src/lib/hooks\")",
+      "Bash(mkdir -p \"d:/Proyectos/components-kits/stream-kit/apps/studio-manager/src/components/overview\")",
+      "Bash(mkdir -p \"d:/Proyectos/components-kits/stream-kit/apps/studio-manager/src/components/pipeline\")",
+      "Bash(mkdir -p \"d:/Proyectos/components-kits/stream-kit/apps/studio-manager/src/components/team\")"
     ]
   }
 }

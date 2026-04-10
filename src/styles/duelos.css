@@ -1,0 +1,26 @@
+/* ── 1v1 Duelos ── */
+.duelo-add-row { display:flex; gap:10px; margin-bottom:4px; }
+.duelo-add-row input { flex:1; }
+.duelo-section-label { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text2); font-weight:700; margin:16px 0 10px; font-family:'Inter',sans-serif; }
+.duelo-section-label:first-child { margin-top:0; }
+.duelo-item { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:var(--radius); background:rgba(255,255,255,.02); border:1px solid var(--border); margin-bottom:6px; transition:background .15s; }
+.duelo-item:hover { background:rgba(255,255,255,.035); }
+.duelo-item.done { background:rgba(255,255,255,.01); border-color:rgba(255,255,255,.04); }
+.duelo-av { width:32px; height:32px; border-radius:50%; background:rgba(124,58,237,.3); border:1px solid rgba(124,58,237,.45); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color:#c4b5fd; flex-shrink:0; }
+.duelo-item.done .duelo-av { background:rgba(255,255,255,.03); border-color:rgba(255,255,255,.08); color:var(--text3); }
+.duelo-nick { flex:1; font-size:14px; font-weight:600; color:var(--text1); transition:all .2s; font-family:'Inter',sans-serif; }
+.duelo-item.done .duelo-nick { text-decoration:line-through; color:var(--text3); font-weight:400; }
+.duelo-date { font-size:10px; color:var(--text3); flex-shrink:0; font-family:'Inter',sans-serif; }
+.duelo-check { background:rgba(124,58,237,.1); border:1px solid rgba(124,58,237,.3); color:#a78bfa; border-radius:8px; padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; transition:all .15s; flex-shrink:0; font-family:'Inter',sans-serif; }
+.duelo-check:hover { background:rgba(124,58,237,.25); border-color:#a78bfa; }
+.duelo-item.done .duelo-check { background:rgba(34,197,94,.06); border-color:rgba(34,197,94,.22); color:#4ade80; }
+.duelo-item.done .duelo-check:hover { background:rgba(34,197,94,.16); }
+.duelo-del { background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; padding:4px 6px; opacity:.5; transition:opacity .15s; flex-shrink:0; }
+.duelo-del:hover { opacity:1; color:var(--red); }
+.duelo-empty { text-align:center; padding:24px 16px; color:var(--text3); font-size:12px; font-family:'Inter',sans-serif; }
+
+/* ── Badge ── */
+.badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:9px; letter-spacing:1px; font-family:'Inter',sans-serif; font-weight:600; }
+.badge-on  { background:rgba(74,222,128,.06);  color:var(--green); border:1px solid rgba(74,222,128,.18); }
+.badge-off { background:rgba(90,90,90,.08);     color:var(--text3); border:1px solid var(--border2); }
+

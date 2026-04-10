@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: transparent;
+  overflow: hidden;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+:root {
+  --bg: rgba(15,15,20,0.92);
+  --text: #ffffff;
+  --sub: rgba(255,255,255,0.58);
+  --accent: #1DB954;
+  --radius: 12px;
+  --art: 64px;
+}
+
+/* ── Widget container ── */
+#widget {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px 10px 10px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  width: fit-content;
+  min-width: 180px;
+  max-width: 420px;
+  position: relative;
+  overflow: hidden;
+}
+/* Top accent stripe */
+#widget::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: var(--accent);
+  border-radius: var(--radius) var(--radius) 0 0;
+  opacity: 0.85;
+}
+
+/* ── Album art ── */
+#art-wrap { flex-shrink: 0; position: relative; }
+#art {
+  width: var(--art); height: var(--art);
+  border-radius: calc(var(--radius) - 3px);
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.35s;
+}
+#art-ph {
+  width: var(--art); height: var(--art);
+  border-radius: calc(var(--radius) - 3px);
+  background: rgba(255,255,255,0.07);
+  display: flex; align-items: center; justify-content: center;
+  font-size: calc(var(--art) * 0.38);
+  color: rgba(255,255,255,0.3);
+}
+
+/* ── Info ── */
+#info {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+#title-row {
+  display: flex; align-items: center; gap: 6px;
+  overflow: hidden;
+}
+#title {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1; line-height: 1.25;
+}
+#artist {
+  font-size: 11px; color: var(--sub);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.25;
+}
+#album-name {
+  font-size: 10px; color: var(--sub); opacity: 0.7;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+/* ── Requester ── */
+#requester {
+  font-size: 9px; color: var(--accent); opacity: 0.85;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.25; letter-spacing: 0.3px;
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+#requester.visible { max-height: 20px; }
+
+/* ── Progress ── */
+#prog-wrap {
+  display: flex; align-items: center; gap: 5px; margin-top: 3px;
+}
+.t-lbl {
+  font-size: 9px; color: var(--sub); flex-shrink: 0;
+  font-variant-numeric: tabular-nums; min-width: 28px;
+}
+.t-lbl.end { text-align: right; }
+#prog-track {
+  flex: 1; height: 3px; background: rgba(255,255,255,0.12);
+  border-radius: 2px; overflow: hidden; min-width: 50px;
+}
+#prog-fill {
+  height: 100%; background: var(--accent);
+  border-radius: 2px; width: 0%; will-change: width;
+}
+
+/* ── EQ bars ── */
+#eq {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 12px; flex-shrink: 0;
+}
+.b {
+  width: 3px; background: var(--accent); border-radius: 1px;
+  animation: eq .8s ease-in-out infinite alternate;
+  transform-origin: bottom;
+}
+.b:nth-child(1) { height: 5px;  animation-delay: 0s;   }
+.b:nth-child(2) { height: 10px; animation-delay: .18s; }
+.b:nth-child(3) { height: 7px;  animation-delay: .09s; }
+.b:nth-child(4) { height: 11px; animation-delay: .27s; }
+@keyframes eq { from { transform: scaleY(.25); } to { transform: scaleY(1); } }
+.paused .b { animation-play-state: paused; opacity: 0.35; }
+
+/* ── Hide util ── */
+.sp-h { display: none !important; }
+
+/* ═══════════════════════════════════
+   LAYOUT VARIANTS
+   ═══════════════════════════════════ */
+
+/* ── Row (default) — already done above ── */
+
+/* ── Column ── */
+body.lay-col #widget {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 10px;
+  max-width: 200px; min-width: 140px;
+}
+body.lay-col { --art: 100%; }
+body.lay-col #art-wrap { width: 100%; }
+body.lay-col #art, body.lay-col #art-ph {
+  width: 100%; height: auto; aspect-ratio: 1/1;
+}
+body.lay-col #info { gap: 3px; }
+
+/* ── Compact (single line) ── */
+body.lay-compact #widget {
+  padding: 6px 12px; gap: 8px;
+  max-width: 480px; min-width: 0;
+}
+body.lay-compact { --art: 34px; }
+body.lay-compact #title { font-size: 12px; }
+body.lay-compact #artist { font-size: 10px; }
+body.lay-compact #widget::before { height: 1.5px; }
+
+/* ── Minimal (no art, text only) ── */
+body.lay-minimal #widget {
+  padding: 8px 14px; gap: 6px;
+  max-width: 300px; min-width: 0;
+}
+body.lay-minimal #art-wrap { display: none; }
+body.lay-minimal #title { font-size: 13px; }
+
+/* ── Full (large, centered) ── */
+body.lay-full #widget {
+  flex-direction: column;
+  align-items: center;
+  padding: 14px;
+  max-width: 240px; min-width: 180px;
+  text-align: center;
+}
+body.lay-full { --art: 120px; }
+body.lay-full #art-wrap { margin-bottom: 2px; }
+body.lay-full #art, body.lay-full #art-ph {
+  width: 120px; height: 120px;
+}
+body.lay-full #info { align-items: center; }
+body.lay-full #title, body.lay-full #artist, body.lay-full #album-name {
+  text-align: center;
+}
+body.lay-full #title { font-size: 16px; }
+body.lay-full #artist { font-size: 12px; }
+
+/* ── Wide (elongated bar for stream bottom) ── */
+body.lay-wide #widget {
+  min-width: 340px;
+  max-width: 600px;
+  padding: 7px 14px 7px 8px;
+  gap: 10px;
+  align-items: center;
+}
+body.lay-wide { --art: 44px; }
+body.lay-wide #info {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+body.lay-wide #title-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  max-width: 180px;
+}
+body.lay-wide #title    { font-size: 13px; max-width: 140px; }
+body.lay-wide #artist   { font-size: 11px; flex-shrink: 0; max-width: 120px; }
+body.lay-wide #album-name { display: none; }
+body.lay-wide #prog-wrap {
+  flex: 1;
+  margin-top: 0;
+  min-width: 80px;
+}
+body.lay-wide #prog-track { min-width: 80px; }
+body.lay-wide #widget::before { width: 2px; height: auto; top: 0; bottom: 0; right: auto; border-radius: var(--radius) 0 0 var(--radius); }
+
+/* ── Font size modifiers ── */
+body.fsz-sm #title  { font-size: 12px; }
+body.fsz-sm #artist { font-size: 10px; }
+body.fsz-sm #widget { padding: 7px 12px 7px 7px; }
+body.fsz-sm { --art: 48px; }
+
+body.fsz-lg #title  { font-size: 17px; }
+body.fsz-lg #artist { font-size: 13px; }
+body.fsz-lg #widget { padding: 12px 18px 12px 12px; }
+body.fsz-lg { --art: 80px; }
+
+body.fsz-xl #title  { font-size: 22px; }
+body.fsz-xl #artist { font-size: 16px; }
+body.fsz-xl #widget { padding: 16px 22px 16px 14px; }
+body.fsz-xl { --art: 100px; }
+</style>
+</head>
+<body>
+<div id="widget">
+  <div id="art-wrap">
+    <img id="art" src="" alt="" style="display:none" />
+    <div id="art-ph">♪</div>
+  </div>
+  <div id="info">
+    <div id="title-row">
+      <div id="eq"><div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div></div>
+      <div id="title">—</div>
+    </div>
+    <div id="artist"></div>
+    <div id="requester"></div>
+    <div id="album-name"></div>
+    <div id="prog-wrap">
+      <span class="t-lbl" id="time-cur">0:00</span>
+      <div id="prog-track"><div id="prog-fill"></div></div>
+      <span class="t-lbl end" id="time-tot">0:00</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const el = {
+  widget:  document.getElementById('widget'),
+  artWrap: document.getElementById('art-wrap'),
+  art:     document.getElementById('art'),
+  artPh:   document.getElementById('art-ph'),
+  title:   document.getElementById('title'),
+  artist:    document.getElementById('artist'),
+  requester: document.getElementById('requester'),
+  album:     document.getElementById('album-name'),
+  eq:      document.getElementById('eq'),
+  fill:    document.getElementById('prog-fill'),
+  tCur:    document.getElementById('time-cur'),
+  tTot:    document.getElementById('time-tot'),
+  progW:   document.getElementById('prog-wrap'),
+  progT:   document.getElementById('prog-track'),
+};
+
+let cfg = {
+  layout: 'row',
+  fontSize: 'md',
+  show: { art: true, title: true, artist: true, album: false, progress: true, time: true, eq: true },
+  style: { bg: 'rgba(15,15,20,0.92)', text: '#ffffff', accent: '#1DB954', radius: 12 }
+};
+
+let st = { progress_ms: 0, duration_ms: 0, is_playing: false, ts: Date.now() };
+let lastArt = '';
+
+function fmt(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function applyConfig() {
+  const s = cfg.style;
+  document.documentElement.style.setProperty('--bg',     s.bg     || 'rgba(15,15,20,0.92)');
+  document.documentElement.style.setProperty('--text',   s.text   || '#fff');
+  document.documentElement.style.setProperty('--accent', s.accent || '#1DB954');
+  document.documentElement.style.setProperty('--radius', (s.radius ?? 12) + 'px');
+  document.body.className = `lay-${cfg.layout || 'row'} fsz-${cfg.fontSize || 'md'}`;
+
+  const sh = cfg.show;
+  el.artWrap.classList.toggle('sp-h', !sh.art);
+  el.artist.classList.toggle('sp-h', !sh.artist);
+  el.album.classList.toggle('sp-h', !sh.album);
+  el.eq.classList.toggle('sp-h', !sh.eq);
+  el.progW.classList.toggle('sp-h', !sh.progress && !sh.time);
+  el.tCur.classList.toggle('sp-h', !sh.time);
+  el.tTot.classList.toggle('sp-h', !sh.time);
+  el.progT.classList.toggle('sp-h', !sh.progress);
+}
+
+function applyTrack(data) {
+  const t = data.track || {};
+  el.title.textContent  = t.name   || '—';
+  el.artist.textContent = t.artist || '';
+  el.album.textContent  = t.album  || '';
+  if (data.requester) {
+    el.requester.textContent = 'Pedida por ' + data.requester;
+    el.requester.classList.add('visible');
+  } else {
+    el.requester.classList.remove('visible');
+  }
+
+  if (t.image && t.image !== lastArt) {
+    lastArt = t.image;
+    el.art.style.opacity = '0';
+    setTimeout(() => {
+      el.art.src = t.image;
+      el.art.onload = () => {
+        el.art.style.display = 'block';
+        el.artPh.style.display = 'none';
+        el.art.style.opacity = '1';
+      };
+    }, 220);
+  }
+
+  st.progress_ms = data.progress_ms || 0;
+  st.duration_ms = data.duration_ms || 0;
+  st.is_playing  = !!data.is_playing;
+  st.ts = Date.now();
+
+  el.tTot.textContent = fmt(st.duration_ms);
+  el.widget.classList.toggle('paused', !st.is_playing);
+}
+
+// Smooth progress via rAF
+(function tick() {
+  if (st.is_playing && st.duration_ms > 0) {
+    const cur = Math.min(st.progress_ms + (Date.now() - st.ts), st.duration_ms);
+    el.fill.style.width = (cur / st.duration_ms * 100).toFixed(3) + '%';
+    el.tCur.textContent = fmt(cur);
+  }
+  requestAnimationFrame(tick);
+})();
+
+let _retryDelay = 500;
+function connect() {
+  const ws = new WebSocket('ws://localhost:9002');
+  ws.onopen  = () => { _retryDelay = 500; };
+  ws.onmessage = ({ data }) => {
+    try {
+      const msg = JSON.parse(data);
+      if (msg.type === 'config') { cfg = msg.data; applyConfig(); }
+      if (msg.type === 'track')  applyTrack(msg.data);
+    } catch {}
+  };
+  ws.onclose = () => {
+    _retryDelay = Math.min(_retryDelay * 2, 8000);
+    setTimeout(connect, _retryDelay);
+  };
+  ws.onerror = () => { ws.close(); };
+}
+connect();
+</script>
+</body>
+</html>

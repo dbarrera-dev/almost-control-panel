@@ -1,0 +1,18 @@
+/* ── Sorteo ── */
+.sorteo-status-bar { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:var(--radius); border:1px solid var(--border); background:var(--bg3); margin-bottom:14px; transition:all .25s; }
+.sorteo-status-bar.activo { border-color:rgba(74,222,128,.22); background:rgba(74,222,128,.03); }
+.sorteo-status-dot { width:7px; height:7px; border-radius:50%; background:var(--text3); flex-shrink:0; transition:all .25s; }
+.sorteo-status-bar.activo .sorteo-status-dot { background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 1.5s infinite; }
+.sorteo-status-txt { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-weight:700; color:var(--text3); flex:1; transition:color .25s; font-family:'Inter',sans-serif; }
+.sorteo-status-bar.activo .sorteo-status-txt { color:var(--green); }
+.sorteo-count-badge { font-family:'Bebas Neue',cursive; font-size:24px; color:var(--orange2); line-height:1; }
+.sorteo-count-lbl { font-size:9px; color:var(--text3); letter-spacing:1px; font-family:'Inter',sans-serif; }
+.sorteo-part-row { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; background:var(--bg3); border:1px solid var(--border); animation:slideIn .2s ease; }
+.sorteo-part-num { font-family:'Bebas Neue',cursive; font-size:16px; color:var(--text3); min-width:22px; text-align:right; }
+.sorteo-part-nick { flex:1; font-size:13px; font-weight:600; color:var(--text1); font-family:'Inter',sans-serif; }
+.sorteo-part-time { font-size:10px; color:var(--text3); font-family:'Inter',sans-serif; }
+.sorteo-winners-box { border-radius:var(--radius); padding:20px; background:linear-gradient(135deg, rgba(255,215,0,.04), rgba(224,112,0,.03)); border:1px solid rgba(255,215,0,.16); margin-bottom:14px; }
+.sorteo-winner-item { display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:var(--radius); background:rgba(255,215,0,.04); border:1px solid rgba(255,215,0,.14); margin-top:10px; }
+.sorteo-winner-medal { font-family:'Bebas Neue',cursive; font-size:22px; line-height:1; flex-shrink:0; color:var(--gold); min-width:28px; text-align:center; }
+.sorteo-winner-nick { font-family:'Bebas Neue',cursive; font-size:22px; letter-spacing:2px; color:var(--gold); }
+

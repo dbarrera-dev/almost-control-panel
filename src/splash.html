@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 400px; height: 260px;
+      overflow: hidden;
+      background: #0e0e0e;
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+    .logo {
+      font-family: 'Bebas Neue', 'Arial Narrow', Arial, sans-serif;
+      font-size: 52px;
+      letter-spacing: 6px;
+      color: #fff;
+      line-height: 1;
+    }
+    .logo span { color: #d96b00; }
+    .subtitle {
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: #555;
+      text-transform: uppercase;
+      margin-top: -10px;
+    }
+    .status {
+      font-size: 11px;
+      color: #666;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      min-height: 16px;
+      transition: color 0.3s;
+    }
+    .status.ok { color: #4caf50; }
+    .progress-wrap {
+      width: 240px;
+      height: 2px;
+      background: #1e1e1e;
+      border-radius: 2px;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+    .progress-wrap.visible { opacity: 1; }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #d96b00, #f0a040);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    .version {
+      position: absolute;
+      bottom: 14px;
+      font-size: 10px;
+      color: #2a2a2a;
+      letter-spacing: 1px;
+    }
+    .dot {
+      width: 6px; height: 6px;
+      background: #d96b00;
+      border-radius: 50%;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    .dot.hidden { display: none; }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+  </style>
+</head>
+<body>
+  <div class="logo"><span>A</span>LMOST</div>
+  <div class="subtitle">Panel de control</div>
+  <div class="dot" id="dot"></div>
+  <div class="status" id="status">Iniciando...</div>
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <div class="version" id="version"></div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    ipcRenderer.on('splash-status', (_, { msg, type }) => {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status' + (type === 'ok' ? ' ok' : '');
+    });
+
+    ipcRenderer.on('splash-progress', (_, percent) => {
+      document.getElementById('progressWrap').classList.add('visible');
+      document.getElementById('progressBar').style.width = percent + '%';
+      document.getElementById('dot').classList.add('hidden');
+      document.getElementById('status').textContent =
+        'Descargando actualización... ' + Math.round(percent) + '%';
+    });
+
+    ipcRenderer.on('splash-version', (_, v) => {
+      document.getElementById('version').textContent = 'v' + v;
+    });
+  </script>
+</body>
+</html>

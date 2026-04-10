@@ -1,0 +1,71 @@
+<div class="view" id="view-sorteos">
+    <div class="sh"><div class="sh-badge orange">SORTEOS</div><h2>Sorteos en vivo</h2><p>El bot registra a quien escribe el comando · sorteá ganadores al instante</p></div>
+
+    <!-- Config del sorteo -->
+    <div class="card">
+      <div class="card-title">Configuración del sorteo</div>
+      <div class="g2">
+        <div class="ig">
+          <label>Comando de participación</label>
+          <input id="sorteoCmd" type="text" placeholder="!sorteo" value="!sorteo" oninput="updateSorteoCmd(this.value)" />
+        </div>
+        <div class="ig">
+          <label>Cantidad de ganadores</label>
+          <div class="counter-row">
+            <button class="counter-btn" onclick="sorteoWinCount=Math.max(1,sorteoWinCount-1);document.getElementById('sorteoWinVal').value=sorteoWinCount">−</button>
+            <input id="sorteoWinVal" type="number" class="num-small" value="1" min="1" max="20" oninput="sorteoWinCount=parseInt(this.value)||1" />
+            <button class="counter-btn" onclick="sorteoWinCount=Math.min(20,sorteoWinCount+1);document.getElementById('sorteoWinVal').value=sorteoWinCount">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estado + controles -->
+    <div class="sorteo-status-bar" id="sorteoStatusBar">
+      <div class="sorteo-status-dot"></div>
+      <span class="sorteo-status-txt" id="sorteoStatusTxt">SORTEO CERRADO</span>
+      <div style="text-align:right">
+        <div class="sorteo-count-badge" id="sorteoCountBig">0</div>
+        <div class="sorteo-count-lbl">participantes</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-orange" id="sorteoToggleBtn" onclick="toggleSorteo()">Abrir sorteo</button>
+      <button class="btn btn-gold" id="sortearBtn" onclick="sortear()" disabled>Sortear</button>
+      <button class="btn btn-danger" id="limpiarBtn" onclick="limpiarSorteo()">Limpiar participantes</button>
+    </div>
+
+    <!-- Ganadores -->
+    <div id="sorteoWinnersWrap" class="hidden">
+      <div class="sorteo-winners-box">
+        <span class="section-label" style="color:var(--gold);margin-bottom:8px">GANADORES</span>
+        <div id="sorteoWinnersList"></div>
+      </div>
+    </div>
+
+    <!-- Lista de participantes -->
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        Participantes <span style="color:var(--orange2);font-family:'Bebas Neue',cursive;font-size:18px" id="sorteoPartCount">0</span>
+      </div>
+      <input id="sorteoSearch" type="text" placeholder="Buscar participante..." oninput="filterSorteoList(this.value)" style="margin-bottom:10px;width:100%;padding:8px 12px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text1)" />
+      <div id="sorteoPartList" style="display:flex;flex-direction:column;gap:5px;max-height:380px;overflow-y:auto;scrollbar-width:thin">
+        <div class="empty" style="padding:20px"><div class="empty-ico" style="font-size:24px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/><path d="m17 13 5 5m-5 0 5-5"/></svg></div><p>Abrí el sorteo · la gente escribe el comando para entrar</p></div>
+      </div>
+    </div>
+
+    <!-- Historial de sorteos -->
+    <div id="sorteoHistorialWrap" class="hidden">
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between">
+          Historial de sorteos
+          <button class="btn btn-ghost" style="padding:3px 10px;font-size:9px" onclick="loadSorteoHistorial()">↻ Actualizar</button>
+        </div>
+        <table class="htable">
+          <thead><tr><th>Fecha</th><th>Hora</th><th>Ganadores</th><th style="text-align:center">Participantes</th></tr></thead>
+          <tbody id="sorteoHistorialBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>

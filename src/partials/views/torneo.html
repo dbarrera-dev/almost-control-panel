@@ -1,0 +1,76 @@
+<div class="view on" id="view-torneo">
+
+    <!-- No torneo -->
+    <div id="noT">
+      <div class="sh"><div class="sh-badge orange">TORNEOS</div><h2>Panel de Torneos</h2><p>Crea un torneo · la gente se une con !join en el chat</p></div>
+      <div class="card">
+        <div class="card-title">Nuevo Torneo</div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end" class="ig">
+          <div><label>Nombre del torneo</label><input id="tNombre" type="text" placeholder="Ej: Mercenary Cup 3" /></div>
+          <div><label>Límite de jugadores</label><input id="tMax" type="number" min="0" max="500" placeholder="∞" style="width:90px" /></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px;font-family:'Inter',sans-serif">Dejá vacío para sin límite</div>
+        <button class="btn btn-orange" onclick="crearTorneo()">Crear Torneo</button>
+      </div>
+      <div class="empty"><div class="empty-ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></div><p>Crea un torneo para empezar.<br>Los participantes se unen con <strong>!join</strong> en el chat.</p></div>
+    </div>
+
+    <!-- Active torneo -->
+    <div id="actT" class="hidden">
+      <div class="t-banner">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--orange2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        <div><div class="t-banner-name" id="tNombreA">—</div><div class="t-banner-sub" id="tSubA">Esperando participantes...</div></div>
+        <div style="margin-left:auto"><button class="btn btn-danger" onclick="cerrarTorneo()">Cerrar</button></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="stat-n" id="sN">0</div><div class="stat-l">Participantes</div></div>
+        <div class="stat"><div class="stat-n" id="sE">—</div><div class="stat-l">Equipos</div></div>
+        <div class="stat"><div class="stat-n" id="sJ">0</div><div class="stat-l">Joins totales</div></div>
+      </div>
+
+      <div class="g2">
+        <div class="card" style="overflow:hidden">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+            Participantes <span style="color:var(--orange2)" id="pCount">0</span>
+            <button class="btn btn-ghost" style="padding:3px 10px;font-size:10px;margin-left:auto" onclick="exportarParticipantes()" title="Copiar todos los nicks">Exportar</button>
+          </div>
+          <input type="text" id="pSearch" placeholder="Buscar participante..." oninput="filterParticipantes(this.value)" style="margin-bottom:8px;font-size:12px;padding:7px 12px" />
+          <div class="plist" id="pList">
+            <div class="empty" style="padding:16px"><div class="empty-ico" style="font-size:18px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><p>Esperando !join en el chat</p></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Generar Equipos</div>
+          <div class="ig"><label>Jugadores por equipo</label>
+            <div class="counter-row">
+              <button class="counter-btn" onclick="tSize=Math.max(1,tSize-1);document.getElementById('tSizeVal').value=tSize;updateStats()">−</button>
+              <input id="tSizeVal" type="number" class="num-small" value="2" min="1" max="20" oninput="tSize=parseInt(this.value)||2;updateStats()" />
+              <button class="counter-btn" onclick="tSize=Math.min(20,tSize+1);document.getElementById('tSizeVal').value=tSize;updateStats()">+</button>
+            </div>
+          </div>
+          <button class="btn btn-gold" onclick="confirmarGenerarEquipos()">Sortear Equipos</button>
+          <div id="eResult" class="hidden mt4">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div class="card-title" style="margin-bottom:0">Resultado</div>
+              <button class="btn btn-ghost" style="padding:3px 10px;font-size:10px" onclick="exportarEquipos()" title="Copiar equipos">Copiar equipos</button>
+            </div>
+            <div class="tgrid" id="tGrid"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Historial — siempre visible, fuera de #actT -->
+    <div class="card mt4" id="historialCard">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        Historial de Torneos
+        <button class="btn btn-ghost" style="padding:4px 12px;font-size:10px" onclick="loadHistorial()">↻ Actualizar</button>
+      </div>
+      <table class="htable">
+        <thead><tr><th>Nombre</th><th>Fecha</th><th>Estado</th><th>Jugadores</th><th></th></tr></thead>
+        <tbody id="hBody"><tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3);font-size:11px">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>

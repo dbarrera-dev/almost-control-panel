@@ -1,0 +1,73 @@
+/* ── Config section headers ── */
+.cfg-section-header {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 700;
+  padding: 6px 0 12px 0;
+  margin-top: 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+  font-family: 'Inter', sans-serif;
+}
+.cfg-section-header:first-child { margin-top: 0; }
+
+/* ── Inter para textos secundarios ── */
+.inter { font-family:'Inter',system-ui,sans-serif; }
+p, .card p { font-family:'Inter',system-ui,sans-serif; }
+
+/* ── Spotify Player Controls ── */
+.sp-progress-track { height:4px; background:rgba(255,255,255,.06); border-radius:3px; cursor:pointer; position:relative; overflow:visible; transition:height .12s; }
+.sp-progress-track:hover { height:6px; }
+.sp-progress-fill  { height:100%; background:var(--sp); border-radius:3px; transition:width .5s linear; pointer-events:none; position:relative; overflow:visible; }
+.sp-progress-fill::after { content:''; position:absolute; right:-5px; top:50%; transform:translateY(-50%) scale(0); width:10px; height:10px; border-radius:50%; background:white; transition:transform .12s; pointer-events:none; }
+.sp-progress-track:hover .sp-progress-fill::after { transform:translateY(-50%) scale(1); }
+.sp-time-row { display:flex; justify-content:space-between; font-size:10px; color:var(--text3); margin-top:6px; font-family:'Inter',sans-serif; }
+.sp-ctrl-row { display:flex; gap:14px; justify-content:center; align-items:center; }
+.sp-ctrl-btn { width:42px; height:42px; border-radius:50%; border:1px solid var(--border2); background:var(--bg3); color:var(--text2); cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:all .18s; flex-shrink:0; }
+.sp-ctrl-btn:hover { background:var(--bg4); color:var(--text); border-color:var(--text3); transform:scale(1.06); }
+.sp-ctrl-btn.sp-main { width:52px; height:52px; font-size:20px; background:var(--text); color:var(--bg0); border:none; border-radius:50%; }
+.sp-ctrl-btn.sp-main:hover { background:var(--sp); transform:scale(1.08); }
+.sp-ctrl-btn:disabled { opacity:.3; cursor:not-allowed; transform:none !important; }
+.sp-sec-row { display:flex; gap:8px; align-items:center; margin-top:14px; }
+.sp-sec-btn { padding:5px 14px; border-radius:20px; border:1px solid var(--border2); background:transparent; color:var(--text3); font-family:'Inter',sans-serif; font-size:10px; font-weight:700; letter-spacing:.5px; cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:6px; text-transform:uppercase; }
+.sp-sec-btn:hover { color:var(--text1); border-color:var(--text3); }
+.sp-sec-btn.sp-active { color:var(--sp); border-color:rgba(29,185,84,.35); background:rgba(29,185,84,.05); }
+
+/* ── Spotify Sub-tabs ── */
+.sp-stab { display:none; }
+.sp-stab.on { display:block; animation:fadeUp .2s ease; }
+
+/* ── Spotify items (playlist/track rows) ── */
+.sp-item { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; border:1px solid var(--border); transition:background .15s, border-color .15s; }
+.sp-item:hover { background:rgba(255,255,255,.035); border-color:var(--border2); }
+.sp-item-art { width:38px; height:38px; border-radius:6px; object-fit:cover; flex-shrink:0; }
+.sp-item-ph  { width:38px; height:38px; border-radius:6px; background:var(--bg3); border:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--text3); }
+.sp-item-info { flex:1; min-width:0; }
+.sp-item-name { font-size:12px; font-weight:600; color:var(--text1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'Inter',sans-serif; }
+.sp-item-sub  { font-size:11px; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'Inter',sans-serif; }
+
+/* ── Command pills ── */
+.cmd-pills { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
+.cmd-pill { display:inline-flex; align-items:center; padding:4px 12px; background:rgba(29,185,84,.05); border:1px solid rgba(29,185,84,.14); border-radius:20px; color:#4ade80; font-size:11px; font-weight:600; letter-spacing:.3px; font-family:'Inter',sans-serif; }
+.cmd-pill.orange { background:rgba(224,112,0,.05); border-color:rgba(224,112,0,.16); color:var(--orange2); }
+.cmd-pill.red    { background:rgba(248,113,113,.05); border-color:rgba(248,113,113,.16); color:var(--red); }
+
+/* ── Devices panel ── */
+.sp-device-item { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.04); }
+.sp-device-item:last-child { border-bottom:none; }
+.sp-device-icon { font-size:16px; flex-shrink:0; width:24px; text-align:center; }
+.sp-device-name { flex:1; font-size:12px; font-weight:600; font-family:'Inter',sans-serif; }
+.sp-device-name.active { color:var(--sp); }
+
+
+/* ── Improved section labels ── */
+.section-label { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text3); font-weight:700; font-family:'Inter',sans-serif; margin-bottom:8px; display:block; }
+
+/* ── Info box ── */
+.info-box { background:rgba(255,255,255,.015); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
+.info-box-url { display:flex; align-items:center; gap:8px; }
+.info-box-label { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text3); font-weight:700; margin-bottom:6px; font-family:'Inter',sans-serif; }
+.info-box code { font-size:11px; color:var(--sp); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+

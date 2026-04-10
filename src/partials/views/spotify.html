@@ -1,0 +1,403 @@
+<div class="view" id="view-spotify">
+    <div class="sh"><div class="sh-badge green">SPOTIFY</div><h2>Spotify Connect</h2><p>Controla tu música y gestiona los pedidos del chat desde el panel</p></div>
+
+    <!-- ── Conexión ── -->
+    <div class="card" id="spConnectionCard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="spStatusDot" class="sp-dot"></div>
+          <span style="font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--text3);font-weight:700">Estado</span>
+        </div>
+        <span id="spStatusBadge" class="badge badge-off">Sin conectar</span>
+      </div>
+      <div id="spNotConnected">
+        <div class="g2" style="margin-bottom:12px">
+          <div class="ig">
+            <label>Client ID</label>
+            <input id="spClientId" type="text" placeholder="4a2d8b8fd044..." style="font-family:monospace;font-size:12px" />
+          </div>
+          <div class="ig">
+            <label>Client Secret</label>
+            <input id="spClientSecret" type="password" placeholder="••••••••••••••••" style="font-family:monospace;font-size:12px" />
+          </div>
+        </div>
+        <div id="spOAuthStatus" style="display:none;font-size:11px;color:var(--text3);margin-bottom:10px;font-family:'Inter',sans-serif;text-align:center"></div>
+        <button id="spConnectBtn" class="btn btn-orange" style="width:100%" onclick="startSpotifyConnect()">Conectar con Spotify</button>
+      </div>
+      <div id="spConnected" class="hidden">
+        <p style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.8">Cuenta conectada. Los comandos de música están activos en el chat de Twitch.</p>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="showSpReconnect()">Reconectar</button>
+          <button class="btn btn-danger" onclick="spotifyDisconnect()">Desconectar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Sub-tabs (solo visible cuando conectado) ── -->
+    <div id="spConnectedWrap" class="hidden">
+      <div class="round-tabs" style="margin-bottom:20px">
+        <button class="round-tab on" id="sptab-player"   onclick="goSpTab('player')">Player</button>
+        <button class="round-tab"    id="sptab-explorar" onclick="goSpTab('explorar')">Explorar</button>
+        <button class="round-tab"    id="sptab-cola"     onclick="goSpTab('cola')">
+          Cola <span class="tab-badge hidden" id="spSongreqBadge" style="background:var(--sp)">0</span>
+        </button>
+        <button class="round-tab"    id="sptab-overlay"  onclick="goSpTab('overlay')">Overlay</button>
+      </div>
+
+      <!-- ─────────── PLAYER ─────────── -->
+      <div id="spview-player" class="sp-stab on">
+        <!-- Now Playing + Controls card -->
+        <div class="card sp-np-card" id="spNowPlayingCard">
+          <!-- Track info row -->
+          <div id="spTrackRow" style="display:flex;align-items:center;gap:18px;margin-bottom:16px">
+            <img id="spAlbumArt" class="sp-art" src="" alt="" style="width:96px;height:96px;border-radius:10px;flex-shrink:0" />
+            <div style="flex:1;min-width:0">
+              <div id="spTrackName" class="sp-track-name">—</div>
+              <div id="spArtist" class="sp-artist">—</div>
+              <div id="spAlbum" class="sp-album">—</div>
+              <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+                <div id="spPlayingRow" class="sp-playing-row hidden">
+                  <div class="sp-eq"><span></span><span></span><span></span></div>
+                  <span class="sp-playing-lbl">PLAYING</span>
+                </div>
+                <div id="spPausedMsg" class="hidden" style="font-size:10px;color:var(--text3);letter-spacing:2px;font-weight:700">PAUSADO</div>
+              </div>
+              <div id="spDeviceRow" style="margin-top:6px;display:flex;align-items:center;gap:5px">
+                <span id="spDeviceIcon" style="font-size:12px"></span>
+                <span id="spDeviceName" style="font-size:10px;color:var(--text3);font-family:'Inter',sans-serif"></span>
+              </div>
+            </div>
+          </div>
+          <!-- Nothing playing -->
+          <div id="spNothingMsg" class="hidden" style="text-align:center;padding:20px 16px">
+            <div style="margin-bottom:10px;opacity:.4"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+            <p id="spNothingText" style="font-size:12px;color:var(--text3);margin:0;font-family:'Inter',sans-serif">No hay nada reproduciéndose.</p>
+          </div>
+          <!-- Progress bar -->
+          <div id="spProgressWrap" class="hidden" style="margin-bottom:18px">
+            <div class="sp-progress-track" onclick="spSeek(event)" title="Click para ir a esa posición">
+              <div class="sp-progress-fill" id="spProgressFill" style="width:0%"></div>
+            </div>
+            <div class="sp-time-row">
+              <span id="spProgressTime">0:00</span>
+              <span id="spDurationTime">0:00</span>
+            </div>
+          </div>
+          <!-- Main controls -->
+          <div class="sp-ctrl-row">
+            <button class="sp-ctrl-btn" onclick="spAction('prev')" title="Anterior"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+            <button class="sp-ctrl-btn sp-main" id="spPlayPauseBtn" onclick="spTogglePlayPause()" title="Play/Pausa"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
+            <button class="sp-ctrl-btn" onclick="spAction('next')" title="Siguiente"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zm-2.5 6L5 6v12z"/></svg></button>
+          </div>
+          <!-- Secondary: shuffle + repeat -->
+          <div class="sp-sec-row">
+            <button class="sp-sec-btn" id="spShuffleBtn" onclick="spToggleShuffle()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H20"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M20 18h-3.9c-1.3 0-2.5-.6-3.3-1.7l-.5-.8"/><path d="m18 14 4 4-4 4"/></svg> SHUFFLE</button>
+            <button class="sp-sec-btn" id="spRepeatBtn"  onclick="spCycleRepeat()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg> REPETIR</button>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px;margin-left:auto" onclick="loadNowPlaying()">↻</button>
+          </div>
+          <!-- Volume -->
+          <div style="display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+            <input id="spVolumeSlider" type="range" min="0" max="100" value="50"
+              style="flex:1;accent-color:var(--sp);cursor:pointer;height:4px"
+              oninput="spVolumeInput(this.value)" onchange="spVolumeCommit(this.value)">
+            <span id="spVolumeLabel" style="font-family:'Bebas Neue',cursive;font-size:18px;color:var(--text2);min-width:36px;text-align:right">50%</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+          </div>
+        </div>
+
+        <!-- Chat commands reference -->
+        <div class="card">
+          <div class="card-title">Comandos en el chat</div>
+          <div class="cmd-pills">
+            <span class="cmd-pill">!song</span>
+            <span class="cmd-pill">!cancion</span>
+            <span class="cmd-pill">!playlist</span>
+          </div>
+          <p style="font-size:11px;color:var(--text3);margin:0;line-height:1.8">
+            <strong style="color:var(--text2)">!song / !cancion</strong> — nombre de la canción actual en el chat<br>
+            <strong style="color:var(--text2)">!playlist</strong> — playlist que se está reproduciendo<br>
+            <strong style="color:var(--text2)">Song Request</strong> — configuralo en la pestaña <em>Cola</em>
+          </p>
+        </div>
+      </div>
+
+      <!-- ─────────── EXPLORAR ─────────── -->
+      <div id="spview-explorar" class="sp-stab">
+        <div class="g2">
+          <!-- Playlists -->
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div class="card-title" style="margin:0">Mis Playlists</div>
+              <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="loadSpotifyPlaylists()">↻</button>
+            </div>
+            <div id="spPlaylistList" style="display:flex;flex-direction:column;gap:5px;max-height:380px;overflow-y:auto;scrollbar-width:thin"></div>
+          </div>
+          <!-- Search -->
+          <div class="card">
+            <div class="card-title" style="margin-bottom:14px">Buscar canciones</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <input id="spSearchInput" type="text" placeholder="Artista o canción..."
+                style="flex:1" onkeydown="if(event.key==='Enter')spSearch()">
+              <button class="btn" style="background:var(--sp);color:#000;font-weight:700;padding:0 14px;flex-shrink:0" onclick="spSearch()">Buscar</button>
+            </div>
+            <div id="spSearchResults" style="display:flex;flex-direction:column;gap:5px;max-height:340px;overflow-y:auto;scrollbar-width:thin"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────── COLA ─────────── -->
+      <div id="spview-cola" class="sp-stab">
+
+        <!-- Song Request — foco principal -->
+        <div class="card">
+          <div style="margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:4px">Song Request</div>
+            <p style="font-size:11px;color:var(--text3);margin:0">Los viewers piden canciones con puntos de canal · se añaden a la cola de Spotify</p>
+          </div>
+          <!-- Toggles por plataforma -->
+          <div style="display:flex;gap:10px;margin-bottom:14px">
+            <div style="flex:1;background:rgba(145,71,255,.07);border:1px solid rgba(145,71,255,.2);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-size:12px;font-weight:600;color:var(--text1)">Twitch</div>
+                <div style="font-size:10px;color:var(--text3);margin-top:2px">Recompensa de canal</div>
+              </div>
+              <label class="toggle-wrap" style="flex-shrink:0">
+                <input type="checkbox" id="srTwitchToggle" onchange="toggleSongRequestTwitch(this.checked)">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="flex:1;background:rgba(83,208,103,.05);border:1px solid rgba(83,208,103,.18);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-size:12px;font-weight:600;color:var(--text1)">Kick</div>
+                <div style="font-size:10px;color:var(--text3);margin-top:2px">Recompensa de canal</div>
+              </div>
+              <label class="toggle-wrap" style="flex-shrink:0">
+                <input type="checkbox" id="srKickToggle" onchange="toggleSongRequestKick(this.checked)">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div id="songRequestConfig" style="display:flex;flex-direction:column;gap:14px">
+            <!-- Reward ID -->
+            <div class="ig" style="margin-bottom:0">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <label style="margin:0">ID recompensa de canal</label>
+                <button class="btn btn-ghost" style="padding:2px 8px;font-size:10px" onclick="toggleRewardIdVisibility()">Mostrar</button>
+              </div>
+              <input id="songRewardIdInput" type="password" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                style="font-size:11px;font-family:monospace;width:100%" oninput="saveSongRewardId()">
+            </div>
+
+            <!-- Habilitar/Deshabilitar reward -->
+            <div style="background:rgba(145,71,255,.06);border:1px solid rgba(145,71,255,.18);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div>
+                  <div style="font-size:12px;font-weight:600;color:var(--text1)">Estado en Twitch</div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:2px">Habilita o deshabilita la recompensa de canal directamente</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span id="rewardStatusBadge" class="badge" style="font-size:10px">—</span>
+                  <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="twitchRewardRefresh()" title="Actualizar estado">↻</button>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button id="rewardEnableBtn"  class="btn" style="flex:1;padding:7px;font-size:11px;background:rgba(29,185,84,.12);color:#1db954;border:1px solid rgba(29,185,84,.3)" onclick="twitchRewardSet(true)">Habilitar</button>
+                <button id="rewardDisableBtn" class="btn" style="flex:1;padding:7px;font-size:11px;background:rgba(248,113,113,.08);color:#f87171;border:1px solid rgba(248,113,113,.25)" onclick="twitchRewardSet(false)">Deshabilitar</button>
+              </div>
+              <div id="rewardToggleMsg" style="font-size:10px;margin-top:8px;color:var(--text3);min-height:14px"></div>
+            </div>
+
+            <!-- Habilitar/Deshabilitar reward Kick -->
+            <div style="background:rgba(83,208,103,.05);border:1px solid rgba(83,208,103,.18);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div>
+                  <div style="font-size:12px;font-weight:600;color:var(--text1)">Estado en Kick</div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:2px">Habilita o deshabilita la recompensa de canal en Kick</div>
+                </div>
+                <span id="kickRewardBadge" style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.06);color:var(--text3)">—</span>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn" style="flex:1;padding:7px;font-size:11px;background:rgba(83,208,103,.12);color:#53d067;border:1px solid rgba(83,208,103,.3)" onclick="kickRewardSet(true)">Habilitar</button>
+                <button class="btn" style="flex:1;padding:7px;font-size:11px;background:rgba(248,113,113,.08);color:#f87171;border:1px solid rgba(248,113,113,.25)" onclick="kickRewardSet(false)">Deshabilitar</button>
+              </div>
+              <div id="kickRewardMsg" style="font-size:10px;margin-top:8px;color:var(--text3);min-height:14px"></div>
+            </div>
+
+            <!-- Credenciales Twitch Helix -->
+            <div class="ig" style="margin-bottom:0">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <label style="margin:0">Twitch Client ID</label>
+                <button class="btn btn-ghost" style="padding:2px 8px;font-size:10px" onclick="toggleTwitchClientIdVisibility()">Mostrar</button>
+              </div>
+              <input id="twitchClientIdInput" type="password" placeholder="Twitch app client ID"
+                style="font-size:11px;font-family:monospace;width:100%" oninput="saveTwitchCredentials()">
+            </div>
+            <div class="ig" style="margin-bottom:0">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <label style="margin:0">Broadcaster Token</label>
+                <button class="btn btn-ghost" style="padding:2px 8px;font-size:10px" onclick="toggleBroadcasterTokenVisibility()">Mostrar</button>
+              </div>
+              <input id="broadcasterTokenInput" type="password" placeholder="User access token con scope channel:manage:redemptions"
+                style="font-size:11px;font-family:monospace;width:100%" oninput="saveTwitchCredentials()">
+              <div style="font-size:10px;color:var(--text3);margin-top:5px">Necesitás un User Access Token tuyo (no del bot) con el scope <code style="font-size:10px">channel:manage:redemptions</code>.</div>
+            </div>
+
+            <!-- Canción activa -->
+            <div id="srActiveWrap" class="hidden">
+              <span class="section-label" style="margin-bottom:10px">Sonando ahora</span>
+              <div id="srActiveItem" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:8px;background:rgba(29,185,84,.05);border:1px solid rgba(29,185,84,.2)">
+                <div style="width:36px;height:36px;border-radius:6px;background:rgba(29,185,84,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <div class="sp-eq"><span></span><span></span><span></span></div>
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div id="srActiveTrack" style="font-size:13px;font-weight:700;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+                  <div style="font-size:11px;color:var(--sp);margin-top:2px;font-family:'Inter',sans-serif">Pedida por <span id="srActiveNick" style="font-weight:700">—</span></div>
+                </div>
+                <button class="btn btn-ghost" style="padding:4px 12px;font-size:10px;flex-shrink:0;color:var(--red);border-color:rgba(248,113,113,.25)" onclick="srSkipActive()" title="Saltear este tema">Skip</button>
+              </div>
+            </div>
+
+            <!-- Cola de requests pendientes -->
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <span class="section-label" style="margin-bottom:0">En cola <span id="srPendingCount" style="color:var(--orange2)"></span></span>
+                <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px" onclick="loadRequestQueue()">↻</button>
+              </div>
+              <div id="srPendingList" style="display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto;scrollbar-width:thin">
+                <div style="text-align:center;padding:20px;font-size:11px;color:var(--text3)">Sin requests pendientes</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cola técnica de Spotify -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="card-title" style="margin:0">Cola de Spotify</div>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="loadSpotifyQueue()">↻</button>
+          </div>
+          <div id="spQueueList" style="display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto;scrollbar-width:thin"></div>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+            <span class="section-label" style="margin-bottom:8px">Añadir a la cola manualmente</span>
+            <div style="display:flex;gap:8px">
+              <input id="spQueueInput" type="text" placeholder="Link de Spotify..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')spAddToQueue()">
+              <button class="btn" style="background:var(--sp);color:#000;font-weight:700;padding:0 14px;flex-shrink:0" onclick="spAddToQueue()">+ Cola</button>
+            </div>
+            <div id="spQueueMsg" style="font-size:11px;margin-top:6px;min-height:16px;font-family:'Inter',sans-serif"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────── OVERLAY ─────────── -->
+      <div id="spview-overlay" class="sp-stab">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+            <div>
+              <div class="card-title" style="margin-bottom:4px">Overlay para OBS</div>
+              <p style="font-size:11px;color:var(--text3);margin:0">Widget de canción · se inicia automáticamente con la app</p>
+            </div>
+            <span id="spovStatusBadge" class="badge badge-off">Inactivo</span>
+          </div>
+          <!-- URLs -->
+          <div class="g2" style="margin-bottom:18px">
+            <div class="info-box">
+              <div class="info-box-label">Overlay principal</div>
+              <div class="info-box-url">
+                <code id="spovUrl">http://localhost:9002</code>
+                <button class="btn btn-ghost" onclick="spovCopyUrl(this)" style="padding:4px 10px;font-size:10px;flex-shrink:0">Copiar</button>
+              </div>
+            </div>
+            <div class="info-box">
+              <div class="info-box-label">"Pedido por"</div>
+              <div class="info-box-url">
+                <code>http://localhost:9002/requester</code>
+                <button class="btn btn-ghost" id="reqCopyBtn" onclick="navigator.clipboard.writeText('http://localhost:9002/requester').then(()=>{this.textContent='Copiado';setTimeout(()=>this.textContent='Copiar',1500)})" style="padding:4px 10px;font-size:10px;flex-shrink:0">Copiar</button>
+              </div>
+            </div>
+          </div>
+          <!-- Disposición -->
+          <div style="margin-bottom:18px">
+            <div class="card-title" style="margin-bottom:10px">Disposición</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+              <button class="btn btn-ghost spov-lay" id="spov-lay-wide"    onclick="spovSetLayout('wide')">
+                <div style="display:flex;gap:2px;align-items:center;justify-content:center"><div style="width:8px;height:8px;background:currentColor;border-radius:1px;opacity:.5;flex-shrink:0"></div><div style="width:44px;height:8px;background:currentColor;border-radius:1px;opacity:.25"></div></div>
+                <div style="font-size:9px;margin-top:4px">Wide</div>
+              </button>
+              <button class="btn btn-ghost spov-lay" id="spov-lay-row"     onclick="spovSetLayout('row')">
+                <div style="display:flex;gap:3px;align-items:center;justify-content:center"><div style="width:12px;height:12px;background:currentColor;border-radius:2px;opacity:.5;flex-shrink:0"></div><div style="width:28px;height:12px;background:currentColor;border-radius:2px;opacity:.25"></div></div>
+                <div style="font-size:9px;margin-top:4px">Fila</div>
+              </button>
+              <button class="btn btn-ghost spov-lay" id="spov-lay-col"     onclick="spovSetLayout('col')">
+                <div style="display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center"><div style="width:20px;height:20px;background:currentColor;border-radius:2px;opacity:.5"></div><div style="width:28px;height:6px;background:currentColor;border-radius:2px;opacity:.25"></div></div>
+                <div style="font-size:9px;margin-top:4px">Col</div>
+              </button>
+              <button class="btn btn-ghost spov-lay" id="spov-lay-compact" onclick="spovSetLayout('compact')">
+                <div style="display:flex;gap:2px;align-items:center;justify-content:center"><div style="width:8px;height:8px;background:currentColor;border-radius:1px;opacity:.5;flex-shrink:0"></div><div style="width:32px;height:6px;background:currentColor;border-radius:1px;opacity:.25"></div></div>
+                <div style="font-size:9px;margin-top:4px">Compact</div>
+              </button>
+              <button class="btn btn-ghost spov-lay" id="spov-lay-minimal" onclick="spovSetLayout('minimal')">
+                <div style="display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center"><div style="width:32px;height:5px;background:currentColor;border-radius:1px;opacity:.5"></div><div style="width:24px;height:4px;background:currentColor;border-radius:1px;opacity:.25"></div></div>
+                <div style="font-size:9px;margin-top:4px">Minimal</div>
+              </button>
+              <button class="btn btn-ghost spov-lay" id="spov-lay-full"    onclick="spovSetLayout('full')">
+                <div style="display:flex;flex-direction:column;gap:2px;align-items:center"><div style="width:22px;height:22px;background:currentColor;border-radius:3px;opacity:.5"></div><div style="width:28px;height:4px;background:currentColor;border-radius:1px;opacity:.25"></div></div>
+                <div style="font-size:9px;margin-top:4px">Full</div>
+              </button>
+            </div>
+          </div>
+          <!-- Mostrar -->
+          <div style="margin-bottom:18px">
+            <div class="card-title" style="margin-bottom:10px">Mostrar elementos</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px" id="spovShowToggles">
+              <button class="btn btn-ghost spov-show" data-key="art"      onclick="spovToggleShow('art')"      style="font-size:10px;padding:5px 12px">Portada</button>
+              <button class="btn btn-ghost spov-show" data-key="title"    onclick="spovToggleShow('title')"    style="font-size:10px;padding:5px 12px">Título</button>
+              <button class="btn btn-ghost spov-show" data-key="artist"   onclick="spovToggleShow('artist')"   style="font-size:10px;padding:5px 12px">Artista</button>
+              <button class="btn btn-ghost spov-show" data-key="album"    onclick="spovToggleShow('album')"    style="font-size:10px;padding:5px 12px">Álbum</button>
+              <button class="btn btn-ghost spov-show" data-key="progress" onclick="spovToggleShow('progress')" style="font-size:10px;padding:5px 12px">Barra</button>
+              <button class="btn btn-ghost spov-show" data-key="time"     onclick="spovToggleShow('time')"     style="font-size:10px;padding:5px 12px">Tiempo</button>
+              <button class="btn btn-ghost spov-show" data-key="eq"       onclick="spovToggleShow('eq')"       style="font-size:10px;padding:5px 12px">EQ Bars</button>
+            </div>
+          </div>
+          <!-- Estilo -->
+          <div class="card-title" style="margin-bottom:12px">Estilo</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Tamaño texto</div>
+              <div style="display:flex;gap:5px">
+                <button class="btn btn-ghost spov-sz" id="spov-sz-sm" onclick="spovSetSize('sm')" style="padding:4px 10px;font-size:10px">S</button>
+                <button class="btn btn-ghost spov-sz" id="spov-sz-md" onclick="spovSetSize('md')" style="padding:4px 10px;font-size:10px">M</button>
+                <button class="btn btn-ghost spov-sz" id="spov-sz-lg" onclick="spovSetSize('lg')" style="padding:4px 10px;font-size:10px">L</button>
+                <button class="btn btn-ghost spov-sz" id="spov-sz-xl" onclick="spovSetSize('xl')" style="padding:4px 10px;font-size:10px">XL</button>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Color acento</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="color" id="spovAccent" value="#1DB954" oninput="spovSaveStyle()" style="width:36px;height:28px;border:none;background:none;cursor:pointer">
+                <button class="btn btn-ghost" onclick="document.getElementById('spovAccent').value='#1DB954';spovSaveStyle()" style="font-size:9px;padding:3px 8px">Reset</button>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Color texto</div>
+              <input type="color" id="spovTextColor" value="#ffffff" oninput="spovSaveStyle()" style="width:36px;height:28px;border:none;background:none;cursor:pointer">
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Radio bordes</div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="range" id="spovRadius" min="0" max="24" value="12" oninput="spovOnRadius(this.value)" style="flex:1;accent-color:var(--sp)">
+                <span id="spovRadiusVal" style="font-size:10px;color:var(--text2);min-width:24px">12px</span>
+              </div>
+            </div>
+            <div style="grid-column:1/-1">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Opacidad fondo</div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="range" id="spovBgOpacity" min="0" max="1" step="0.05" value="0.92" oninput="spovOnBgOpacity(this.value)" style="flex:1;accent-color:var(--sp)">
+                <span id="spovBgOpacityVal" style="font-size:10px;color:var(--text2);min-width:30px">92%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>

@@ -1,0 +1,66 @@
+<div class="view" id="view-todos">
+    <div class="sh">
+      <div class="sh-badge" style="background:rgba(124,58,237,.15);color:#c4b5fd;border:1px solid rgba(124,58,237,.28)">TAREAS</div>
+      <h2>Lista de Tareas</h2>
+      <!-- <p>Organizá tus pendientes</p> -->
+    </div>
+
+    <!-- Agregar tarea -->
+    <div class="card" id="todoAddCard">
+      <div class="card-title" style="margin-bottom:14px">Nueva tarea</div>
+      <div class="ig" style="margin-bottom:10px">
+        <label>Título</label>
+        <input id="todoTitle" type="text" placeholder="¿Qué hay que hacer?" onkeydown="if(event.key==='Enter'&&!event.shiftKey)todoAdd()" />
+      </div>
+      <div class="ig" style="margin-bottom:10px">
+        <label>Descripción <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+        <input id="todoDesc" type="text" placeholder="Detalles adicionales..." />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+        <div class="ig" style="margin-bottom:0">
+          <label>Prioridad</label>
+          <select id="todoPriority">
+            <option value="high">Alta</option>
+            <option value="medium" selected>Media</option>
+            <option value="low">Baja</option>
+          </select>
+        </div>
+        <div class="ig" style="margin-bottom:0">
+          <label>Estado</label>
+          <select id="todoStatus">
+            <option value="pending" selected>Pendiente</option>
+            <option value="in_progress">En progreso</option>
+            <option value="done">Hecho</option>
+          </select>
+        </div>
+        <div class="ig" style="margin-bottom:0">
+          <label>Fecha límite <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+          <input id="todoDueDate" type="date" style="color-scheme:dark" />
+        </div>
+        <button class="btn btn-orange" onclick="todoAdd()" style="height:38px;padding:0 20px;flex-shrink:0">+ Agregar</button>
+      </div>
+      <div id="todoAddMsg" style="font-size:11px;margin-top:8px;min-height:16px;font-family:'Inter',sans-serif"></div>
+    </div>
+
+    <!-- Filtros + contador -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div class="todo-filters" style="margin-bottom:0">
+        <button class="todo-filter on" id="tf-all"         onclick="todoSetFilter('all')">Todas</button>
+        <button class="todo-filter"    id="tf-pending"     onclick="todoSetFilter('pending')">Pendientes</button>
+        <button class="todo-filter"    id="tf-in_progress" onclick="todoSetFilter('in_progress')">En progreso</button>
+        <button class="todo-filter"    id="tf-done"        onclick="todoSetFilter('done')">Hechas</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="todoCountLabel" style="font-size:10px;color:var(--text3);letter-spacing:1px"></span>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="loadTodos()">↻</button>
+      </div>
+    </div>
+
+    <!-- Lista -->
+    <div id="todoList">
+      <div class="empty" style="padding:40px 20px">
+        <div class="empty-ico" style="font-size:32px"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg></div>
+        <p>No hay tareas todavía.<br>Agregá una arriba para empezar.</p>
+      </div>
+    </div>
+  </div>

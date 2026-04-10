@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: transparent;
+  overflow: hidden;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  user-select: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+:root {
+  --bg: rgba(18,18,18,0.92);
+  --radius: 6px;
+}
+
+#box {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#box.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+#label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.55);
+  font-weight: 400;
+}
+#nick {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f97316;
+}
+</style>
+</head>
+<body>
+<div id="box">
+  <span id="label">Pedido por</span>
+  <span id="nick"></span>
+</div>
+
+<script>
+const box  = document.getElementById('box');
+const nick = document.getElementById('nick');
+
+let hideTimer = null;
+
+function show(name, remainingMs) {
+  clearTimeout(hideTimer);
+  nick.textContent = name;
+  box.classList.add('visible');
+  if (remainingMs > 0) hideTimer = setTimeout(hide, remainingMs);
+}
+
+function hide() {
+  clearTimeout(hideTimer);
+  box.classList.remove('visible');
+}
+
+let _retryDelay = 500;
+function connect() {
+  const ws = new WebSocket('ws://localhost:9002');
+  ws.onopen = () => { _retryDelay = 500; };
+  ws.onmessage = ({ data }) => {
+    try {
+      const msg = JSON.parse(data);
+      if (msg.type === 'track') {
+        if (msg.data.requester) {
+          const remaining = (msg.data.duration_ms || 0) - (msg.data.progress_ms || 0);
+          show(msg.data.requester, remaining);
+        } else hide();
+      }
+    } catch {}
+  };
+  ws.onclose = () => {
+    _retryDelay = Math.min(_retryDelay * 2, 8000);
+    setTimeout(connect, _retryDelay);
+  };
+  ws.onerror = () => { ws.close(); };
+}
+connect();
+</script>
+</body>
+</html>

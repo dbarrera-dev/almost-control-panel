@@ -1,0 +1,39 @@
+/* ── Todos ── */
+.todo-filters { display:flex; gap:6px; margin-bottom:18px; flex-wrap:wrap; }
+.todo-filter { padding:6px 14px; border-radius:20px; border:1px solid var(--border2); background:transparent; color:var(--text3); font-family:'Inter',sans-serif; font-size:10px; font-weight:700; letter-spacing:.5px; cursor:pointer; transition:all .15s; text-transform:uppercase; }
+.todo-filter:hover { border-color:var(--text3); color:var(--text2); }
+.todo-filter.on { background:var(--bg3); border-color:var(--orange); color:var(--orange2); }
+.todo-item { display:flex; align-items:flex-start; gap:12px; padding:14px 16px; border-radius:var(--radius); background:var(--bg2); border:1px solid var(--border); margin-bottom:8px; transition:border-color .15s, background .15s; animation:slideIn .2s ease; }
+.todo-item:hover { border-color:var(--border2); background:var(--bg3); }
+.todo-item.todo-done { opacity:.5; }
+.todo-item.todo-done:hover { opacity:.7; }
+.todo-check { width:20px; height:20px; border-radius:6px; border:1px solid var(--border2); background:var(--bg3); cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; transition:all .15s; margin-top:2px; }
+.todo-check:hover { border-color:var(--text3); }
+.todo-item.todo-done .todo-check { background:rgba(74,222,128,.12); border-color:rgba(74,222,128,.35); color:var(--green); }
+.todo-item.todo-inprogress .todo-check { background:rgba(96,165,250,.08); border-color:rgba(96,165,250,.3); color:var(--blue); }
+.todo-body { flex:1; min-width:0; }
+.todo-title { font-size:13px; font-weight:600; color:var(--text1); line-height:1.35; margin-bottom:4px; font-family:'Inter',sans-serif; }
+.todo-item.todo-done .todo-title { text-decoration:line-through; color:var(--text3); }
+.todo-desc { font-size:11px; color:var(--text3); line-height:1.5; font-family:'Inter',sans-serif; margin-bottom:6px; }
+.todo-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.todo-priority { display:inline-flex; align-items:center; gap:4px; font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; padding:2px 8px; border-radius:10px; font-family:'Inter',sans-serif; }
+.todo-priority.high   { background:rgba(248,113,113,.08); border:1px solid rgba(248,113,113,.2); color:var(--red); }
+.todo-priority.medium { background:rgba(255,179,71,.06); border:1px solid rgba(255,179,71,.18); color:var(--orange3); }
+.todo-priority.low    { background:rgba(74,222,128,.05); border:1px solid rgba(74,222,128,.14); color:var(--green); }
+.todo-due { font-size:10px; color:var(--text3); display:flex; align-items:center; gap:4px; font-family:'Inter',sans-serif; }
+.todo-due.overdue { color:var(--red); }
+.todo-status-pill { font-size:9px; font-weight:700; letter-spacing:.5px; padding:2px 8px; border-radius:10px; text-transform:uppercase; font-family:'Inter',sans-serif; }
+.todo-status-pill.pending    { background:rgba(138,138,138,.08); border:1px solid rgba(138,138,138,.16); color:var(--text3); }
+.todo-status-pill.in_progress{ background:rgba(96,165,250,.08);  border:1px solid rgba(96,165,250,.2); color:var(--blue); }
+.todo-status-pill.done       { background:rgba(74,222,128,.06); border:1px solid rgba(74,222,128,.16);  color:var(--green); }
+.todo-actions { display:flex; flex-direction:column; gap:6px; flex-shrink:0; opacity:0; transition:opacity .15s; }
+.todo-item:hover .todo-actions { opacity:1; }
+.todo-action-btn { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--text3); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; transition:all .15s; }
+.todo-action-btn:hover { background:var(--bg4); color:var(--text1); border-color:var(--border2); }
+.todo-action-btn.del:hover { background:rgba(248,113,113,.1); border-color:rgba(248,113,113,.25); color:var(--red); }
+.todo-cycle-btn { padding:3px 10px; border-radius:10px; border:1px solid var(--border2); background:transparent; color:var(--text3); font-family:'Inter',sans-serif; font-size:9px; font-weight:700; letter-spacing:.5px; cursor:pointer; transition:all .15s; text-transform:uppercase; white-space:nowrap; }
+.todo-cycle-btn:hover { border-color:var(--text3); color:var(--text1); }
+/* new-todo form */
+.todo-form-grid { display:grid; grid-template-columns:1fr auto auto; gap:8px; margin-bottom:8px; align-items:start; }
+.todo-form-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+
