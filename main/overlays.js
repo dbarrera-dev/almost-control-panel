@@ -1,8 +1,31 @@
 function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingData }) {
+  function pickLanIPv4() {
+    try {
+      const ifaces = os.networkInterfaces?.() || {};
+      for (const addrs of Object.values(ifaces)) {
+        for (const addr of addrs || []) {
+          if (!addr || addr.internal) continue;
+          const fam = typeof addr.family === 'string' ? addr.family : String(addr.family);
+          if (fam !== 'IPv4' && fam !== '4') continue;
+          if (String(addr.address || '').startsWith('169.254.')) continue;
+          return addr.address;
+        }
+      }
+    } catch {}
+    return null;
+  }
+
   // ── Key Overlay ────────────────────────────────────────────────
   let keyOverlayHttpServer = null;
   let keyOverlayWss = null;
   let uiohookInstance = null;
+  const keyOverlayStatus = {
+    running: false,
+    url: 'http://localhost:9001',
+    lanUrl: null,
+    bindHost: '127.0.0.1',
+    error: null,
+  };
 
   const KEY_LAYOUT = [
     // row 0: number row
@@ -69,6 +92,19 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
     return { type: 'config', data: { ...state.keyOverlayConfig, keys: buildKeysList() } };
   }
 
+  function configRefreshMsg() {
+    return { type: 'config-refresh' };
+  }
+
+  function getKeyOverlayStatus() {
+    return { ...keyOverlayStatus };
+  }
+
+  function emitKeyOverlayStatus(patch = {}) {
+    Object.assign(keyOverlayStatus, patch);
+    state.mainWindow?.webContents.send('keyoverlay-status', { ...keyOverlayStatus });
+  }
+
   function broadcastOverlay(msg) {
     if (!keyOverlayWss) return;
     const str = JSON.stringify(msg);
@@ -80,15 +116,25 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
     try {
       const { uIOhook } = require('uiohook-napi');
       const { WebSocketServer } = require('ws');
+      emitKeyOverlayStatus({ error: null });
 
-      keyOverlayHttpServer = http.createServer((_req, res) => {
+      keyOverlayHttpServer = http.createServer((req, res) => {
+        const reqPath = String(req?.url || '/').split('?')[0].replace(/\/+$/, '') || '/';
+        if (reqPath === '/key-overlay-config') {
+          res.writeHead(200, {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Cache-Control': 'no-store',
+          });
+          res.end(JSON.stringify(configMsg().data));
+          return;
+        }
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(fs.readFileSync(path.join(__dirname, '..', 'src', 'overlay-keys.html')));
       });
 
       keyOverlayWss = new WebSocketServer({ server: keyOverlayHttpServer });
       keyOverlayWss.on('connection', (ws) => {
-        ws.send(JSON.stringify(configMsg()));
+        ws.send(JSON.stringify(configRefreshMsg()));
       });
 
       uiohookInstance = uIOhook;
@@ -135,16 +181,25 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
 
       uIOhook.start();
 
-      keyOverlayHttpServer.listen(9001, '127.0.0.1', () => {
+      keyOverlayHttpServer.listen(9001, '0.0.0.0', () => {
+        const lanIp = pickLanIPv4();
         state.keyOverlayRunning = true;
-        state.mainWindow?.webContents.send('keyoverlay-status', { running: true, url: 'http://localhost:9001' });
+        emitKeyOverlayStatus({
+          running: true,
+          url: 'http://localhost:9001',
+          lanUrl: lanIp ? `http://${lanIp}:9001` : null,
+          bindHost: '0.0.0.0',
+          error: null,
+        });
       });
 
       keyOverlayHttpServer.on('error', (e) => {
-        state.mainWindow?.webContents.send('keyoverlay-status', { running: false, error: `Puerto 9001 ocupado: ${e.message}` });
+        state.keyOverlayRunning = false;
+        emitKeyOverlayStatus({ running: false, error: `Puerto 9001 ocupado: ${e.message}` });
       });
     } catch (e) {
-      state.mainWindow?.webContents.send('keyoverlay-status', { running: false, error: e.message });
+      state.keyOverlayRunning = false;
+      emitKeyOverlayStatus({ running: false, error: e.message });
     }
   }
 
@@ -157,13 +212,93 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
     try { keyOverlayHttpServer?.close(); } catch {}
     keyOverlayHttpServer = null;
     state.keyOverlayRunning = false;
-    state.mainWindow?.webContents.send('keyoverlay-status', { running: false });
+    emitKeyOverlayStatus({ running: false, error: null });
   }
 
   // ── Spotify Overlay ────────────────────────────────────────────
   let spotifyOverlayHttpServer = null;
   let spotifyOverlayWss        = null;
   let spotifyOverlayPollTimer  = null;
+  let spotifyOverlayHeartbeat  = null;
+  let spotifyLastTrackPayload  = null;
+  const spotifyOverlayStatus = {
+    running: false,
+    url: 'http://localhost:9002',
+    requesterUrl: 'http://localhost:9002/requester',
+    lanUrl: null,
+    lanRequesterUrl: null,
+    wsClients: 0,
+    error: null,
+    bindHost: '127.0.0.1',
+  };
+
+  function getSpotifyOverlayStatus() {
+    return { ...spotifyOverlayStatus };
+  }
+
+  function emitSpotifyOverlayStatus(patch = {}) {
+    Object.assign(spotifyOverlayStatus, patch);
+    state.mainWindow?.webContents.send('spotify-overlay-status', { ...spotifyOverlayStatus });
+  }
+
+  function updateSpotifyWsClientCount() {
+    const count = !spotifyOverlayWss
+      ? 0
+      : [...spotifyOverlayWss.clients].filter(c => c.readyState === 1).length;
+    if (spotifyOverlayStatus.wsClients !== count) emitSpotifyOverlayStatus({ wsClients: count });
+  }
+
+  function spotifyTrackPayload(data, requesterNick) {
+    const item = data?.item || {};
+    const artists = Array.isArray(item.artists) ? item.artists.map(a => a?.name).filter(Boolean).join(', ') : '';
+    const images = Array.isArray(item.album?.images) ? item.album.images : [];
+    return {
+      is_playing:  !!data?.is_playing,
+      progress_ms: data?.progress_ms || 0,
+      duration_ms: item.duration_ms || 0,
+      requester:   requesterNick || null,
+      track: {
+        name:   item.name || '',
+        artist: artists,
+        album:  item.album?.name || '',
+        image:  images[1]?.url || images[0]?.url || ''
+      }
+    };
+  }
+
+  function extractTrackId(data) {
+    const item = data?.item || null;
+    if (!item) return null;
+    if (item.id) return item.id;
+    if (typeof item.uri === 'string' && item.uri.includes(':')) {
+      const id = item.uri.split(':')[2];
+      return id || null;
+    }
+    return null;
+  }
+
+  function activateRequesterForTrack(trackId, nowTs) {
+    if (!trackId) return;
+    const now = nowTs || Date.now();
+    if (state.spotifyActiveRequester?.trackId === trackId) return;
+
+    if (state.spotifyActiveRequester?.trackId) {
+      const prevTrackId = state.spotifyActiveRequester.trackId;
+      state.sessionDoneIds.add(prevTrackId);
+      if (state.supabase) {
+        state.supabase.from('app_logs').insert({ type: 'sr-done', msg: prevTrackId }).then(() => {}).catch(() => {});
+      }
+    }
+
+    const idx = state.spotifyRequesterQueue.findIndex(r => r.trackId === trackId);
+    state.spotifyActiveRequester = idx >= 0 ? state.spotifyRequesterQueue.splice(idx, 1)[0] : null;
+    _activeRequesterSince = state.spotifyActiveRequester ? now : 0;
+
+    state.mainWindow?.webContents.send('request-queue-update', {
+      queue: state.spotifyRequesterQueue,
+      active: state.spotifyActiveRequester,
+    });
+  }
 
   function broadcastSpotify(msg) {
     if (!spotifyOverlayWss) return;
@@ -172,33 +307,33 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
   }
 
   let _spotifyPollErrorCount = 0;
-  let _spotifyPollOkCount = 0;
   let _activeRequesterSince = 0; // timestamp cuando se activó el requester actual
 
   async function spotifyOverlayPoll() {
     try {
       const data = await spotifyNowPlayingData();
-      if (_spotifyPollErrorCount > 0) _spotifyPollErrorCount = 0;
-      if (!data || !data.item) return;
-      const trackId = data.item.id;
-
-      // Log diagnóstico al inicio y cada 100 polls (~5 min)
-      _spotifyPollOkCount++;
-      if (_spotifyPollOkCount === 1 || _spotifyPollOkCount % 100 === 0) {
-        const qLen = state.spotifyRequesterQueue.length;
-        const activeNick = state.spotifyActiveRequester?.nick || 'ninguno';
-        const clients = spotifyOverlayWss?.clients?.size || 0;
-        saveLog('info', `[Overlay Spotify] Poll OK #${_spotifyPollOkCount}: track=${data.item.name}, queue=${qLen}, active=${activeNick}, ws_clients=${clients}`);
+      if (_spotifyPollErrorCount > 0) {
+        _spotifyPollErrorCount = 0;
+        if (String(spotifyOverlayStatus.error || '').startsWith('Poll error:')) {
+          emitSpotifyOverlayStatus({ error: null });
+        }
       }
+      if (!data || !data.item) {
+        const payload = spotifyTrackPayload(data || null, null);
+        spotifyLastTrackPayload = payload;
+        if (spotifyOverlayWss && spotifyOverlayWss.clients.size > 0) {
+          broadcastSpotify({ type: 'track', data: payload });
+        }
+        return;
+      }
+      const trackId = extractTrackId(data);
 
       // Safeguard: limpiar entradas viejas de la queue (> 3 horas)
       const now = Date.now();
-      const before = state.spotifyRequesterQueue.length;
       const expired = state.spotifyRequesterQueue.filter(r => r._addedAt && (now - r._addedAt) >= 3 * 60 * 60 * 1000);
       if (expired.length) {
         expired.forEach(r => state.sessionDoneIds.add(r.trackId));
         state.spotifyRequesterQueue = state.spotifyRequesterQueue.filter(r => !r._addedAt || (now - r._addedAt) < 3 * 60 * 60 * 1000);
-        saveLog('info', `[Requester] Limpieza: ${before - state.spotifyRequesterQueue.length} entrada(s) expiradas eliminadas`);
         state.mainWindow?.webContents.send('request-queue-update', { queue: state.spotifyRequesterQueue, active: state.spotifyActiveRequester });
       }
 
@@ -219,43 +354,23 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
         state.mainWindow?.webContents.send('request-queue-update', { queue: state.spotifyRequesterQueue, active: null });
       }
 
-      if (state.spotifyActiveRequester?.trackId !== trackId) {
-        // Marcar el track anterior como reproducido antes de reemplazarlo
-        if (state.spotifyActiveRequester) {
-          state.sessionDoneIds.add(state.spotifyActiveRequester.trackId);
-        }
-        const idx = state.spotifyRequesterQueue.findIndex(r => r.trackId === trackId);
-        state.spotifyActiveRequester = idx >= 0 ? state.spotifyRequesterQueue.splice(idx, 1)[0] : null;
-        _activeRequesterSince = state.spotifyActiveRequester ? now : 0;
-        if (state.spotifyActiveRequester) {
-          saveLog('info', `[Overlay] Requester activo: ${state.spotifyActiveRequester.nick} → ${trackId}`);
-        }
-        state.mainWindow?.webContents.send('request-queue-update', { queue: state.spotifyRequesterQueue, active: state.spotifyActiveRequester });
-        if (state.spotifyActiveRequester && state.supabase) {
-          state.supabase.from('app_logs').insert({ type: 'sr-done', msg: trackId }).then(() => {}).catch(() => {});
-        }
-      }
+      activateRequesterForTrack(trackId, now);
+      const requesterNick = trackId && state.spotifyActiveRequester?.trackId === trackId
+        ? state.spotifyActiveRequester.nick
+        : null;
+      const payload = spotifyTrackPayload(data, requesterNick);
+      spotifyLastTrackPayload = payload;
       if (!spotifyOverlayWss || spotifyOverlayWss.clients.size === 0) return;
       broadcastSpotify({
         type: 'track',
-        data: {
-          is_playing:  data.is_playing,
-          progress_ms: data.progress_ms || 0,
-          duration_ms: data.item.duration_ms || 0,
-          requester:   state.spotifyActiveRequester ? state.spotifyActiveRequester.nick : null,
-          track: {
-            name:   data.item.name,
-            artist: data.item.artists.map(a => a.name).join(', '),
-            album:  data.item.album.name,
-            image:  data.item.album.images[1]?.url || data.item.album.images[0]?.url || ''
-          }
-        }
+        data: payload,
       });
     } catch (e) {
       _spotifyPollErrorCount++;
       // Solo loguear el primer error y cada 20 ciclos (~1 min) para no spamear
       if (_spotifyPollErrorCount === 1 || _spotifyPollErrorCount % 20 === 0) {
         saveLog('warn', `[Overlay Spotify] Poll error (x${_spotifyPollErrorCount}): ${e.message}`);
+        emitSpotifyOverlayStatus({ error: `Poll error: ${e.message}` });
       }
     }
   }
@@ -263,17 +378,25 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
   function startSpotifyOverlay() {
     if (state.spotifyOverlayRunning) return;
     try {
+      emitSpotifyOverlayStatus({ error: null });
       spotifyOverlayHttpServer = http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        const file = req.url === '/requester' ? 'overlay-requester.html' : 'overlay-spotify.html';
+        const reqPath = String(req.url || '/').split('?')[0].replace(/\/+$/, '') || '/';
+        const file = reqPath === '/requester' ? 'overlay-requester.html' : 'overlay-spotify.html';
         res.end(fs.readFileSync(path.join(__dirname, '..', 'src', file)));
       });
 
       const { WebSocketServer: WSSp } = require('ws');
       spotifyOverlayWss = new WSSp({ server: spotifyOverlayHttpServer });
+      spotifyOverlayWss.on('error', (e) => {
+        state.spotifyOverlayRunning = false;
+        if (spotifyOverlayPollTimer) { clearInterval(spotifyOverlayPollTimer); spotifyOverlayPollTimer = null; }
+        emitSpotifyOverlayStatus({ running: false, error: `Puerto 9002 ocupado: ${e.message}` });
+        saveLog('warn', `[Overlay Spotify] WebSocket error: ${e.message}`);
+      });
 
       // Heartbeat: ping all clients every 25s, close dead ones
-      const spotifyHeartbeat = setInterval(() => {
+      spotifyOverlayHeartbeat = setInterval(() => {
         if (!spotifyOverlayWss) return;
         spotifyOverlayWss.clients.forEach(ws => {
           if (ws.isAlive === false) { ws.terminate(); return; }
@@ -281,46 +404,73 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
           ws.ping();
         });
       }, 25000);
-      spotifyOverlayWss.on('close', () => clearInterval(spotifyHeartbeat));
+      spotifyOverlayWss.on('close', () => {
+        if (spotifyOverlayHeartbeat) clearInterval(spotifyOverlayHeartbeat);
+        spotifyOverlayHeartbeat = null;
+        updateSpotifyWsClientCount();
+      });
 
       spotifyOverlayWss.on('connection', (ws) => {
         ws.isAlive = true;
         ws.on('pong', () => { ws.isAlive = true; });
+        updateSpotifyWsClientCount();
+        ws.on('close', () => updateSpotifyWsClientCount());
+
         ws.send(JSON.stringify({ type: 'config', data: state.spotifyOverlayConfig }));
+        if (spotifyLastTrackPayload) {
+          ws.send(JSON.stringify({ type: 'track', data: spotifyLastTrackPayload }));
+        }
+
         // Send current track immediately on connect
         spotifyNowPlayingData().then(data => {
-          if (!data || !data.item) return;
-          const trackId = data.item.id;
-          const isRequesterTrack = state.spotifyActiveRequester?.trackId === trackId;
+          let payload = null;
+          if (!data || !data.item) {
+            payload = spotifyTrackPayload(data || null, null);
+          } else {
+            const trackId = extractTrackId(data);
+            activateRequesterForTrack(trackId, Date.now());
+            const requesterNick = trackId && state.spotifyActiveRequester?.trackId === trackId
+              ? state.spotifyActiveRequester.nick
+              : null;
+            payload = spotifyTrackPayload(data, requesterNick);
+          }
+          spotifyLastTrackPayload = payload;
           ws.send(JSON.stringify({
             type: 'track',
-            data: {
-              is_playing:  data.is_playing,
-              progress_ms: data.progress_ms || 0,
-              duration_ms: data.item.duration_ms || 0,
-              requester:   isRequesterTrack ? state.spotifyActiveRequester.nick : null,
-              track: {
-                name:   data.item.name,
-                artist: data.item.artists.map(a => a.name).join(', '),
-                album:  data.item.album.name,
-                image:  data.item.album.images[1]?.url || data.item.album.images[0]?.url || ''
-              }
-            }
+            data: payload,
           }));
         }).catch(() => {});
+
+        // Force one quick poll so app-first/OBS-late always syncs as soon as OBS attaches.
+        spotifyOverlayPoll().catch(() => {});
       });
 
-      spotifyOverlayHttpServer.listen(9002, '127.0.0.1', () => {
+      spotifyOverlayHttpServer.listen(9002, '0.0.0.0', () => {
+        const lanIp = pickLanIPv4();
         state.spotifyOverlayRunning = true;
+        if (spotifyOverlayPollTimer) clearInterval(spotifyOverlayPollTimer);
         spotifyOverlayPollTimer = setInterval(spotifyOverlayPoll, 3000);
-        state.mainWindow?.webContents.send('spotify-overlay-status', { running: true, url: 'http://localhost:9002' });
+        emitSpotifyOverlayStatus({
+          running: true,
+          url: 'http://localhost:9002',
+          requesterUrl: 'http://localhost:9002/requester',
+          lanUrl: lanIp ? `http://${lanIp}:9002` : null,
+          lanRequesterUrl: lanIp ? `http://${lanIp}:9002/requester` : null,
+          wsClients: 0,
+          error: null,
+          bindHost: '0.0.0.0',
+        });
       });
 
       spotifyOverlayHttpServer.on('error', (e) => {
-        state.mainWindow?.webContents.send('spotify-overlay-status', { running: false, error: `Puerto 9002 ocupado: ${e.message}` });
+        state.spotifyOverlayRunning = false;
+        emitSpotifyOverlayStatus({ running: false, error: `Puerto 9002 ocupado: ${e.message}` });
+        saveLog('warn', `[Overlay Spotify] Error al iniciar server: ${e.message}`);
       });
     } catch (e) {
-      state.mainWindow?.webContents.send('spotify-overlay-status', { running: false, error: e.message });
+      state.spotifyOverlayRunning = false;
+      emitSpotifyOverlayStatus({ running: false, error: e.message });
+      saveLog('warn', `[Overlay Spotify] Error inesperado al iniciar: ${e.message}`);
     }
   }
 
@@ -357,6 +507,61 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
   let rlOverlayWss        = null;
   let rlWatcher           = null;
   let rlRefreshTimer      = null;
+  let rlRealtimeSocket    = null;
+  let rlRealtimeTcpSocket = null;
+  let rlRealtimeTcpBuffer = '';
+  let rlRealtimeTransport = null; // 'ws' | 'tcp'
+  let rlRealtimeSocketPort = null;
+  let rlRealtimeReconnectTimer = null;
+  const RL_REALTIME_RECONNECT_MS = 3000;
+  const rlRealtime = {
+    connected: false,
+    playerName: '',
+    playerTeamNum: null,
+    currentMatchGuid: null,
+    completedGoals: 0,
+    matchGoalsByGuid: new Map(),
+    matchTeamByGuid: new Map(),
+    endedMatches: new Set(),
+    lastLiveEndTs: 0,
+  };
+
+  function normalizeRlOverlayConfig(cfg = {}) {
+    return {
+      platform: cfg.platform || 'epic',
+      username: cfg.username || '',
+      playlistId: Number(cfg.playlistId || 13),
+      realtimeEnabled: cfg.realtimeEnabled !== false,
+      statsApiPort: Number(cfg.statsApiPort || 49123),
+      style: {
+        bg: cfg.style?.bg || 'rgba(15,15,20,0.92)',
+        text: cfg.style?.text || '#ffffff',
+        accent: cfg.style?.accent || '#2563eb',
+        radius: Number.isFinite(Number(cfg.style?.radius)) ? Number(cfg.style.radius) : 12
+      }
+    };
+  }
+
+  function resetRlRealtimeTracking({ keepIdentity = true } = {}) {
+    rlRealtime.connected = (rlRealtimeSocket?.readyState === 1) || (rlRealtimeTcpSocket && !rlRealtimeTcpSocket.destroyed);
+    rlRealtime.currentMatchGuid = null;
+    rlRealtime.completedGoals = 0;
+    rlRealtime.matchGoalsByGuid.clear();
+    rlRealtime.matchTeamByGuid.clear();
+    rlRealtime.endedMatches.clear();
+    if (!keepIdentity) {
+      rlRealtime.playerName = '';
+      rlRealtime.playerTeamNum = null;
+    }
+  }
+
+  function summaryFromRealtime() {
+    const base = ensureRlSessionSummary();
+    if (state.rlOverlayConfig?.realtimeEnabled === false) return base;
+    const currentGuid = rlRealtime.currentMatchGuid || '';
+    const liveGoals = currentGuid ? Number(rlRealtime.matchGoalsByGuid.get(currentGuid) || 0) : 0;
+    return { ...base, goals: Math.max(0, Number(base.goals || 0), rlRealtime.completedGoals + liveGoals) };
+  }
 
   function rlRankColor(tier) {
     const map = {
@@ -369,22 +574,38 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
     return '#ffffff';
   }
 
-  function parseRLStats(json) {
+  function pickPlaylistSegment(segments, playlistId) {
+    if (!Array.isArray(segments)) return null;
+    const wanted = Number(playlistId || 13);
+    const exact = segments.find((segment) => {
+      if (segment?.type !== 'playlist') return false;
+      const fromAttr = Number(segment?.attributes?.playlistId);
+      const fromMeta = Number(segment?.metadata?.playlistId);
+      return fromAttr === wanted || fromMeta === wanted;
+    });
+    if (exact) return exact;
+    return segments.find((segment) => segment?.type === 'playlist' && String(segment?.metadata?.name || '').toLowerCase().includes('ranked')) || null;
+  }
+
+  function parseRLStats(json, playlistId) {
     try {
-      const seg = json.data.segments.find(s => s.type === 'playlist' && s.attributes.playlistId === 13);
-      // playlistId 13 = Ranked Doubles (most common). Fallback to first ranked playlist.
-      const ranked = seg || json.data.segments.find(s => s.type === 'playlist' && s.metadata?.name?.toLowerCase().includes('ranked'));
+      const ranked = pickPlaylistSegment(json?.data?.segments, playlistId);
       if (!ranked) return null;
-      const st = ranked.stats;
+      const st = ranked?.stats || {};
+      const globalStats = json?.data?.stats || {};
       const tier = ranked.metadata?.tierName || '';
+      const wins = Number(st.wins?.value ?? 0);
+      const matches = Number(st.matchesPlayed?.value ?? 0);
+      const goals = Number(st.goals?.value ?? globalStats.goals?.value ?? 0);
       return {
-        mmr:     Math.round(st.rating?.value ?? 0),
+        mmr:     Math.round(Number(st.rating?.value ?? 0)),
         rank:    tier,
-        tier:    ranked.metadata?.tier ?? 0,
-        wins:    st.wins?.value ?? 0,
-        losses:  (st.matchesPlayed?.value ?? 0) - (st.wins?.value ?? 0),
-        matches: st.matchesPlayed?.value ?? 0,
-        winRate: st.winPercentage?.value ?? 0,
+        tier:    Number(ranked.metadata?.tier ?? 0),
+        wins,
+        losses:  Math.max(0, matches - wins),
+        matches,
+        goals,
+        winRate: Number(st.winPercentage?.value ?? 0),
         color:   rlRankColor(tier),
         division: ranked.metadata?.divisionName || '',
         playlist: ranked.metadata?.name || 'Ranked'
@@ -393,8 +614,9 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
   }
 
   async function fetchRLStats() {
+    state.rlOverlayConfig = normalizeRlOverlayConfig(state.rlOverlayConfig);
     if (!state.rlOverlayConfig.username) return null;
-    const { platform, username } = state.rlOverlayConfig;
+    const { platform, username, playlistId } = state.rlOverlayConfig;
     const url = `https://api.tracker.gg/api/v2/rocket-league/standard/profile/${platform}/${encodeURIComponent(username)}`;
     try {
       const res = await fetch(url, {
@@ -407,8 +629,430 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
       });
       if (!res.ok) return null;
       const json = await res.json();
-      return parseRLStats(json);
+      return parseRLStats(json, playlistId);
     } catch { return null; }
+  }
+
+  function defaultRlSessionSummary() {
+    return { wins: 0, losses: 0, goals: 0, streak: 0, lastResult: null, matches: 0 };
+  }
+
+  function ensureRlSessionSummary() {
+    const base = state.rlSessionSummary && typeof state.rlSessionSummary === 'object'
+      ? state.rlSessionSummary
+      : defaultRlSessionSummary();
+    return {
+      wins: Number(base.wins || 0),
+      losses: Number(base.losses || 0),
+      goals: Number(base.goals || 0),
+      streak: Number(base.streak || 0),
+      lastResult: base.lastResult === 'win' || base.lastResult === 'loss' ? base.lastResult : null,
+      matches: Number(base.matches || 0),
+    };
+  }
+
+  function updateRlSessionSummary(prevStats, nextStats) {
+    const summary = ensureRlSessionSummary();
+    if (!prevStats || !nextStats) return summary;
+
+    const diffWins = Math.max(0, Number(nextStats.wins || 0) - Number(prevStats.wins || 0));
+    const diffLosses = Math.max(0, Number(nextStats.losses || 0) - Number(prevStats.losses || 0));
+    const diffMatches = Math.max(0, Number(nextStats.matches || 0) - Number(prevStats.matches || 0));
+    const diffGoals = Math.max(0, Number(nextStats.goals || 0) - Number(prevStats.goals || 0));
+
+    if (diffMatches <= 0) {
+      return summary;
+    }
+
+    summary.matches += diffMatches;
+    summary.wins += diffWins;
+    summary.losses += diffLosses;
+    summary.goals += diffGoals;
+
+    if (diffWins > 0 && diffLosses === 0) {
+      summary.lastResult = 'win';
+      summary.streak = summary.streak > 0 ? summary.streak + diffWins : diffWins;
+    } else if (diffLosses > 0 && diffWins === 0) {
+      summary.lastResult = 'loss';
+      summary.streak = summary.streak < 0 ? summary.streak - diffLosses : -diffLosses;
+    } else if (diffWins > 0 || diffLosses > 0) {
+      summary.lastResult = diffWins >= diffLosses ? 'win' : 'loss';
+      summary.streak = 0;
+    }
+
+    return summary;
+  }
+
+  function computeRlDelta() {
+    if (!state.rlStats || !state.rlSessionStart) {
+      return { mmr: 0, wins: 0, losses: 0, matches: 0, goals: 0 };
+    }
+    return {
+      mmr: Number(state.rlStats.mmr || 0) - Number(state.rlSessionStart.mmr || 0),
+      wins: Number(state.rlStats.wins || 0) - Number(state.rlSessionStart.wins || 0),
+      losses: Number(state.rlStats.losses || 0) - Number(state.rlSessionStart.losses || 0),
+      matches: Number(state.rlStats.matches || 0) - Number(state.rlSessionStart.matches || 0),
+      goals: Number(state.rlStats.goals || 0) - Number(state.rlSessionStart.goals || 0),
+    };
+  }
+
+  function fallbackStatsFromRealtime() {
+    const session = summaryFromRealtime();
+    return {
+      mmr: null,
+      rank: 'Realtime API',
+      tier: 0,
+      wins: Number(session.wins || 0),
+      losses: Number(session.losses || 0),
+      matches: Number(session.matches || 0),
+      goals: Number(session.goals || 0),
+      winRate: session.matches > 0 ? (session.wins / session.matches) * 100 : 0,
+      color: '#60a5fa',
+      division: rlRealtime.playerName ? `· ${rlRealtime.playerName}` : '',
+      playlist: 'Live match session'
+    };
+  }
+
+  function buildRlPayload() {
+    const config = normalizeRlOverlayConfig(state.rlOverlayConfig);
+    const session = summaryFromRealtime();
+    return {
+      stats: state.rlStats || fallbackStatsFromRealtime(),
+      delta: computeRlDelta(),
+      session,
+      realtime: {
+        connected: rlRealtime.connected,
+        port: Number(config.statsApiPort || 49123),
+        playerName: rlRealtime.playerName || ''
+      },
+      config
+    };
+  }
+
+  function updateSessionResultFromMatch(win) {
+    const summary = ensureRlSessionSummary();
+    summary.matches += 1;
+    if (win) {
+      summary.wins += 1;
+      summary.lastResult = 'win';
+      summary.streak = summary.streak > 0 ? summary.streak + 1 : 1;
+    } else {
+      summary.losses += 1;
+      summary.lastResult = 'loss';
+      summary.streak = summary.streak < 0 ? summary.streak - 1 : -1;
+    }
+    state.rlSessionSummary = summary;
+  }
+
+  function pickLocalPlayer(updateStateData) {
+    const players = Array.isArray(updateStateData?.Players) ? updateStateData.Players : [];
+    if (!players.length) return null;
+    const hintName = String(state.rlOverlayConfig?.username || '').trim().toLowerCase();
+    if (hintName) {
+      const byHint = players.find((player) => String(player?.Name || '').trim().toLowerCase() === hintName);
+      if (byHint) return byHint;
+    }
+    if (rlRealtime.playerName) {
+      const byPrev = players.find((player) => String(player?.Name || '').trim().toLowerCase() === String(rlRealtime.playerName).trim().toLowerCase());
+      if (byPrev) return byPrev;
+    }
+    const targetName = updateStateData?.Game?.Target?.Name;
+    if (targetName) {
+      const byTarget = players.find((player) => String(player?.Name || '').trim().toLowerCase() === String(targetName).trim().toLowerCase());
+      if (byTarget) return byTarget;
+    }
+    return players[0];
+  }
+
+  function onRlRealtimeUpdateState(data) {
+    const rawGuid = String(data?.MatchGuid || data?.MatchGUID || data?.Game?.MatchGuid || data?.Game?.MatchGUID || '').trim();
+    const matchGuid = rawGuid || 'live';
+    const me = pickLocalPlayer(data);
+    if (!me) return;
+
+    rlRealtime.playerName = String(me.Name || rlRealtime.playerName || '');
+    rlRealtime.playerTeamNum = Number.isFinite(Number(me.TeamNum)) ? Number(me.TeamNum) : rlRealtime.playerTeamNum;
+    rlRealtime.currentMatchGuid = matchGuid;
+    if (rlRealtime.playerTeamNum !== null) {
+      rlRealtime.matchTeamByGuid.set(matchGuid, rlRealtime.playerTeamNum);
+    }
+
+    const goalsNow = Math.max(0, Number(me.Goals || 0));
+    rlRealtime.matchGoalsByGuid.set(matchGuid, goalsNow);
+
+    const payload = buildRlPayload();
+    broadcastRL({ type: 'stats', data: payload });
+    state.mainWindow?.webContents.send('rl-stats-update', payload);
+  }
+
+  function onRlRealtimeMatchEnded(data) {
+    const rawGuid = String(data?.MatchGuid || data?.MatchGUID || data?.Game?.MatchGuid || data?.Game?.MatchGUID || '').trim();
+    const matchGuid = rawGuid || 'live';
+    if (matchGuid === 'live') {
+      const now = Date.now();
+      if (now - Number(rlRealtime.lastLiveEndTs || 0) < 2500) return;
+      rlRealtime.lastLiveEndTs = now;
+    } else if (rlRealtime.endedMatches.has(matchGuid)) {
+      return;
+    }
+
+    const myTeamNum = rlRealtime.matchTeamByGuid.get(matchGuid);
+    let winnerTeamNum = Number(data?.WinnerTeamNum);
+    if (!Number.isFinite(winnerTeamNum)) {
+      winnerTeamNum = Number(data?.Game?.WinnerTeamNum);
+    }
+    if (!Number.isFinite(winnerTeamNum)) {
+      winnerTeamNum = Number(data?.Game?.Winner);
+    }
+    if (Number.isFinite(myTeamNum) && Number.isFinite(winnerTeamNum)) {
+      updateSessionResultFromMatch(myTeamNum === winnerTeamNum);
+    }
+
+    const goalsThisMatch = Number(rlRealtime.matchGoalsByGuid.get(matchGuid) || 0);
+    rlRealtime.completedGoals += Math.max(0, goalsThisMatch);
+    const summary = ensureRlSessionSummary();
+    summary.goals = rlRealtime.completedGoals;
+    state.rlSessionSummary = summary;
+
+    if (matchGuid !== 'live') {
+      rlRealtime.endedMatches.add(matchGuid);
+      if (rlRealtime.endedMatches.size > 300) {
+        rlRealtime.endedMatches.clear();
+        rlRealtime.matchGoalsByGuid.clear();
+        rlRealtime.matchTeamByGuid.clear();
+      }
+    }
+    if (rlRealtime.currentMatchGuid === matchGuid) {
+      rlRealtime.currentMatchGuid = null;
+    }
+
+    const payload = buildRlPayload();
+    broadcastRL({ type: 'stats', data: payload });
+    state.mainWindow?.webContents.send('rl-stats-update', payload);
+  }
+
+  function onRlRealtimeMessage(raw) {
+    try {
+      const rawText = String(raw || '').trim();
+      const packed = parseConcatenatedJsonMessages(rawText);
+      const payloads = packed.messages.length ? packed.messages : [rawText];
+
+      for (const entry of payloads) {
+        if (!entry) continue;
+        const msg = JSON.parse(entry);
+        const eventName = String(msg?.Event || msg?.event || msg?.Type || '');
+        const data = (msg && typeof msg.Data === 'string') ? JSON.parse(msg.Data) : (msg?.Data || msg?.data || {});
+
+        if (eventName === 'MatchInitialized') {
+          rlRealtime.currentMatchGuid = String(data?.MatchGuid || data?.MatchGUID || '').trim() || 'live';
+          rlRealtime.endedMatches.clear();
+          rlRealtime.lastLiveEndTs = 0;
+          continue;
+        }
+        if (eventName === 'UpdateState') onRlRealtimeUpdateState(data);
+        if (eventName === 'MatchEnded') onRlRealtimeMatchEnded(data);
+        if (eventName === 'MatchDestroyed') {
+          rlRealtime.currentMatchGuid = null;
+          rlRealtime.lastLiveEndTs = 0;
+        }
+      }
+    } catch {}
+  }
+
+  function scheduleRlRealtimeReconnect() {
+    if (rlRealtimeReconnectTimer) return;
+    rlRealtimeReconnectTimer = setTimeout(() => {
+      rlRealtimeReconnectTimer = null;
+      startRlRealtimeFeed();
+    }, RL_REALTIME_RECONNECT_MS);
+  }
+
+  function closeRlRealtimeSocket() {
+    const socket = rlRealtimeSocket;
+    if (!socket) return;
+    rlRealtimeSocket = null;
+    rlRealtimeSocketPort = null;
+
+    // Evita "WebSocket was closed before the connection was established"
+    // como uncaught en main process durante fallback/reconnect.
+    try { socket.on?.('error', () => {}); } catch {}
+    try { socket.on?.('close', () => {}); } catch {}
+    try {
+      const st = Number(socket.readyState);
+      if (st === 0) {
+        // CONNECTING -> terminate es más seguro que close
+        socket.terminate?.();
+      } else if (st === 1) {
+        // OPEN
+        socket.close?.();
+      }
+    } catch {}
+    return;
+  }
+
+  function closeRlRealtimeTcpSocket() {
+    if (!rlRealtimeTcpSocket) return;
+    try { rlRealtimeTcpSocket.removeAllListeners?.(); } catch {}
+    try { rlRealtimeTcpSocket.destroy(); } catch {}
+    rlRealtimeTcpSocket = null;
+    rlRealtimeTcpBuffer = '';
+    rlRealtimeSocketPort = null;
+  }
+
+  function closeRlRealtimeTransports() {
+    closeRlRealtimeSocket();
+    closeRlRealtimeTcpSocket();
+    rlRealtimeTransport = null;
+  }
+
+  function parseConcatenatedJsonMessages(buffer) {
+    const messages = [];
+    let start = -1;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let i = 0; i < buffer.length; i++) {
+      const ch = buffer[i];
+      if (escaped) { escaped = false; continue; }
+      if (inString && ch === '\\') { escaped = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+
+      if (ch === '{') {
+        if (depth === 0) start = i;
+        depth++;
+      } else if (ch === '}') {
+        if (depth > 0) depth--;
+        if (depth === 0 && start >= 0) {
+          messages.push(buffer.slice(start, i + 1));
+          start = -1;
+        }
+      }
+    }
+
+    const leftover = depth > 0 && start >= 0 ? buffer.slice(start) : '';
+    return { messages, leftover };
+  }
+
+  function connectRlRealtimeTcp(port) {
+    const net = require('net');
+    closeRlRealtimeTransports();
+    rlRealtimeTransport = 'tcp';
+    rlRealtime.connected = false;
+    rlRealtimeSocketPort = port;
+
+    rlRealtimeTcpSocket = net.createConnection({ host: '127.0.0.1', port });
+
+    rlRealtimeTcpSocket.on('connect', () => {
+      rlRealtime.connected = true;
+      const payload = buildRlPayload();
+      broadcastRL({ type: 'stats', data: payload });
+      state.mainWindow?.webContents.send('rl-stats-update', payload);
+    });
+
+    rlRealtimeTcpSocket.on('data', (chunk) => {
+      rlRealtimeTcpBuffer += String(chunk || '');
+      const parsed = parseConcatenatedJsonMessages(rlRealtimeTcpBuffer);
+      rlRealtimeTcpBuffer = parsed.leftover || '';
+      for (const msg of parsed.messages) onRlRealtimeMessage(msg);
+    });
+
+    rlRealtimeTcpSocket.on('close', () => {
+      rlRealtime.connected = false;
+      closeRlRealtimeTcpSocket();
+      rlRealtimeTransport = null;
+      scheduleRlRealtimeReconnect();
+    });
+
+    rlRealtimeTcpSocket.on('error', () => {
+      rlRealtime.connected = false;
+      closeRlRealtimeTcpSocket();
+      rlRealtimeTransport = null;
+      scheduleRlRealtimeReconnect();
+    });
+  }
+
+  function startRlRealtimeFeed() {
+    state.rlOverlayConfig = normalizeRlOverlayConfig(state.rlOverlayConfig);
+    if (state.rlOverlayConfig.realtimeEnabled === false) {
+      if (rlRealtimeReconnectTimer) {
+        clearTimeout(rlRealtimeReconnectTimer);
+        rlRealtimeReconnectTimer = null;
+      }
+      resetRlRealtimeTracking({ keepIdentity: true });
+      rlRealtime.connected = false;
+      closeRlRealtimeTransports();
+      return;
+    }
+    const port = Number(state.rlOverlayConfig.statsApiPort || 49123);
+    if (
+      rlRealtimeSocket
+      && (rlRealtimeSocket.readyState === 0 || rlRealtimeSocket.readyState === 1)
+      && rlRealtimeSocketPort === port
+    ) return;
+    if (
+      rlRealtimeTcpSocket
+      && !rlRealtimeTcpSocket.destroyed
+      && rlRealtimeSocketPort === port
+    ) return;
+
+    const { WebSocket } = require('ws');
+    closeRlRealtimeTransports();
+    rlRealtimeTransport = 'ws';
+    rlRealtime.connected = false;
+    let opened = false;
+    let usedFallback = false;
+    const wsFallbackTimer = setTimeout(() => {
+      if (opened || usedFallback) return;
+      usedFallback = true;
+      closeRlRealtimeSocket();
+      connectRlRealtimeTcp(port);
+    }, 1500);
+
+    try {
+      rlRealtimeSocket = new WebSocket(`ws://127.0.0.1:${port}`);
+      rlRealtimeSocketPort = port;
+    } catch {
+      clearTimeout(wsFallbackTimer);
+      rlRealtime.connected = false;
+      connectRlRealtimeTcp(port);
+      return;
+    }
+
+    rlRealtimeSocket.on('open', () => {
+      clearTimeout(wsFallbackTimer);
+      opened = true;
+      rlRealtimeTransport = 'ws';
+      rlRealtime.connected = true;
+      const payload = buildRlPayload();
+      broadcastRL({ type: 'stats', data: payload });
+      state.mainWindow?.webContents.send('rl-stats-update', payload);
+    });
+
+    rlRealtimeSocket.on('message', (data) => onRlRealtimeMessage(data));
+    rlRealtimeSocket.on('close', () => {
+      clearTimeout(wsFallbackTimer);
+      rlRealtime.connected = false;
+      closeRlRealtimeSocket();
+      if (!opened && !usedFallback) {
+        usedFallback = true;
+        connectRlRealtimeTcp(port);
+        return;
+      }
+      if (rlRealtimeTransport === 'ws') scheduleRlRealtimeReconnect();
+    });
+    rlRealtimeSocket.on('error', () => {
+      clearTimeout(wsFallbackTimer);
+      rlRealtime.connected = false;
+      closeRlRealtimeSocket();
+      if (!opened && !usedFallback) {
+        usedFallback = true;
+        connectRlRealtimeTcp(port);
+        return;
+      }
+      if (rlRealtimeTransport === 'ws') scheduleRlRealtimeReconnect();
+    });
   }
 
   function broadcastRL(msg) {
@@ -419,18 +1063,30 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
 
   async function refreshRLStats() {
     if (rlRefreshTimer) { clearTimeout(rlRefreshTimer); rlRefreshTimer = null; }
+    state.rlOverlayConfig = normalizeRlOverlayConfig(state.rlOverlayConfig);
+    if (state.rlOverlayConfig.realtimeEnabled !== false) {
+      startRlRealtimeFeed();
+    }
     const stats = await fetchRLStats();
-    if (!stats) return;
+    if (!stats) {
+      const payloadNoTracker = buildRlPayload();
+      broadcastRL({ type: 'stats', data: payloadNoTracker });
+      state.mainWindow?.webContents.send('rl-stats-update', payloadNoTracker);
+      return payloadNoTracker;
+    }
+
+    const prevStats = state.rlStats ? { ...state.rlStats } : null;
     if (!state.rlSessionStart) state.rlSessionStart = { ...stats };
+    if (state.rlOverlayConfig.realtimeEnabled === false) {
+      state.rlSessionSummary = prevStats ? updateRlSessionSummary(prevStats, stats) : ensureRlSessionSummary();
+    } else {
+      state.rlSessionSummary = ensureRlSessionSummary();
+    }
     state.rlStats = stats;
-    const delta = {
-      mmr:     state.rlStats.mmr - state.rlSessionStart.mmr,
-      wins:    state.rlStats.wins - state.rlSessionStart.wins,
-      losses:  state.rlStats.losses - state.rlSessionStart.losses,
-      matches: state.rlStats.matches - state.rlSessionStart.matches,
-    };
-    broadcastRL({ type: 'stats', data: { stats: state.rlStats, delta, config: state.rlOverlayConfig } });
-    state.mainWindow?.webContents.send('rl-stats-update', { stats: state.rlStats, delta });
+    const payload = buildRlPayload();
+    broadcastRL({ type: 'stats', data: payload });
+    state.mainWindow?.webContents.send('rl-stats-update', payload);
+    return payload;
   }
 
   function startRLWatcher() {
@@ -462,36 +1118,45 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
       const { WebSocketServer: WSSrl } = require('ws');
       rlOverlayWss = new WSSrl({ server: rlOverlayHttpServer });
       rlOverlayWss.on('connection', (ws) => {
-        if (state.rlStats) {
-          const delta = {
-            mmr:     state.rlStats.mmr - (state.rlSessionStart?.mmr ?? state.rlStats.mmr),
-            wins:    state.rlStats.wins - (state.rlSessionStart?.wins ?? state.rlStats.wins),
-            losses:  state.rlStats.losses - (state.rlSessionStart?.losses ?? state.rlStats.losses),
-            matches: state.rlStats.matches - (state.rlSessionStart?.matches ?? state.rlStats.matches),
-          };
-          ws.send(JSON.stringify({ type: 'stats', data: { stats: state.rlStats, delta, config: state.rlOverlayConfig } }));
-        }
-        ws.send(JSON.stringify({ type: 'config', data: state.rlOverlayConfig }));
+        ws.send(JSON.stringify({ type: 'stats', data: buildRlPayload() }));
+        ws.send(JSON.stringify({ type: 'config', data: normalizeRlOverlayConfig(state.rlOverlayConfig) }));
       });
       rlOverlayHttpServer.listen(9003, '127.0.0.1', () => {
         state.rlOverlayRunning = true;
+        state.rlOverlayConfig = normalizeRlOverlayConfig(state.rlOverlayConfig);
+        startRlRealtimeFeed();
         startRLWatcher();
-        if (state.rlOverlayConfig.username) refreshRLStats();
+        refreshRLStats();
       });
       rlOverlayHttpServer.on('error', () => {});
     } catch {}
   }
 
+  function resetRLSessionTracking() {
+    state.rlSessionStart = state.rlStats ? { ...state.rlStats } : null;
+    state.rlSessionSummary = defaultRlSessionSummary();
+    resetRlRealtimeTracking({ keepIdentity: true });
+    startRlRealtimeFeed();
+    const payload = buildRlPayload();
+    broadcastRL({ type: 'stats', data: payload });
+    state.mainWindow?.webContents.send('rl-stats-update', payload);
+    return payload;
+  }
+
   return {
     startKeyOverlay,
     stopKeyOverlay,
+    getKeyOverlayStatus,
     broadcastOverlay,
     configMsg,
+    configRefreshMsg,
     startSpotifyOverlay,
+    getSpotifyOverlayStatus,
     broadcastSpotify,
     startTeamsOverlay,
     startRLOverlay,
     refreshRLStats,
+    resetRLSessionTracking,
     broadcastRL,
     broadcastTeams,
   };

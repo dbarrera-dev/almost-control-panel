@@ -49,7 +49,7 @@ body {
 </head>
 <body>
 <div id="box">
-  <span id="label">Pedido por</span>
+  <span id="label">Pedido por:</span>
   <span id="nick"></span>
 </div>
 
@@ -71,10 +71,38 @@ function hide() {
   box.classList.remove('visible');
 }
 
+function getWsCandidates() {
+  const params = new URLSearchParams(window.location.search || '');
+  const custom = params.get('ws');
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const sameHost = window.location.host ? `${proto}//${window.location.host}` : '';
+  return [...new Set([custom, sameHost, 'ws://localhost:9002', 'ws://127.0.0.1:9002'].filter(Boolean))];
+}
+
 let _retryDelay = 500;
+let _wsCandidates = getWsCandidates();
+let _wsIndex = 0;
+
+function scheduleReconnect() {
+  _wsIndex = (_wsIndex + 1) % _wsCandidates.length;
+  const delay = _retryDelay;
+  _retryDelay = Math.min(_retryDelay * 2, 8000);
+  setTimeout(connect, delay);
+}
+
 function connect() {
-  const ws = new WebSocket('ws://localhost:9002');
-  ws.onopen = () => { _retryDelay = 500; };
+  const wsUrl = _wsCandidates[_wsIndex] || 'ws://localhost:9002';
+  let ws = null;
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch {
+    scheduleReconnect();
+    return;
+  }
+  ws.onopen = () => {
+    _retryDelay = 500;
+    _wsIndex = 0;
+  };
   ws.onmessage = ({ data }) => {
     try {
       const msg = JSON.parse(data);
@@ -86,10 +114,7 @@ function connect() {
       }
     } catch {}
   };
-  ws.onclose = () => {
-    _retryDelay = Math.min(_retryDelay * 2, 8000);
-    setTimeout(connect, _retryDelay);
-  };
+  ws.onclose = scheduleReconnect;
   ws.onerror = () => { ws.close(); };
 }
 connect();

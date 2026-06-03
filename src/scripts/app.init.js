@@ -2,18 +2,22 @@
 (async()=>{
   try {
     await loadConfigForm();
-    const koCfgRes = await api.keyOverlayGetConfig();
-    if (koCfgRes?.config) koConfig = koCfgRes.config;
-    const cfg=await api.getConfig();
-    if(cfg.autoConnectBot !== false && cfg.supabaseUrl&&cfg.supabaseKey&&cfg.botUsername&&cfg.botOauth&&cfg.twitchChannel) {
-      log('info','Config encontrada, conectando...');
-      await doConnect();
-    } else if(cfg.supabaseUrl&&cfg.supabaseKey&&cfg.botUsername&&cfg.botOauth&&cfg.twitchChannel) {
-      log('info','Almost Control iniciado (auto-connect desactivado)');
+    const cfg = await api.getConfig();
+    const kickCfg = await api.kickGetConfig().catch(() => null);
+    const mode = kickCfg?.kickBotMode === 'dev' ? 'dev' : 'prod';
+    const active = mode === 'dev' ? kickCfg?.dev : kickCfg?.prod;
+    const kickReady = !!(cfg.supabaseUrl && cfg.supabaseKey && active?.clientId && active?.channel && active?.hasToken);
+    if (cfg.autoConnectKickBot !== false && kickReady && !kickCfg?.connected) {
+      log('info', 'Config Kick encontrada, conectando bot...');
+      const r = await api.kickBotConnect({ mode });
+      if (!r?.ok) log('warn', 'No se pudo auto-conectar Kick: ' + (r?.error || 'sin detalle'));
+      loadOverlays();
+    } else if (kickReady) {
+      log('info', 'Almost Control iniciado (auto-connect de Kick desactivado)');
       loadOverlays();
     } else {
       log('info','Almost Control iniciado');
-      log('info','Ve a Config para configurar las credenciales');
+      log('info','Ve a Config para terminar de configurar Kick y Spotify');
     }
   } catch (e) {
     log('warn', 'Error en init: ' + (e.message || e));
@@ -32,4 +36,3 @@ window.addEventListener('beforeunload', () => {
   clearTimeout(spVolumeTimer);
   clearInterval(cdInterval);
 });
-

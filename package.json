@@ -1,10 +1,11 @@
 {
   "name": "almost-control",
-  "version": "4.0.4",
+  "version": "6.0.14",
   "description": "Almost98 Control Panel",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "set ELECTRON_RUN_AS_NODE=& electron .",
+    "general:start": "npm --prefix general-control run start",
     "build": "electron-builder --win --x64",
     "publish": "electron-builder --win --x64 --publish always"
   },
@@ -23,7 +24,10 @@
       "createDesktopShortcut": true,
       "shortcutName": "Almost - Panel de control"
     },
-    "files": ["**/*", "!node_modules/.cache"],
+    "files": [
+      "**/*",
+      "!node_modules/.cache"
+    ],
     "publish": {
       "provider": "github",
       "owner": "Dieqoz",
@@ -31,10 +35,12 @@
     }
   },
   "dependencies": {
-    "tmi.js": "^1.8.5",
     "@supabase/supabase-js": "^2.39.0",
     "electron-updater": "^6.3.9",
+    "obs-websocket-js": "^5.0.8",
     "uiohook-napi": "^1.5.4",
+    "vban": "^1.5.6",
+    "voicemeeter-connector": "^2.2.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {

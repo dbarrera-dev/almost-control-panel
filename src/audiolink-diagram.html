@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Audio Link — Diagrama de Flujo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#08090a; display:flex; align-items:center; justify-content:center; min-height:100vh; font-family:'Inter','Segoe UI',system-ui,sans-serif; }
+  .diagram { width:1100px; padding:48px; }
+</style>
+</head>
+<body>
+<div class="diagram">
+<svg viewBox="0 0 1100 620" xmlns="http://www.w3.org/2000/svg" font-family="Inter, Segoe UI, system-ui, sans-serif">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d0e10"/>
+      <stop offset="100%" stop-color="#08090a"/>
+    </linearGradient>
+    <linearGradient id="streamingGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1530"/>
+      <stop offset="100%" stop-color="#12101c"/>
+    </linearGradient>
+    <linearGradient id="gamingGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2215"/>
+      <stop offset="100%" stop-color="#10160d"/>
+    </linearGradient>
+    <linearGradient id="vbanArrow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
+    <linearGradient id="hdmiArrow" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <!-- Glow filters -->
+    <filter id="glowOrange" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feFlood flood-color="#ffffff" flood-opacity="0.4"/>
+      <feComposite in2="blur" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowBlue" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feFlood flood-color="#60a5fa" flood-opacity="0.4"/>
+      <feComposite in2="blur" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowGreen" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feFlood flood-color="#4ade80" flood-opacity="0.5"/>
+      <feComposite in2="blur" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowRed" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feFlood flood-color="#f87171" flood-opacity="0.5"/>
+      <feComposite in2="blur" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+    <!-- Arrow markers -->
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#ffffff"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#60a5fa"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1100" height="620" rx="16" fill="url(#bgGrad)" stroke="#1a1c20" stroke-width="1"/>
+
+  <!-- Title -->
+  <text x="550" y="38" text-anchor="middle" fill="#ffffff" font-size="18" font-weight="700" letter-spacing="3">AUDIO LINK — FLUJO DE AUDIO</text>
+  <text x="550" y="56" text-anchor="middle" fill="#454b57" font-size="10" letter-spacing="2">MÚSICA SEPARADA ENTRE PCS POR RED LOCAL</text>
+
+  <!-- ════════ PC STREAMING (Left) ════════ -->
+  <rect x="40" y="80" width="460" height="490" rx="14" fill="url(#streamingGrad)" stroke="#2d2550" stroke-width="1.5" filter="url(#shadow)"/>
+  <!-- Header -->
+  <rect x="40" y="80" width="460" height="44" rx="14" fill="#1e1840" stroke="none"/>
+  <rect x="40" y="110" width="460" height="14" fill="#1e1840"/>
+  <text x="270" y="107" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="700" letter-spacing="2">💻 PC STREAMING</text>
+
+  <!-- Spotify Box -->
+  <rect x="70" y="145" width="190" height="70" rx="10" fill="#0d1a0d" stroke="#1DB954" stroke-width="1.5" stroke-opacity="0.4"/>
+  <circle cx="100" cy="175" r="14" fill="#1DB954" fill-opacity="0.15" stroke="#1DB954" stroke-width="1"/>
+  <text x="100" y="179" text-anchor="middle" fill="#1DB954" font-size="14">🎵</text>
+  <text x="165" y="173" text-anchor="middle" fill="#1DB954" font-size="12" font-weight="600">Spotify</text>
+  <text x="165" y="190" text-anchor="middle" fill="#7a8190" font-size="9">YouTube Music / Browser</text>
+
+  <!-- Voicemeeter Box -->
+  <rect x="70" y="240" width="190" height="80" rx="10" fill="#1a1520" stroke="#a78bfa" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="165" y="264" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700" letter-spacing="1">VOICEMEETER</text>
+  <text x="165" y="282" text-anchor="middle" fill="#c0c5ce" font-size="10">Virtual Input → Bus B1</text>
+  <text x="165" y="300" text-anchor="middle" fill="#7a8190" font-size="9">Separa la música del resto</text>
+
+  <!-- Arrow: Spotify → Voicemeeter -->
+  <line x1="165" y1="215" x2="165" y2="240" stroke="#1DB954" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/>
+  <polygon points="159,238 165,245 171,238" fill="#1DB954" opacity="0.6"/>
+
+  <!-- VBAN Sender Box -->
+  <rect x="70" y="345" width="190" height="60" rx="10" fill="#0e0f12" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.5"/>
+  <text x="165" y="370" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700" letter-spacing="1">📡 VBAN SENDER</text>
+  <text x="165" y="388" text-anchor="middle" fill="#7a8190" font-size="9">UDP → 192.168.x.x:6980</text>
+
+  <!-- Arrow: Voicemeeter → VBAN -->
+  <line x1="165" y1="320" x2="165" y2="345" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/>
+  <polygon points="159,343 165,350 171,343" fill="#ffffff" opacity="0.6"/>
+
+  <!-- OBS Box -->
+  <rect x="290" y="145" width="180" height="260" rx="10" fill="#0f1218" stroke="#60a5fa" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="380" y="170" text-anchor="middle" fill="#60a5fa" font-size="12" font-weight="700" letter-spacing="1">OBS STUDIO</text>
+
+  <!-- OBS Sources -->
+  <rect x="305" y="188" width="150" height="32" rx="6" fill="#111820" stroke="#3b82f6" stroke-width="0.8" stroke-opacity="0.4"/>
+  <text x="380" y="200" text-anchor="middle" fill="#60a5fa" font-size="9" font-weight="600">📹 Capturadora HDMI</text>
+  <text x="380" y="212" text-anchor="middle" fill="#454b57" font-size="8">Juego + Discord</text>
+
+  <rect x="305" y="228" width="150" height="32" rx="6" fill="#0e0f12" stroke="#ffffff" stroke-width="0.8" stroke-opacity="0.4"/>
+  <text x="380" y="240" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="600">🎵 Music VBAN</text>
+  <text x="380" y="252" text-anchor="middle" fill="#454b57" font-size="8">Fuente de audio separada</text>
+
+  <!-- OBS Tracks -->
+  <text x="380" y="280" text-anchor="middle" fill="#7a8190" font-size="9" font-weight="600">Pistas de audio:</text>
+
+  <rect x="305" y="290" width="72" height="24" rx="5" fill="#0d2010" stroke="#4ade80" stroke-width="0.8"/>
+  <text x="341" y="306" text-anchor="middle" fill="#4ade80" font-size="9" font-weight="600">Kick ✓</text>
+
+  <rect x="383" y="290" width="72" height="24" rx="5" fill="#0d2010" stroke="#4ade80" stroke-width="0.8"/>
+  <text x="419" y="306" text-anchor="middle" fill="#4ade80" font-size="9" font-weight="600">TikTok ✓</text>
+
+  <rect x="305" y="320" width="72" height="24" rx="5" fill="#200d0d" stroke="#f87171" stroke-width="0.8"/>
+  <text x="341" y="336" text-anchor="middle" fill="#f87171" font-size="9" font-weight="600">Canal B ✗</text>
+
+  <rect x="383" y="320" width="72" height="24" rx="5" fill="#0d2010" stroke="#4ade80" stroke-width="0.8"/>
+  <text x="419" y="336" text-anchor="middle" fill="#4ade80" font-size="9" font-weight="600">YouTube ✓</text>
+
+  <text x="380" y="370" text-anchor="middle" fill="#454b57" font-size="8" font-style="italic">Música incluida/excluida</text>
+  <text x="380" y="382" text-anchor="middle" fill="#454b57" font-size="8" font-style="italic">por plataforma</text>
+
+  <!-- Arrow: Spotify → OBS local source -->
+  <path d="M260,180 L290,180" stroke="#1DB954" stroke-width="1" stroke-dasharray="3 3" opacity="0.4"/>
+  <text x="275" y="174" text-anchor="middle" fill="#454b57" font-size="7">local</text>
+
+  <!-- Almost Control Box -->
+  <rect x="70" y="435" width="400" height="55" rx="10" fill="#0e0f12" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="270" y="458" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700" letter-spacing="1">⚡ ALMOST CONTROL</text>
+  <text x="270" y="476" text-anchor="middle" fill="#7a8190" font-size="9">Controla VBAN + OBS + perfiles por plataforma</text>
+
+  <!-- Arrow: Almost → VBAN -->
+  <path d="M165,435 L165,405" stroke="#ffffff" stroke-width="1" stroke-dasharray="3 3" opacity="0.4"/>
+  <!-- Arrow: Almost → OBS -->
+  <path d="M380,435 L380,405" stroke="#ffffff" stroke-width="1" stroke-dasharray="3 3" opacity="0.4"/>
+
+
+  <!-- ════════ PC GAMING (Right) ════════ -->
+  <rect x="600" y="80" width="460" height="490" rx="14" fill="url(#gamingGrad)" stroke="#254025" stroke-width="1.5" filter="url(#shadow)"/>
+  <!-- Header -->
+  <rect x="600" y="80" width="460" height="44" rx="14" fill="#182818" stroke="none"/>
+  <rect x="600" y="110" width="460" height="14" fill="#182818"/>
+  <text x="830" y="107" text-anchor="middle" fill="#4ade80" font-size="13" font-weight="700" letter-spacing="2">🎮 PC GAMING</text>
+
+  <!-- Game Box -->
+  <rect x="630" y="145" width="190" height="70" rx="10" fill="#0d1520" stroke="#60a5fa" stroke-width="1.5" stroke-opacity="0.4"/>
+  <text x="725" y="175" text-anchor="middle" fill="#60a5fa" font-size="12" font-weight="600">🎮 Juego + Discord</text>
+  <text x="725" y="193" text-anchor="middle" fill="#7a8190" font-size="9">Audio principal de la PC</text>
+
+  <!-- HDMI Output -->
+  <rect x="630" y="240" width="190" height="60" rx="10" fill="#0d1520" stroke="#3b82f6" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="725" y="265" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="700" letter-spacing="1">🔌 SALIDA HDMI</text>
+  <text x="725" y="283" text-anchor="middle" fill="#7a8190" font-size="9">→ Capturadora en PC Streaming</text>
+
+  <!-- Arrow: Game → HDMI -->
+  <line x1="725" y1="215" x2="725" y2="240" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/>
+  <polygon points="719,238 725,245 731,238" fill="#60a5fa" opacity="0.6"/>
+
+  <!-- VBAN Receiver Box -->
+  <rect x="630" y="345" width="190" height="60" rx="10" fill="#0e0f12" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.5"/>
+  <text x="725" y="370" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700" letter-spacing="1">📡 VBAN RECEPTOR</text>
+  <text x="725" y="388" text-anchor="middle" fill="#7a8190" font-size="9">Recibe MUSIC_STREAM</text>
+
+  <!-- Headphones -->
+  <rect x="630" y="435" width="190" height="55" rx="10" fill="#0d1a0d" stroke="#4ade80" stroke-width="1.5" stroke-opacity="0.4"/>
+  <text x="725" y="460" text-anchor="middle" fill="#4ade80" font-size="12" font-weight="600">🎧 Auriculares</text>
+  <text x="725" y="478" text-anchor="middle" fill="#7a8190" font-size="9">Escuchás la música acá</text>
+
+  <!-- Arrow: VBAN Receiver → Headphones -->
+  <line x1="725" y1="405" x2="725" y2="435" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/>
+  <polygon points="719,433 725,440 731,433" fill="#ffffff" opacity="0.6"/>
+
+  <!-- Capturadora Badge (Right side) -->
+  <rect x="860" y="195" width="170" height="70" rx="10" fill="#111520" stroke="#3b82f6" stroke-width="1" stroke-opacity="0.2"/>
+  <text x="945" y="218" text-anchor="middle" fill="#60a5fa" font-size="10" font-weight="600">📹 CAPTURADORA</text>
+  <text x="945" y="235" text-anchor="middle" fill="#4ade80" font-size="9" filter="url(#glowGreen)">✓ Juego + Discord</text>
+  <text x="945" y="252" text-anchor="middle" fill="#f87171" font-size="9" filter="url(#glowRed)">✗ Música NO pasa</text>
+
+  <!-- Arrow: HDMI → Capturadora -->
+  <path d="M820,270 L860,240" stroke="#60a5fa" stroke-width="1" stroke-dasharray="4 3" opacity="0.4"/>
+
+
+  <!-- ════════ CONNECTION ARROWS (Center) ════════ -->
+
+  <!-- VBAN Arrow (Streaming → Gaming) -->
+  <line x1="260" y1="375" x2="630" y2="375" stroke="url(#vbanArrow)" stroke-width="3" filter="url(#glowOrange)" marker-end="url(#arrowOrange)"/>
+  <rect x="430" y="358" width="120" height="34" rx="8" fill="#0e0f12" stroke="#ffffff" stroke-width="1"/>
+  <text x="490" y="374" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700" letter-spacing="1">VBAN (UDP)</text>
+  <text x="490" y="387" text-anchor="middle" fill="#7a8190" font-size="8">Red Local</text>
+
+  <!-- HDMI Arrow (Gaming → Streaming) -->
+  <line x1="630" y1="270" x2="500" y2="204" stroke="url(#hdmiArrow)" stroke-width="2.5" filter="url(#glowBlue)" marker-end="url(#arrowBlue)"/>
+  <rect x="510" y="218" width="100" height="30" rx="8" fill="#111520" stroke="#3b82f6" stroke-width="1"/>
+  <text x="560" y="233" text-anchor="middle" fill="#60a5fa" font-size="10" font-weight="700" letter-spacing="1">HDMI</text>
+  <text x="560" y="244" text-anchor="middle" fill="#7a8190" font-size="8">Capturadora</text>
+
+  <!-- ════════ Key Message ════════ -->
+  <rect x="280" y="520" width="540" height="50" rx="10" fill="#0d0e10" stroke="#254025" stroke-width="1"/>
+  <text x="550" y="542" text-anchor="middle" fill="#4ade80" font-size="12" font-weight="700" letter-spacing="1">✓ La música viaja por RED — la capturadora solo ve el juego</text>
+  <text x="550" y="558" text-anchor="middle" fill="#454b57" font-size="9">El audio de Spotify/YT Music nunca toca el HDMI de la PC Gaming</text>
+
+</svg>
+</div>
+</body>
+</html>

@@ -1,0 +1,918 @@
+<div class="view" id="view-obs-dual">
+  <div class="sh">
+    <div class="sh-badge orange">OBS DUAL</div>
+    <h2>OBS Dual — Horizontal &amp; Vertical</h2>
+    <p>Controlá dos instancias de OBS con distintos perfiles y sincronización de escenas en tiempo real</p>
+  </div>
+
+  <!-- ── Help Banner ──────────────────────────────────────────── -->
+  <div class="al-help-banner" id="odHelpBanner">
+    <div class="al-help-icon">🎬</div>
+    <div class="al-help-content">
+      <strong>OBS Dual — Dos OBS al mismo tiempo, un solo control</strong>
+      <p>
+        Lanzá un OBS con perfil <b>Horizontal</b> (16:9) y otro con perfil <b>Vertical</b> (9:16) simultáneamente.
+        Cuando cambiás de escena en uno, el otro cambia automáticamente. Desde la PC Gaming podés controlar
+        las escenas de la PC Streaming en tiempo real, con atajos de teclado globales.
+      </p>
+
+      <!-- ── RESUMEN: OBS vs App ── -->
+      <details open>
+        <summary>📌 Resumen rápido — ¿Qué se configura dónde?</summary>
+        <div class="al-guide-section">
+          <p style="margin-bottom:10px">Antes de entrar en detalles, esta es la respuesta directa a la pregunta más frecuente:</p>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">
+
+            <div style="background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.18);border-radius:8px;padding:12px">
+              <div style="font-size:11px;font-weight:700;color:#fbbf24;letter-spacing:.04em;margin-bottom:8px">🖥️ SE CONFIGURA EN OBS</div>
+              <ul style="list-style:none;padding:0;margin:0;font-size:11.5px;line-height:1.9">
+                <li>✔ Crear perfil <code>Horizontal</code> (resolución, stream key)</li>
+                <li>✔ Crear perfil <code>Vertical</code> (resolución, stream key)</li>
+                <li>✔ Crear colección de escenas <code>Horizontal</code></li>
+                <li>✔ Crear colección de escenas <code>Vertical</code></li>
+                <li>✔ Activar WebSocket en perfil Horizontal → puerto <code>4455</code></li>
+                <li>✔ Activar WebSocket en perfil Vertical → puerto <code>4456</code></li>
+                <li style="color:var(--text3)">✘ Nada más — ningún plugin extra requerido</li>
+              </ul>
+            </div>
+
+            <div style="background:rgba(251,146,60,.06);border:1px solid rgba(251,146,60,.18);border-radius:8px;padding:12px">
+              <div style="font-size:11px;font-weight:700;color:#fb923c;letter-spacing:.04em;margin-bottom:8px">🎛️ SE CONFIGURA EN ESTA APP</div>
+              <ul style="list-style:none;padding:0;margin:0;font-size:11.5px;line-height:1.9">
+                <li>✔ Dirección WebSocket de cada OBS (<code>ws://…:4455</code>)</li>
+                <li>✔ Contraseña WebSocket (si la configuraste)</li>
+                <li>✔ Nombre del perfil y colección para cada instancia</li>
+                <li>✔ Mapeo de escenas H ↔ V</li>
+                <li>✔ Ruta al ejecutable (si no está en la ruta default)</li>
+                <li>✔ Room ID y modo para el control remoto</li>
+                <li>✔ Atajos de teclado globales (PC Gaming)</li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.18);border-radius:8px;padding:10px 14px;font-size:11.5px">
+            <b style="color:var(--green)">🎮 Control Remoto — 100% en la app, cero en OBS</b><br>
+            El control desde la PC Gaming funciona a través de <b>Supabase Realtime</b> (ya configurado en la app).
+            No hay que instalar nada extra en la PC de streaming ni en OBS. Solo abrís la app en ambas PCs,
+            configurás el mismo Room ID, elegís el modo de cada PC y listo.
+          </div>
+        </div>
+      </details>
+
+      <!-- ── Flujo completo ── -->
+      <details>
+        <summary>📋 ¿Cómo funciona? — Flujo completo</summary>
+        <div class="al-help-flow">
+          <div class="al-flow-step">
+            <span class="al-flow-num">1</span>
+            <div>
+              <strong>Dos perfiles, dos colecciones — todo en OBS</strong><br>
+              Configurás un perfil <b>Horizontal</b> (1920×1080, con tu stream key de Kick/YouTube) y un perfil
+              <b>Vertical</b> (1080×1920, con tu stream key de TikTok/Kick vertical). Cada perfil tiene su propio
+              WebSocket en un puerto distinto. Las colecciones de escenas son independientes por formato.
+            </div>
+          </div>
+          <div class="al-flow-step">
+            <span class="al-flow-num">2</span>
+            <div>
+              <strong>La app lanza y controla ambos OBS a la vez</strong><br>
+              Desde esta app hacés click en <b>"Lanzar ambos OBS"</b>: se abren dos procesos OBS en paralelo,
+              cada uno con su perfil y colección. Luego conectás via WebSocket y la app tiene control total
+              de ambas instancias: escenas, stream, grabación.
+            </div>
+          </div>
+          <div class="al-flow-step">
+            <span class="al-flow-num">3</span>
+            <div>
+              <strong>Mapeo de escenas = sincronización automática</strong><br>
+              Definís qué escena del OBS Vertical corresponde a cada escena del OBS Horizontal.
+              Cuando cambiás en uno (desde la app o desde OBS directamente), el otro cambia automáticamente
+              a su escena mapeada. El sistema previene loops de sincronización con un cooldown de 300ms.
+            </div>
+          </div>
+          <div class="al-flow-step">
+            <span class="al-flow-num">4</span>
+            <div>
+              <strong>Control remoto desde la PC Gaming via Supabase Realtime</strong><br>
+              Abrís esta app en la PC Gaming en modo <b>"PC Gaming"</b> y en la PC Streaming en modo
+              <b>"PC Streaming"</b>. Ambas usan el mismo Room ID para comunicarse. La PC Gaming ve las escenas
+              disponibles en tiempo real y puede cambiarlas con un click o con atajos de teclado globales.
+              La latencia es menor a 100ms via internet.
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ── Requisitos ── -->
+      <details>
+        <summary>✅ Requisitos previos</summary>
+        <ul class="al-req-list">
+          <li>🖥️ <b>OBS Studio 28 o superior</b> en la PC de streaming — incluye WebSocket de serie, sin plugins.
+              <span class="al-link" onclick="api.openExternal('https://obsproject.com/es/download')">Descargar OBS</span></li>
+          <li>💾 <b>16 GB RAM mínimo</b> recomendados para correr dos instancias simultáneas, más el juego.
+              Usar <b>NVENC / AMF / QuickSync</b> en ambos perfiles para que el encoding lo maneje la GPU.</li>
+          <li>🌐 <b>Buena conexión a internet</b> si streaméas en ambas al mismo tiempo.
+              Dos streams de ~6000 kbps cada uno = ~12 Mbps de upload.</li>
+          <li>🔑 <b>Dos stream keys distintas</b> — una para el canal horizontal y otra para el vertical
+              (pueden ser dos cuentas, dos plataformas, o funciones multistream).</li>
+          <li>☁️ <b>Supabase configurado en la app</b> (ya requerido por otras funciones) —
+              necesario para el control remoto entre PCs. Sin Supabase el control local sigue funcionando.</li>
+          <li>🎮 <b>Esta app instalada en la PC Gaming</b> también — solo si vas a usar el control remoto.</li>
+        </ul>
+      </details>
+
+      <!-- ── Paso a paso: OBS ── -->
+      <details>
+        <summary>🖥️ Configuración en OBS — Paso a paso completo</summary>
+        <div class="al-guide-section">
+          <p style="margin-bottom:12px;padding:8px 12px;background:rgba(251,191,36,.06);border-left:3px solid #fbbf24;border-radius:4px;font-size:11.5px">
+            <b>Solo hacés esto una vez.</b> Una vez que los perfiles y el WebSocket están configurados, no volvés a tocar OBS para nada relacionado con OBS Dual ni con el control remoto.
+          </p>
+
+          <h4>Fase 1 — Crear los perfiles</h4>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">1</span>
+              Abrí OBS → menú superior <b>Perfil</b> → <b>Nuevo</b> → escribí <code>Horizontal</code> → OK
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">2</span>
+              Con el perfil Horizontal activo, abrí <b>Configuración (engranaje)</b>:<br>
+              • <b>Video</b> → Resolución base: <code>1920×1080</code>, Resolución de salida: <code>1920×1080</code>, FPS: <code>60</code><br>
+              • <b>Stream</b> → Servicio: Kick / YouTube → pegá tu stream key horizontal<br>
+              • <b>Salida</b> → Encoding: NVENC H.264 (o AMF/QuickSync según tu GPU)
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">3</span>
+              Menú <b>Perfil → Nuevo</b> → escribí <code>Vertical</code> → OK
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">4</span>
+              Con el perfil Vertical activo, abrí Configuración:<br>
+              • <b>Video</b> → Resolución base: <code>1080×1920</code>, Resolución de salida: <code>1080×1920</code><br>
+              • <b>Stream</b> → Servicio y stream key del canal vertical (TikTok, Kick, YouTube Shorts, etc.)<br>
+              • <b>Salida</b> → Encoding: NVENC H.264 (puede ser la misma GPU, distintas instancias del encoder)
+            </div>
+          </div>
+
+          <h4 style="margin-top:16px">Fase 2 — Crear las colecciones de escenas</h4>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">1</span>
+              Menú <b>Colección de escenas → Nueva</b> → nombrala <code>Horizontal</code>
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">2</span>
+              Creá tus escenas en formato 16:9: <i>En Vivo, BRB, Inicio, Fin Stream, Solo Cam, etc.</i><br>
+              Agregá las fuentes (captura de juego, cámara, alertas) posicionadas para 1920×1080.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">3</span>
+              Menú <b>Colección de escenas → Nueva</b> → nombrala <code>Vertical</code>
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">4</span>
+              Creá las mismas escenas adaptadas al formato 9:16. <b>Truco clave:</b> usá <b>exactamente los mismos
+              nombres</b> de escenas que en la colección Horizontal — así el Auto-mapeo de esta app las vincula
+              automáticamente sin configuración manual.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">5</span>
+              Para adaptar las fuentes: en cada escena, reposicioná la captura de juego para que ocupe el
+              área central vertical. Podés usar el plugin <b>Source Clone</b> para reutilizar fuentes entre colecciones.
+            </div>
+          </div>
+
+          <h4 style="margin-top:16px">Fase 3 — Activar el servidor WebSocket en cada perfil</h4>
+          <p style="font-size:11.5px;margin-bottom:8px;color:var(--text2)">
+            El WebSocket es la única configuración técnica necesaria en OBS. Es lo que permite que esta app se comunique con OBS.
+          </p>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">1</span>
+              Con el perfil <b>Horizontal</b> activo:<br>
+              Menú <b>Herramientas → Configuración del servidor WebSocket</b><br>
+              ✓ Tildar <b>"Activar servidor WebSocket"</b><br>
+              • Puerto del servidor: <code>4455</code><br>
+              • Autenticación: opcional pero recomendada. Si la activás, anotá la contraseña para configurarla en esta app.<br>
+              → <b>Aplicar / OK</b>
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">2</span>
+              Cambiá al perfil <b>Vertical</b>: menú <b>Perfil → Vertical</b><br>
+              Volvé a ir a <b>Herramientas → Configuración del servidor WebSocket</b><br>
+              ✓ Tildar <b>"Activar servidor WebSocket"</b><br>
+              • Puerto del servidor: <code>4456</code> — <b>distinto al horizontal, obligatorio</b><br>
+              • Autenticación: la misma contraseña o una diferente (podés usar la misma para simplificar)<br>
+              → <b>Aplicar / OK</b>
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">3</span>
+              <b>Importante:</b> el WebSocket se guarda por perfil. Al lanzar OBS con <code>--profile Horizontal</code>
+              usará el puerto 4455 automáticamente. Con <code>--profile Vertical</code> usará el 4456.
+              No tenés que cambiarlo a mano cada vez.
+            </div>
+          </div>
+
+          <p class="al-guide-tip">
+            💡 <b>Verificación rápida:</b> Con OBS abierto, abrí CMD y ejecutá <code>netstat -ano | findstr :4455</code>
+            — si aparece una línea con <code>LISTENING</code>, el WebSocket está activo y escuchando.
+          </p>
+          <p class="al-guide-tip" style="margin-top:6px">
+            💡 <b>Tip de performance:</b> Activá NVENC/AMF/QuickSync en ambos perfiles. Dos encoders de GPU en
+            paralelo en la misma placa es perfectamente viable en GPUs modernas (RTX 3000+ soporta hasta 5 sesiones NVENC simultáneas).
+          </p>
+        </div>
+      </details>
+
+      <!-- ── Paso a paso: La App ── -->
+      <details>
+        <summary>🎛️ Configuración en la App — Paso a paso completo</summary>
+        <div class="al-guide-section">
+
+          <h4>Fase 1 — Ajustes de conexión WebSocket</h4>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">1</span>
+              En el panel <b>OBS Horizontal</b> de esta pantalla, expandí los Ajustes de conexión:<br>
+              • Dirección: <code>ws://127.0.0.1:4455</code> (si OBS está en la misma PC)<br>
+              • Contraseña: la que configuraste en OBS, o vacío si no usás autenticación<br>
+              • Perfil OBS: <code>Horizontal</code> (exactamente como aparece en el menú Perfil de OBS)<br>
+              • Colección: <code>Horizontal</code> (exactamente como aparece en el menú Colección de escenas)
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">2</span>
+              Lo mismo para el panel <b>OBS Vertical</b>:<br>
+              • Dirección: <code>ws://127.0.0.1:4456</code><br>
+              • Contraseña: la que configuraste<br>
+              • Perfil OBS: <code>Vertical</code><br>
+              • Colección: <code>Vertical</code>
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">3</span>
+              Hacé click en <b>"Guardar config"</b> en cada panel — los datos quedan guardados para la próxima vez que abras la app.
+            </div>
+          </div>
+
+          <h4 style="margin-top:16px">Fase 2 — Lanzar y conectar</h4>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">1</span>
+              Click en <b>"Lanzar ambos OBS"</b> en la barra de arriba — abre dos procesos OBS en paralelo,
+              cada uno con su perfil y colección definidos en los ajustes.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">2</span>
+              Esperá <b>3-5 segundos</b> a que OBS cargue completamente (hasta que veas las ventanas de OBS en la barra de tareas).
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">3</span>
+              Click en <b>"Conectar ambos"</b> — la app establece la conexión WebSocket con cada instancia.
+              Los indicadores de estado en cada panel deben ponerse en verde.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">4</span>
+              Si un panel no conecta, verificá que OBS esté abierto, el WebSocket esté activo, y la dirección/contraseña sean correctas.
+            </div>
+          </div>
+
+          <h4 style="margin-top:16px">Fase 3 — Configurar el mapeo de escenas</h4>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">1</span>
+              Una vez conectado, en el panel <b>Mapeo de escenas</b> click en <b>"Auto-mapear"</b>.
+              Si los nombres de escenas son iguales en ambas colecciones, se vincularán solos.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">2</span>
+              Para escenas con nombres distintos, usá los selectores de la tabla para vincularlas manualmente
+              (ej: "Gaming 16:9" ↔ "Gaming vertical").
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">3</span>
+              Click en <b>"Guardar mapa"</b> — el mapa queda persistido y se recarga automáticamente en la próxima sesión.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">4</span>
+              Activá el toggle <b>"Sync escenas"</b> en la barra de control. A partir de ahora, cambiar escena
+              en cualquier OBS (desde aquí o desde OBS directamente) sincroniza el otro automáticamente.
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ── Control Remoto ── -->
+      <details>
+        <summary>🎮 Control Remoto entre PCs — Configuración detallada</summary>
+        <div class="al-guide-section">
+          <p style="margin-bottom:10px;padding:8px 12px;background:rgba(74,222,128,.06);border-left:3px solid var(--green);border-radius:4px;font-size:11.5px">
+            <b style="color:var(--green)">No se toca OBS para nada en este paso.</b> El control remoto es
+            comunicación directa entre las dos instancias de la app via <b>Supabase Realtime</b>.
+            La PC Streaming recibe los comandos y los reenvía a OBS via WebSocket local.
+          </p>
+
+          <h4>¿Cómo funciona internamente?</h4>
+          <div class="al-help-flow" style="margin-bottom:12px">
+            <div class="al-flow-step">
+              <span class="al-flow-num" style="background:rgba(251,146,60,.15);color:#fb923c">G</span>
+              <div><b>PC Gaming</b> (modo Gaming) — tenés la app abierta mientras jugás. Presionás un atajo
+              de teclado o clickeás una escena → la app envía un comando de escena al canal de Supabase Realtime.</div>
+            </div>
+            <div class="al-flow-step">
+              <span class="al-flow-num" style="background:rgba(96,165,250,.15);color:#60a5fa">S</span>
+              <div><b>PC Streaming</b> (modo Streaming) — tiene la app abierta con ambos OBS conectados.
+              Recibe el comando de Supabase y lo ejecuta en OBS via WebSocket local con latencia &lt;100ms.</div>
+            </div>
+          </div>
+
+          <h4>Configuración en la PC Streaming</h4>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">1</span>
+              Abrí esta app en la PC Streaming y andá a la pestaña <b>OBS Dual</b>
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">2</span>
+              En la sección <b>Control Remoto</b>, seleccioná el modo <b>📺 PC Streaming</b>
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">3</span>
+              En el campo <b>Room ID</b>, escribí un identificador único para tu sala — puede ser tu nombre
+              de canal, un código, lo que quieras. Por ejemplo: <code>micanal_obs</code>. Tiene que ser
+              <b>exactamente igual</b> en ambas PCs.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">4</span>
+              Click en <b>Guardar</b> y luego en <b>Activar</b>. La PC Streaming queda escuchando comandos.
+              Cuando un comando llega, cambia la escena en los OBS conectados y responde con el estado actualizado.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">5</span>
+              Asegurate de que los dos OBS estén conectados <b>antes</b> de activar el control remoto,
+              o activá el <b>auto-conectar al iniciar</b> en los ajustes para que todo se conecte solo al abrir la app.
+            </div>
+          </div>
+
+          <h4 style="margin-top:16px">Configuración en la PC Gaming</h4>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">1</span>
+              Abrí esta app en la PC Gaming y andá a la pestaña <b>OBS Dual</b>
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">2</span>
+              En la sección <b>Control Remoto</b>, seleccioná el modo <b>🎮 PC Gaming</b>
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">3</span>
+              Ingresá el mismo <b>Room ID</b> que configuraste en la PC Streaming
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">4</span>
+              Click en <b>Guardar</b> y luego en <b>Activar</b>. Aparecerá la grilla de escenas disponibles
+              (llegan de la PC Streaming automáticamente). Si no aparecen, click en <b>"Pedir estado"</b>.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">5</span>
+              (Opcional) Configurá los <b>Atajos de teclado globales</b>: elegí una escena, el OBS destino
+              (Horizontal, Vertical, o Ambos) y grabá el combo de teclas. Los atajos funcionan incluso
+              con el juego en primer plano — son atajos de sistema globales. Usá combos con al menos
+              un modificador (Ctrl/Alt/Shift) para evitar conflictos con el juego.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">6</span>
+              Click en <b>"Guardar y aplicar"</b> para registrar los atajos. El estado (✓ / ✗) te indica
+              si el atajo fue registrado con éxito o si ya está en uso por otra app.
+            </div>
+          </div>
+
+          <h4 style="margin-top:16px">Notas importantes</h4>
+          <ul class="al-req-list">
+            <li>🌐 Ambas PCs necesitan <b>conexión a internet</b> para el canal Realtime de Supabase</li>
+            <li>⚡ La latencia típica es <b>menor a 100ms</b> — prácticamente instantáneo para cambios de escena</li>
+            <li>🔄 Si se corta la conexión, la app reconecta automáticamente con backoff exponencial</li>
+            <li>💓 El <b>indicador de heartbeat</b> en la PC Gaming muestra cuándo fue la última señal de la PC Streaming, para saber si está viva</li>
+            <li>🎮 Los atajos de teclado son <b>globales del sistema operativo</b> — funcionan desde cualquier app, incluso con el juego en pantalla completa</li>
+            <li>⚠️ Algunos combos pueden estar reservados por Windows o el juego. Si ✗ aparece en el estado del atajo, probá con otro combo</li>
+            <li>📡 El Room ID es un identificador público en el canal de Supabase. Usá algo único como <code>tunombre_obs2024</code> para evitar colisiones con otros usuarios de la app</li>
+          </ul>
+        </div>
+      </details>
+
+      <!-- ── WebSocket port conflict ── -->
+      <details>
+        <summary>⚠️ Puertos WebSocket — Conflictos y solución</summary>
+        <div class="al-guide-section">
+          <p>Cada instancia de OBS <b>debe usar un puerto WebSocket distinto</b>. Si dos instancias intentan usar el mismo puerto, la segunda no podrá iniciar el servidor y esta app no podrá conectarse.</p>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">→</span>
+              <b>Puerto por defecto de OBS:</b> <code>4455</code> — asignalo al OBS Horizontal
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">→</span>
+              <b>OBS Vertical:</b> cambiarlo a <code>4456</code> en Herramientas → Configuración del servidor WebSocket
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">→</span>
+              Si <b>Audio Link</b> también usa un OBS separado en el puerto 4455, usá <code>4457</code> para el OBS Vertical
+              y actualizá la dirección en los ajustes de esta sección
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">→</span>
+              Para verificar si un puerto está en uso en Windows:<br>
+              <code>netstat -ano | findstr :4455</code> — si aparece LISTENING, el puerto está ocupado
+            </div>
+          </div>
+          <p class="al-guide-tip">
+            💡 <b>Los puertos se guardan por perfil de OBS.</b> Al usar <code>--profile Horizontal</code>
+            y <code>--profile Vertical</code> para lanzar cada instancia, cada una carga su propio WebSocket
+            config automáticamente. No hay conflicto si configuraste los puertos correctamente en cada perfil.
+          </p>
+        </div>
+      </details>
+
+      <!-- ── Mapeo de escenas ── -->
+      <details>
+        <summary>🔀 ¿Cómo funciona el mapeo de escenas?</summary>
+        <div class="al-guide-section">
+          <p>El mapeo define qué escena del OBS Vertical se activa cuando cambiás una escena en el OBS Horizontal (y viceversa). Es bidireccional.</p>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">1</span>
+              <b>Auto-mapeo:</b> si tus escenas tienen el mismo nombre en ambas colecciones, click en
+              <b>"Auto-mapear"</b> y el sistema las vincula solas. Es la forma más rápida.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">2</span>
+              <b>Mapeo manual:</b> si los nombres difieren (ej: "En Vivo" ↔ "En Vivo Vertical"), usá los
+              selectores del panel de Mapeo para vincularlas una a una.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">3</span>
+              <b>Guardá el mapa</b> — queda persistido y se aplica automáticamente cada vez que abrís la app.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">4</span>
+              <b>Sync bidireccional:</b> cambiando desde OBS Horizontal → cambia Vertical; cambiando desde
+              OBS Vertical → cambia Horizontal. También aplica cuando el cambio viene desde un atajo de la PC Gaming.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">5</span>
+              <b>Anti-loop:</b> el sistema tiene un cooldown de 300ms para evitar que el cambio en uno
+              dispare el cambio en el otro, que dispare de vuelta el primero, y así infinitamente.
+            </div>
+          </div>
+          <p class="al-guide-tip">💡 Podés desactivar el sync temporalmente con el toggle <b>"Sync escenas"</b> en la barra de control sin perder el mapa guardado. Útil si querés controlar cada OBS de forma independiente por un momento.</p>
+        </div>
+      </details>
+
+      <!-- ── Ruta al EXE ── -->
+      <details>
+        <summary>📂 Ruta al ejecutable de OBS — ¿cuándo configurarla?</summary>
+        <div class="al-guide-section">
+          <p>La app detecta OBS automáticamente en las rutas más comunes de Windows. <b>Solo necesitás configurar la ruta manualmente si:</b></p>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">→</span>
+              Instalaste OBS en una carpeta personalizada (no la carpeta default de Program Files)
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">→</span>
+              Tenés <b>múltiples versiones de OBS</b> instaladas y querés usar una versión específica para cada instancia
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">→</span>
+              Usás una <b>build portable</b> de OBS (descargada como ZIP, sin instalador)
+            </div>
+          </div>
+          <p>Ruta típica de instalación estándar:<br>
+          <code>C:\Program Files\obs-studio\bin\64bit\obs64.exe</code></p>
+          <p class="al-guide-tip">💡 Para encontrarla rápido: click derecho en el ícono de OBS → <b>Abrir ubicación del archivo</b> → copiá la ruta completa incluyendo el <code>.exe</code>.</p>
+        </div>
+      </details>
+
+    </div>
+    <button class="al-help-close" onclick="document.getElementById('odHelpBanner').classList.add('hidden')" title="Cerrar guía">✕</button>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="od-toolbar">
+    <span class="od-toolbar-label">Control</span>
+    <div class="od-toolbar-sep"></div>
+    <button class="btn btn-orange" style="font-size:11px;padding:6px 14px" onclick="odLaunchBoth()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Lanzar ambos OBS
+    </button>
+    <button class="btn" style="font-size:11px;padding:6px 14px;background:rgba(96,165,250,.12);border-color:rgba(96,165,250,.2);color:#60a5fa" onclick="odConnectBoth()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+      Conectar ambos
+    </button>
+    <button class="btn btn-ghost" style="font-size:11px;padding:6px 14px" onclick="odDisconnectBoth()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      Desconectar
+    </button>
+    <div class="od-toolbar-spacer"></div>
+    <!-- Sync toggle -->
+    <label class="od-sync-toggle" title="Sincronizar escenas automáticamente entre ambas instancias">
+      <input type="checkbox" id="odSyncToggle" onchange="odToggleSync(this.checked)">
+      <span class="od-toggle-track"></span>
+      <span id="odSyncLabel">Sync escenas</span>
+    </label>
+  </div>
+
+  <!-- Main layout: two instance panels -->
+  <div class="od-layout" style="margin-bottom:16px">
+
+    <!-- ─── HORIZONTAL ─── -->
+    <div class="od-instance" id="od-card-h">
+      <div class="od-inst-header">
+        <div class="od-inst-icon h">📺</div>
+        <div class="od-inst-info">
+          <div class="od-inst-name">OBS Horizontal</div>
+          <div class="od-inst-addr" id="od-addr-h">ws://127.0.0.1:4455</div>
+        </div>
+        <div class="od-inst-status" id="od-status-h">
+          <span class="od-inst-dot"></span>
+          <span id="od-status-label-h">Desconectado</span>
+        </div>
+      </div>
+
+      <div class="od-inst-body">
+        <!-- Current scene -->
+        <div class="od-scene-row" id="od-scene-row-h">
+          <span class="od-scene-label">Escena</span>
+          <span class="od-scene-empty" id="od-scene-h">Sin conexión</span>
+          <span class="od-sync-badge hidden" id="od-syncbadge-h">SYNC</span>
+        </div>
+
+        <!-- Scene switcher -->
+        <div>
+          <span class="od-section-label">Cambiar escena</span>
+          <div class="od-scenes-grid" id="od-scenes-h">
+            <div class="od-empty" style="width:100%">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></svg>
+              Conectate para ver las escenas
+            </div>
+          </div>
+        </div>
+
+        <!-- Stream/Record status -->
+        <div class="od-media-row" id="od-media-h">
+          <button class="od-media-chip" id="od-stream-h" onclick="odToggleStream('h')" disabled>
+            <span class="dot"></span> Stream
+          </button>
+          <button class="od-media-chip" id="od-record-h" onclick="odToggleRecord('h')" disabled>
+            <span class="dot"></span> Grabar
+          </button>
+        </div>
+
+        <!-- Actions -->
+        <div class="od-btn-row">
+          <button class="btn" style="font-size:11px;padding:5px 12px;flex:1" onclick="odLaunch('h')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Lanzar OBS
+          </button>
+          <button class="btn" style="font-size:11px;padding:5px 12px;flex:1;background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.2);color:#60a5fa" onclick="odConnect('h')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            Conectar
+          </button>
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="odDisconnect('h')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- Reconnect info -->
+        <div class="od-reconnect hidden" id="od-reconnect-h">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.44"/></svg>
+          Reconectando… intento <span id="od-reconnect-num-h">0</span>
+        </div>
+      </div>
+
+      <!-- Settings toggle -->
+      <div class="od-settings-toggle" id="od-stoggle-h" onclick="odToggleSettings('h')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        Ajustes de conexión
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="od-settings-body" id="od-sbody-h">
+        <div class="g2" style="margin-bottom:10px">
+          <div class="ig">
+            <label>Dirección WebSocket</label>
+            <input id="od-h-addr" type="text" placeholder="ws://127.0.0.1:4455" oninput="odMarkDirty('h')" />
+          </div>
+          <div class="ig">
+            <label>Contraseña (opcional)</label>
+            <input id="od-h-pass" type="password" placeholder="sin contraseña" oninput="odMarkDirty('h')" />
+          </div>
+        </div>
+        <div class="g2" style="margin-bottom:10px">
+          <div class="ig">
+            <label>Perfil de OBS</label>
+            <input id="od-h-profile" type="text" placeholder="Horizontal" oninput="odMarkDirty('h')" />
+          </div>
+          <div class="ig">
+            <label>Colección de escenas</label>
+            <input id="od-h-collection" type="text" placeholder="Horizontal" oninput="odMarkDirty('h')" />
+          </div>
+        </div>
+        <div class="ig" style="margin-bottom:12px">
+          <label>Ruta al ejecutable de OBS (opcional)</label>
+          <input id="od-h-exe" type="text" placeholder="C:\Program Files\obs-studio\bin\64bit\obs64.exe" oninput="odMarkDirty('h')" />
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-orange" style="font-size:11px;padding:5px 14px" onclick="odSaveConfig('h')">Guardar</button>
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 14px" onclick="odLoadConfig()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── VERTICAL ─── -->
+    <div class="od-instance" id="od-card-v">
+      <div class="od-inst-header">
+        <div class="od-inst-icon v">📱</div>
+        <div class="od-inst-info">
+          <div class="od-inst-name">OBS Vertical</div>
+          <div class="od-inst-addr" id="od-addr-v">ws://127.0.0.1:4456</div>
+        </div>
+        <div class="od-inst-status" id="od-status-v">
+          <span class="od-inst-dot"></span>
+          <span id="od-status-label-v">Desconectado</span>
+        </div>
+      </div>
+
+      <div class="od-inst-body">
+        <div class="od-scene-row" id="od-scene-row-v">
+          <span class="od-scene-label">Escena</span>
+          <span class="od-scene-empty" id="od-scene-v">Sin conexión</span>
+          <span class="od-sync-badge hidden" id="od-syncbadge-v">SYNC</span>
+        </div>
+
+        <div>
+          <span class="od-section-label">Cambiar escena</span>
+          <div class="od-scenes-grid" id="od-scenes-v">
+            <div class="od-empty" style="width:100%">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></svg>
+              Conectate para ver las escenas
+            </div>
+          </div>
+        </div>
+
+        <div class="od-media-row" id="od-media-v">
+          <button class="od-media-chip" id="od-stream-v" onclick="odToggleStream('v')" disabled>
+            <span class="dot"></span> Stream
+          </button>
+          <button class="od-media-chip" id="od-record-v" onclick="odToggleRecord('v')" disabled>
+            <span class="dot"></span> Grabar
+          </button>
+        </div>
+
+        <div class="od-btn-row">
+          <button class="btn" style="font-size:11px;padding:5px 12px;flex:1" onclick="odLaunch('v')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Lanzar OBS
+          </button>
+          <button class="btn" style="font-size:11px;padding:5px 12px;flex:1;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.2);color:#a78bfa" onclick="odConnect('v')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            Conectar
+          </button>
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="odDisconnect('v')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div class="od-reconnect hidden" id="od-reconnect-v">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.44"/></svg>
+          Reconectando… intento <span id="od-reconnect-num-v">0</span>
+        </div>
+      </div>
+
+      <div class="od-settings-toggle" id="od-stoggle-v" onclick="odToggleSettings('v')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        Ajustes de conexión
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="od-settings-body" id="od-sbody-v">
+        <div class="g2" style="margin-bottom:10px">
+          <div class="ig">
+            <label>Dirección WebSocket</label>
+            <input id="od-v-addr" type="text" placeholder="ws://127.0.0.1:4456" oninput="odMarkDirty('v')" />
+          </div>
+          <div class="ig">
+            <label>Contraseña (opcional)</label>
+            <input id="od-v-pass" type="password" placeholder="sin contraseña" oninput="odMarkDirty('v')" />
+          </div>
+        </div>
+        <div class="g2" style="margin-bottom:10px">
+          <div class="ig">
+            <label>Perfil de OBS</label>
+            <input id="od-v-profile" type="text" placeholder="Vertical" oninput="odMarkDirty('v')" />
+          </div>
+          <div class="ig">
+            <label>Colección de escenas</label>
+            <input id="od-v-collection" type="text" placeholder="Vertical" oninput="odMarkDirty('v')" />
+          </div>
+        </div>
+        <div class="ig" style="margin-bottom:12px">
+          <label>Ruta al ejecutable de OBS (opcional)</label>
+          <input id="od-v-exe" type="text" placeholder="C:\Program Files\obs-studio\bin\64bit\obs64.exe" oninput="odMarkDirty('v')" />
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-orange" style="font-size:11px;padding:5px 14px" onclick="odSaveConfig('v')">Guardar</button>
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 14px" onclick="odLoadConfig()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scene mapping -->
+  <div class="od-sync-panel">
+    <div class="od-sync-header">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+      <span class="od-sync-title">Mapeo de Escenas</span>
+      <span style="font-size:11px;color:var(--text3)">Cuando cambiás escena en uno, el otro cambia automáticamente</span>
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-left:auto" onclick="odAutoMap()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.44"/></svg>
+        Auto-mapear
+      </button>
+      <button class="btn btn-orange" style="font-size:11px;padding:4px 10px" onclick="odSaveMap()">Guardar mapa</button>
+    </div>
+
+    <!-- Existing mappings -->
+    <div id="od-map-empty" class="od-empty" style="display:none">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+      Sin mapeos todavía. Conectate a ambas instancias y usá Auto-mapear, o agregá uno manual.
+    </div>
+
+    <div id="od-map-wrap">
+      <table class="od-map-table" id="od-map-table">
+        <thead>
+          <tr>
+            <th style="width:42%">📺 OBS Horizontal</th>
+            <th style="width:8%;text-align:center">→</th>
+            <th style="width:42%">📱 OBS Vertical</th>
+            <th style="width:8%"></th>
+          </tr>
+        </thead>
+        <tbody id="od-map-body">
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Add new mapping -->
+    <div class="od-map-add">
+      <select id="od-map-sel-h">
+        <option value="">— Escena Horizontal —</option>
+      </select>
+      <div class="od-map-arrow">→</div>
+      <select id="od-map-sel-v">
+        <option value="">— Escena Vertical —</option>
+      </select>
+      <button class="btn btn-orange" style="font-size:11px;padding:6px 14px;flex-shrink:0" onclick="odAddMapEntry()">
+        + Agregar
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Remote Control ─────────────────────────────────────── -->
+  <div class="od-remote-panel">
+    <div class="od-remote-header">
+      <div class="od-remote-icon">🕹️</div>
+      <div>
+        <div class="od-remote-title">Control Remoto — Multi-PC</div>
+        <div class="od-remote-subtitle">Cambiá escenas desde la PC Gaming usando atajos de teclado globales vía Supabase Realtime</div>
+      </div>
+      <div class="od-remote-status" id="odr-status">
+        <span class="dot"></span>
+        <span id="odr-status-label">Inactivo</span>
+      </div>
+    </div>
+
+    <div class="od-remote-body">
+
+      <!-- Mode + Room ID + Connect -->
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+        <div>
+          <span class="od-section-label" style="margin-bottom:6px">Modo de esta PC</span>
+          <div class="od-mode-tabs">
+            <button class="od-mode-tab on streaming" id="odr-mode-streaming" onclick="odrSetMode('streaming')">
+              📺 PC Streaming
+            </button>
+            <button class="od-mode-tab gaming" id="odr-mode-gaming" onclick="odrSetMode('gaming')">
+              🎮 PC Gaming
+            </button>
+          </div>
+        </div>
+
+        <div class="od-room-row" style="flex:1;min-width:220px">
+          <div class="ig" style="flex:1;margin:0">
+            <label>Room ID <span style="color:var(--text3);font-weight:400">(igual en ambas PCs)</span></label>
+            <input id="odr-room-id" type="text" placeholder="tu_canal_de_kick" oninput="odrMarkDirty()" />
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-shrink:0;padding-bottom:1px">
+          <button class="btn btn-orange" id="odr-btn-start" style="font-size:11px;padding:7px 16px" onclick="odrStart()">
+            Activar
+          </button>
+          <button class="btn btn-ghost" id="odr-btn-stop" style="font-size:11px;padding:7px 14px;display:none" onclick="odrStop()">
+            Desactivar
+          </button>
+          <button class="btn btn-ghost" id="odr-btn-save-cfg" style="font-size:11px;padding:7px 12px;display:none" onclick="odrSaveRemoteConfig()">
+            Guardar
+          </button>
+        </div>
+      </div>
+
+      <!-- Reconnect banner -->
+      <div class="od-remote-reconnect hidden" id="odr-reconnect">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.44"/></svg>
+        Reconectando… intento <span id="odr-reconnect-num">0</span> — el canal volverá automáticamente
+      </div>
+
+      <!-- ── Gaming PC: remote scene grid ── -->
+      <div id="odr-gaming-section" style="display:none">
+        <div class="od-remote-scenes-wrap">
+          <div class="od-remote-scenes-header">
+            <span class="od-remote-scenes-title">🎬 Escenas disponibles</span>
+            <span class="od-remote-last-hb hidden" id="odr-hb-badge">● En vivo</span>
+            <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="odrRequestState()">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.44"/></svg>
+              Pedir estado
+            </button>
+          </div>
+          <div id="odr-scenes-grid" class="od-remote-scenes-grid">
+            <span class="od-remote-scene-empty">Activá el control remoto y pedí el estado para ver las escenas de la PC Streaming</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Hotkeys ── -->
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span class="od-section-label" style="margin:0;flex:1">Atajos de teclado globales</span>
+          <label class="od-sync-toggle" title="Activar/desactivar todos los atajos sin borrarlos">
+            <input type="checkbox" id="odr-hk-enabled" onchange="odrToggleHotkeys(this.checked)" checked>
+            <span class="od-toggle-track"></span>
+            <span style="font-size:11px;color:var(--text2)">Activados</span>
+          </label>
+          <button class="btn btn-orange" style="font-size:11px;padding:5px 12px" onclick="odrSaveHotkeys()">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13"/><polyline points="7 3 7 8 15 8"/></svg>
+            Guardar y aplicar
+          </button>
+        </div>
+
+        <div id="odr-hk-errors" class="hidden" style="font-size:11px;color:var(--red);padding:6px 10px;background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.15);border-radius:6px;margin-bottom:8px"></div>
+
+        <table class="od-hk-table" id="odr-hk-table">
+          <thead>
+            <tr>
+              <th style="width:35%">Escena</th>
+              <th style="width:18%">OBS destino</th>
+              <th style="width:30%">Tecla <span style="color:var(--text3);font-weight:400;font-size:9px">(click para grabar)</span></th>
+              <th style="width:9%;text-align:center">Estado</th>
+              <th style="width:8%"></th>
+            </tr>
+          </thead>
+          <tbody id="odr-hk-body">
+          </tbody>
+        </table>
+
+        <!-- Add row -->
+        <div class="od-hk-add" id="odr-hk-add">
+          <div class="ig" style="flex:2;min-width:120px">
+            <label>Escena</label>
+            <select id="odr-hk-add-scene" style="width:100%">
+              <option value="">— Seleccioná una escena —</option>
+            </select>
+          </div>
+          <div class="ig" style="flex:1;min-width:100px">
+            <label>OBS destino</label>
+            <select id="odr-hk-add-side" style="width:100%">
+              <option value="both">Ambos</option>
+              <option value="h">Solo Horizontal</option>
+              <option value="v">Solo Vertical</option>
+            </select>
+          </div>
+          <div class="ig" style="flex:2;min-width:120px">
+            <label>Tecla <span style="color:var(--text3);font-weight:400">(click → presioná combo)</span></label>
+            <input id="odr-hk-add-key" class="od-key-input" type="text" readonly placeholder="Click aquí y presioná…" />
+          </div>
+          <button class="btn btn-orange" style="font-size:11px;padding:7px 14px;flex-shrink:0;margin-bottom:1px" onclick="odrAddHotkey()">
+            + Agregar
+          </button>
+        </div>
+
+        <p style="font-size:10px;color:var(--text3);margin-top:10px;line-height:1.6">
+          💡 Los atajos son <b>globales</b> — funcionan aunque la app no esté en primer plano.
+          Necesitan al menos un modificador (<code>Ctrl</code>, <code>Alt</code>, <code>Shift</code> o <code>Win</code>).
+          Recomendado: <code>Alt+F1</code>, <code>Alt+F2</code>, etc. para no interferir con el juego.
+          En <b>PC Gaming</b>: envían el comando por Supabase. En <b>PC Streaming</b>: aplican directamente a OBS.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+</div>

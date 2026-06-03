@@ -1,0 +1,456 @@
+<div id="view-audiolink" class="view">
+
+  <!-- ── Help Banner ──────────────────────────────────────────── -->
+  <div class="al-help-banner">
+    <div class="al-help-icon">📡</div>
+    <div class="al-help-content">
+      <strong>Audio Link — Música separada entre PCs por red local</strong>
+      <p>
+        Envía la música (Spotify, YouTube Music, navegador) desde la <b>PC Streaming</b> a la <b>PC Gaming</b>
+        por red local usando VBAN. La música <b>nunca pasa por la capturadora HDMI</b>, así podés
+        incluirla o excluirla por plataforma en OBS.
+      </p>
+
+      <!-- ── Flujo ── -->
+      <details>
+        <summary>📋 ¿Cómo funciona? — Flujo completo</summary>
+        <div class="al-help-flow">
+          <div class="al-flow-step">
+            <span class="al-flow-num">1</span>
+            <div>
+              <strong>PC Streaming reproduce la música</strong><br>
+              Spotify, YouTube Music o el navegador suenan en esta PC. Voicemeeter captura ese audio
+              y lo separa del resto.
+            </div>
+          </div>
+          <div class="al-flow-step">
+            <span class="al-flow-num">2</span>
+            <div>
+              <strong>VBAN envía el audio por red local</strong><br>
+              Voicemeeter manda el audio de música como un stream VBAN (protocolo UDP) directo a la IP
+              de tu PC Gaming. No usa internet, solo tu red local (WiFi o cable).
+            </div>
+          </div>
+          <div class="al-flow-step">
+            <span class="al-flow-num">3</span>
+            <div>
+              <strong>PC Gaming recibe y reproduce</strong><br>
+              La PC Gaming recibe el stream VBAN y lo manda a tus auriculares. Como la música nunca pasa
+              por Windows en la PC Gaming, <b>la capturadora HDMI no la captura</b>.
+            </div>
+          </div>
+          <div class="al-flow-step">
+            <span class="al-flow-num">4</span>
+            <div>
+              <strong>OBS controla la música por plataforma</strong><br>
+              En la PC Streaming, OBS tiene la música como fuente local separada. Podés asignarla a
+              diferentes pistas de audio: Kick con música, YouTube sin música, etc.
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ── Requisitos ── -->
+      <details>
+        <summary>✅ Requisitos previos</summary>
+        <ul class="al-req-list">
+          <li>🔧 <b>Voicemeeter Banana</b> (gratis) instalado <b>al menos en la PC que emite</b> (PC Streaming).
+              Descargalo de <span class="al-link" onclick="api.openExternal('https://vb-audio.com/Voicemeeter/banana.htm')">vb-audio.com/Voicemeeter/banana.htm</span></li>
+          <li>🌐 Ambas PCs conectadas a la <b>misma red local</b> (mismo router, por cable o WiFi)</li>
+          <li>🎵 Spotify / YouTube Music configurados para usar el <b>Virtual Input de Voicemeeter</b> como salida de audio (ver guía abajo)</li>
+          <li>📡 En la PC Gaming: <b>Voicemeeter Banana</b> (recomendado) o <b>VBAN Receptor</b> (alternativa liviana, también gratis en
+              <span class="al-link" onclick="api.openExternal('https://vb-audio.com/Voicemeeter/banana.htm')">vb-audio.com</span>)</li>
+          <li>📺 <b>OBS</b> con WebSocket habilitado (OBS 28+ lo trae de serie, menú Herramientas → Configuración del servidor WebSocket)</li>
+        </ul>
+      </details>
+
+      <!-- ── Cómo conseguir la IP ── -->
+      <details>
+        <summary>🌐 ¿Cómo averiguo la IP de cada PC?</summary>
+        <div class="al-guide-section">
+          <p>Necesitás la IP <b>local</b> (empieza con 192.168.x.x o 10.x.x.x). No es la IP pública.</p>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">1</span>
+              Abrí <b>CMD</b> o <b>PowerShell</b> en la PC (Windows + R → escribí <code>cmd</code> → Enter)
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">2</span>
+              Escribí <code>ipconfig</code> y presioná Enter
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">3</span>
+              Buscá <b>"Dirección IPv4"</b> en la sección de tu adaptador de red (Ethernet o WiFi). Será algo como <code>192.168.1.50</code>
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">4</span>
+              Hacé lo mismo en la otra PC. Usá las dos IPs en esta configuración.
+            </div>
+          </div>
+          <p class="al-guide-tip">💡 <b>Tip:</b> Si tu router permite asignar IPs fijas (DHCP reservation), hacelo para que las IPs no cambien al reiniciar.</p>
+        </div>
+      </details>
+
+      <!-- ── Qué son los Slots VBAN ── -->
+      <details>
+        <summary>🔢 ¿Qué es el "Slot Index" de VBAN?</summary>
+        <div class="al-guide-section">
+          <p>
+            Voicemeeter tiene <b>8 slots</b> (0-7) para streams VBAN de salida (outstream) y 8 para entrada (instream).
+            Cada slot es como un "canal" independiente que puede enviar o recibir audio.
+          </p>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">→</span>
+              Si nunca configuraste VBAN, usá el <b>Slot 0</b> (está libre por defecto)
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">→</span>
+              Si ya tenés otros streams VBAN configurados en Voicemeeter, elegí un slot que <b>no esté en uso</b>
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">→</span>
+              El mismo número de slot debe estar configurado en <b>ambas PCs</b>
+            </div>
+          </div>
+          <p class="al-guide-tip">💡 Podés verificar los slots en Voicemeeter: menú <b>VBAN</b> (botón arriba a la derecha) → ahí ves los 8 outstreams y 8 instreams.</p>
+        </div>
+      </details>
+
+      <!-- ── Configurar Voicemeeter ── -->
+      <details>
+        <summary>🔧 ¿Cómo configuro Voicemeeter Banana? — Guía paso a paso</summary>
+        <div class="al-guide-section">
+          <h4>En la PC Streaming (Emisor):</h4>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">1</span>
+              <b>Instalá Voicemeeter Banana</b> y reiniciá la PC
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">2</span>
+              <b>Configurá Spotify / YouTube Music para usar Voicemeeter:</b><br>
+              Windows → Configuración → Sistema → Sonido → <b>Volumen del mezclador</b> (abajo del todo)<br>
+              Buscá Spotify / Chrome / Firefox → cambiá su dispositivo de salida a <b>"VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)"</b>
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">3</span>
+              <b>En Voicemeeter Banana:</b><br>
+              El audio de Spotify entra por <b>"VIRTUAL INPUT"</b> (la columna del medio en Voicemeeter).<br>
+              Asegurate de que este input tenga activado el bus <b>B1</b> (botón B1 encendido debajo del fader).
+              Podés apagar <b>A1</b> si no querés que suene por los parlantes de esta PC.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">4</span>
+              <b>Activá VBAN:</b><br>
+              Hacé click en <b>"VBAN"</b> (arriba a la derecha en Voicemeeter) → en la primera fila de <b>"Outgoing Streams"</b>:<br>
+              • <b>ON</b>: activar ✓<br>
+              • <b>Name</b>: MUSIC_STREAM (o el nombre que pongas acá)<br>
+              • <b>IP</b>: la IP de tu PC Gaming<br>
+              • <b>Port</b>: 6980<br>
+              • <b>Sr</b>: 48000<br>
+              • <b>Ch</b>: 2<br>
+              • <b>Source</b>: BUS B1 (esto es lo que envía — el bus donde está la música)
+            </div>
+          </div>
+
+          <h4 style="margin-top:16px">En la PC Gaming (Receptor):</h4>
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">A</span>
+              <b>Opción 1 — Con Voicemeeter Banana (recomendada):</b><br>
+              Instalá Voicemeeter Banana → click en <b>VBAN</b> → en <b>"Incoming Streams"</b>:<br>
+              • <b>ON</b>: activar ✓<br>
+              • <b>Name</b>: MUSIC_STREAM (mismo nombre)<br>
+              • <b>IP</b>: la IP de tu PC Streaming<br>
+              • <b>Port</b>: 6980<br>
+              • <b>Destination</b>: Virtual Input (así sale por tus auriculares)
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">B</span>
+              <b>Opción 2 — Con VBAN Receptor (más simple):</b><br>
+              Descargá VBAN Receptor de vb-audio.com → configurá el stream name, IP de origen y dispositivo de salida.
+              Es una app liviana que solo recibe el stream.
+            </div>
+          </div>
+          <p class="al-guide-tip">💡 <b>Todo esto se configura una sola vez.</b> Después, esta app se encarga de activar/desactivar el stream.</p>
+        </div>
+      </details>
+
+      <!-- ── Configurar OBS ── -->
+      <details>
+        <summary>📺 ¿Cómo configuro OBS para separar la música por plataforma?</summary>
+        <div class="al-guide-section">
+          <div class="al-guide-steps">
+            <div class="al-guide-step">
+              <span class="al-guide-num">1</span>
+              <b>Habilitá WebSocket en OBS:</b><br>
+              OBS → Herramientas → <b>Configuración del servidor WebSocket</b> → Activar → Anotar el puerto (por defecto 4455)
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">2</span>
+              <b>Agregá la fuente de música:</b><br>
+              En OBS, agregá una fuente de <b>"Captura de audio de aplicación"</b> o <b>"Captura de entrada de audio"</b> apuntando
+              al dispositivo donde suena Spotify (el Virtual Input de Voicemeeter). Nombrala <b>"Music VBAN"</b> (o el nombre que pongas acá).
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">3</span>
+              <b>Configurá pistas de audio:</b><br>
+              Click derecho en la fuente "Music VBAN" → <b>Propiedades avanzadas de audio</b> → asignala a las pistas que quieras.
+              Ejemplo: Pista 1 para Kick, Pista 2 para YouTube (sin música), Pista 3 para TikTok.
+            </div>
+            <div class="al-guide-step">
+              <span class="al-guide-num">4</span>
+              <b>En cada salida de streaming:</b><br>
+              OBS → Configuración → Emisión → elegí qué pista de audio usa cada plataforma.
+            </div>
+          </div>
+          <p class="al-guide-tip">💡 Con esta app podés mutear/desmutear la fuente automáticamente según la plataforma, sin tocar OBS manualmente.</p>
+        </div>
+      </details>
+
+      <!-- ── Persistencia ── -->
+      <details>
+        <summary>💾 ¿Se guarda la configuración?</summary>
+        <div class="al-guide-section">
+          <p>
+            <b>Sí.</b> Toda la configuración se guarda en un archivo local en cada PC.
+            Al abrir la app, todo se restaura automáticamente: IPs, nombre del stream, reglas por plataforma, etc.
+          </p>
+          <p>
+            Si tenés la app instalada en ambas PCs, cada una guarda su propia configuración.
+            Solo tenés que asegurarte de que el <b>nombre del stream</b> y el <b>puerto</b> sean iguales en las dos.
+          </p>
+        </div>
+      </details>
+
+    </div>
+    <button class="al-help-close" onclick="this.closest('.al-help-banner').classList.add('hidden')" title="Cerrar">✕</button>
+  </div>
+
+  <!-- ── Status Card ──────────────────────────────────────────── -->
+  <div class="al-grid">
+
+    <div class="al-card al-card-status">
+      <div class="al-card-head">
+        <span class="al-card-title">Estado de Conexión</span>
+        <button class="btn btn-ghost al-btn-sm" onclick="alReconnect()" title="Reconectar todo">↻ Reconectar</button>
+      </div>
+      <div class="al-status-grid">
+        <div class="al-status-item">
+          <span class="al-status-label">Voicemeeter</span>
+          <div class="al-status-val"><div class="cdot" id="alVmDot"></div><span id="alVmTxt">—</span></div>
+        </div>
+        <div class="al-status-item">
+          <span class="al-status-label">VBAN Stream</span>
+          <div class="al-status-val"><div class="cdot" id="alVbanDot"></div><span id="alVbanTxt">—</span></div>
+        </div>
+        <div class="al-status-item">
+          <span class="al-status-label">OBS</span>
+          <div class="al-status-val"><div class="cdot" id="alObsDot"></div><span id="alObsTxt">—</span></div>
+        </div>
+        <div class="al-status-item">
+          <span class="al-status-label">Paquetes recibidos</span>
+          <span id="alPackets" class="al-stat-num">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Config Card ────────────────────────────────────────── -->
+    <div class="al-card al-card-config">
+      <div class="al-card-head">
+        <span class="al-card-title">Configuración VBAN</span>
+      </div>
+
+      <div class="al-field">
+        <label>Modo de esta PC</label>
+        <select id="alMode" onchange="alModeChanged()">
+          <option value="emitter">📡 Emisor (PC Streaming — envía música)</option>
+          <option value="receiver">🎧 Receptor (PC Gaming — recibe música)</option>
+        </select>
+        <span class="al-field-hint" id="alModeHint">El emisor envía la música por red. El receptor la escucha en auriculares.</span>
+      </div>
+
+      <div class="al-field-row">
+        <div class="al-field">
+          <label>Nombre del Stream</label>
+          <input type="text" id="alStreamName" value="MUSIC_STREAM" spellcheck="false" placeholder="MUSIC_STREAM">
+          <span class="al-field-hint">⚠️ Este nombre tiene que ser <b>idéntico</b> en las dos PCs. Si no coincide, no se conectan.</span>
+        </div>
+        <div class="al-field">
+          <label>Puerto</label>
+          <input type="number" id="alPort" value="6980" min="1024" max="65535">
+          <span class="al-field-hint">Puerto UDP. Dejalo en 6980 salvo que otro programa lo use.</span>
+        </div>
+      </div>
+
+      <div class="al-field-row">
+        <div class="al-field" id="alTargetIpGroup">
+          <label id="alIpLabel">IP destino (PC Gaming)</label>
+          <input type="text" id="alTargetIp" value="192.168.1.100" spellcheck="false" placeholder="192.168.1.100">
+          <span class="al-field-hint" id="alIpHint">IP de la PC que va a recibir la música</span>
+        </div>
+        <div class="al-field">
+          <label>Sample Rate</label>
+          <select id="alSampleRate">
+            <option value="44100">44100 Hz</option>
+            <option value="48000" selected>48000 Hz (recomendado)</option>
+            <option value="96000">96000 Hz</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Local IP display -->
+      <div class="al-local-ip-bar" id="alLocalIpBar">
+        <span class="al-local-ip-label">IP de esta PC:</span>
+        <span class="al-local-ip-value" id="alLocalIpValue">detectando...</span>
+        <button class="btn btn-ghost al-btn-sm" onclick="alDetectIp()" title="Detectar IP de esta PC">🔍 Detectar</button>
+        <span class="al-field-hint">Esta es la IP que tenés que poner en la <b>otra</b> PC.</span>
+      </div>
+
+      <div class="al-field" id="alVbanIndexGroup">
+        <label>VBAN Slot Index</label>
+        <select id="alVbanIndex">
+          <option value="0">Slot 0 (recomendado si no tenés otros VBAN)</option>
+          <option value="1">Slot 1</option>
+          <option value="2">Slot 2</option>
+          <option value="3">Slot 3</option>
+          <option value="4">Slot 4</option>
+          <option value="5">Slot 5</option>
+          <option value="6">Slot 6</option>
+          <option value="7">Slot 7</option>
+        </select>
+        <span class="al-field-hint">Cada slot es un "canal" de VBAN en Voicemeeter. Usá el mismo número en ambas PCs. Si nunca tocaste VBAN, dejá el 0.</span>
+      </div>
+
+      <button class="btn btn-orange al-btn-save" onclick="alSaveConfig()">Guardar configuración</button>
+      <div class="al-alert hidden" id="alCfgAlert"></div>
+    </div>
+  </div>
+
+  <!-- ── Control Card ─────────────────────────────────────────── -->
+  <div class="al-grid">
+    <div class="al-card al-card-controls">
+      <div class="al-card-head">
+        <span class="al-card-title">Control de Audio</span>
+      </div>
+
+      <div class="al-toggle-row">
+        <div class="al-toggle-item">
+          <label class="al-switch">
+            <input type="checkbox" id="alSendToggle" onchange="alToggleSend()">
+            <span class="al-slider"></span>
+          </label>
+          <div>
+            <span class="al-toggle-label" id="alSendLabel">Enviar música</span>
+            <span class="al-toggle-hint">Activa/desactiva el stream VBAN</span>
+          </div>
+        </div>
+        <div class="al-toggle-item">
+          <label class="al-switch">
+            <input type="checkbox" id="alMonitorToggle" onchange="alToggleMonitor()">
+            <span class="al-slider"></span>
+          </label>
+          <div>
+            <span class="al-toggle-label">Monitorear</span>
+            <span class="al-toggle-hint">Escuchar estadísticas del stream</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Level Meter -->
+      <div class="al-meter-container">
+        <span class="al-meter-label">Nivel de audio</span>
+        <div class="al-meter">
+          <div class="al-meter-bar" id="alMeterL" style="width:0%"></div>
+        </div>
+        <div class="al-meter">
+          <div class="al-meter-bar" id="alMeterR" style="width:0%"></div>
+        </div>
+        <div class="al-meter-labels"><span>L</span><span>R</span></div>
+      </div>
+
+      <!-- Voicemeeter Connect -->
+      <div class="al-vm-section">
+        <button class="btn btn-ghost al-btn-sm" id="alVmBtn" onclick="alToggleVm()">Conectar Voicemeeter</button>
+        <button class="btn btn-ghost al-btn-sm" onclick="alApplyProfile()">Aplicar perfil</button>
+      </div>
+    </div>
+
+    <!-- ── OBS Card ───────────────────────────────────────────── -->
+    <div class="al-card al-card-obs">
+      <div class="al-card-head">
+        <span class="al-card-title">Integración OBS</span>
+        <label class="al-switch al-switch-sm">
+          <input type="checkbox" id="alObsEnabled" onchange="alToggleObs()">
+          <span class="al-slider"></span>
+        </label>
+      </div>
+
+      <div id="alObsBody">
+        <div class="al-field-row">
+          <div class="al-field">
+            <label>Dirección WebSocket</label>
+            <input type="text" id="alObsAddress" value="ws://127.0.0.1:4455" spellcheck="false">
+          </div>
+          <div class="al-field">
+            <label>Contraseña</label>
+            <input type="password" id="alObsPassword" placeholder="(vacía si no tiene)">
+          </div>
+        </div>
+        <div class="al-field">
+          <label>Nombre de la fuente de música en OBS</label>
+          <input type="text" id="alObsSource" value="Music VBAN" spellcheck="false">
+          <span class="al-field-hint">Creá una fuente de audio en OBS con este nombre exacto</span>
+        </div>
+        <div class="al-obs-actions">
+          <button class="btn btn-ghost al-btn-sm" id="alObsConnBtn" onclick="alObsConnect()">Conectar OBS</button>
+          <button class="btn btn-ghost al-btn-sm" onclick="alObsListSources()">Ver fuentes</button>
+        </div>
+        <div class="al-obs-sources hidden" id="alObsSourcesList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Platforms Card ───────────────────────────────────────── -->
+  <div class="al-card al-card-platforms">
+    <div class="al-card-head">
+      <span class="al-card-title">Música por Plataforma</span>
+    </div>
+    <p class="al-card-desc">
+      Elegí en qué plataformas se escucha la música. Si OBS está conectado, se muteará/desmuteará
+      la fuente automáticamente al cambiar.
+    </p>
+    <div class="al-platforms-grid">
+      <label class="al-platform-item">
+        <input type="checkbox" id="alPlatKick" checked onchange="alPlatformChanged('kick', this.checked)">
+        <div class="al-platform-box al-plat-kick">
+          <span class="al-plat-icon">🟢</span>
+          <span class="al-plat-name">Kick</span>
+          <span class="al-plat-status" id="alPlatKickStatus">Incluida</span>
+        </div>
+      </label>
+      <label class="al-platform-item">
+        <input type="checkbox" id="alPlatTiktok" checked onchange="alPlatformChanged('tiktok', this.checked)">
+        <div class="al-platform-box al-plat-tiktok">
+          <span class="al-plat-icon">🎵</span>
+          <span class="al-plat-name">TikTok</span>
+          <span class="al-plat-status" id="alPlatTiktokStatus">Incluida</span>
+        </div>
+      </label>
+      <label class="al-platform-item">
+        <input type="checkbox" id="alPlatYoutube" checked onchange="alPlatformChanged('youtube', this.checked)">
+        <div class="al-platform-box al-plat-youtube">
+          <span class="al-plat-icon">🔴</span>
+          <span class="al-plat-name">YouTube</span>
+          <span class="al-plat-status" id="alPlatYoutubeStatus">Incluida</span>
+        </div>
+      </label>
+    </div>
+    <span class="al-field-hint" style="margin-top:8px;display:block">
+      💡 Si excluís una plataforma, la fuente de música se mutea en la pista de OBS correspondiente.
+      Configurá las pistas de audio en OBS para que cada plataforma use una pista distinta.
+    </span>
+  </div>
+
+</div>

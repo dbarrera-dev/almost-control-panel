@@ -3,112 +3,388 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap');
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
     html, body {
-      width: 400px; height: 260px;
+      width: 480px; height: 320px;
       overflow: hidden;
-      background: #0e0e0e;
+      background: #08080c;
       color: #fff;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+
+    /* ── Background layers ── */
+    .bg {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 50% 45%, rgba(217, 107, 0, 0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 80% 60% at 20% 80%, rgba(217, 107, 0, 0.03) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 60% at 80% 20%, rgba(240, 160, 64, 0.02) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .noise {
+      position: absolute; inset: 0;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 128px;
+      pointer-events: none;
+    }
+
+    /* ── Floating particles ── */
+    .particles {
+      position: absolute; inset: 0;
+      pointer-events: none; overflow: hidden;
+    }
+    .particle {
+      position: absolute;
+      width: 2px; height: 2px;
+      background: rgba(217, 107, 0, 0.3);
+      border-radius: 50%;
+      animation: float linear infinite;
+    }
+    .particle:nth-child(1)  { left: 12%; animation-duration: 12s; animation-delay: 0s;    top: 100%; }
+    .particle:nth-child(2)  { left: 28%; animation-duration: 15s; animation-delay: -3s;   top: 100%; width: 1.5px; height: 1.5px; }
+    .particle:nth-child(3)  { left: 45%; animation-duration: 10s; animation-delay: -6s;   top: 100%; }
+    .particle:nth-child(4)  { left: 62%; animation-duration: 14s; animation-delay: -2s;   top: 100%; width: 1px; height: 1px; opacity: 0.5; }
+    .particle:nth-child(5)  { left: 78%; animation-duration: 11s; animation-delay: -8s;   top: 100%; }
+    .particle:nth-child(6)  { left: 90%; animation-duration: 13s; animation-delay: -4s;   top: 100%; width: 1.5px; height: 1.5px; }
+    .particle:nth-child(7)  { left: 35%; animation-duration: 16s; animation-delay: -10s;  top: 100%; width: 1px; height: 1px; }
+    .particle:nth-child(8)  { left: 55%; animation-duration: 9s;  animation-delay: -1s;   top: 100%; opacity: 0.4; }
+
+    @keyframes float {
+      from { transform: translateY(0) translateX(0); opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 1; }
+      to   { transform: translateY(-340px) translateX(20px); opacity: 0; }
+    }
+
+    /* ── Layout ── */
+    .main {
+      position: relative; z-index: 1;
+      width: 100%; height: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 14px;
-      user-select: none;
-      -webkit-app-region: drag;
+      gap: 0;
     }
+
+    /* ── Icon ── */
+    .icon-wrap {
+      position: relative;
+      margin-bottom: 14px;
+      opacity: 0;
+      transform: scale(0.6);
+      animation: iconIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+    }
+
+    .icon-glow {
+      position: absolute;
+      inset: -16px;
+      background: radial-gradient(circle, rgba(217, 107, 0, 0.25) 0%, transparent 70%);
+      border-radius: 50%;
+      animation: iconGlow 3s ease-in-out infinite;
+      filter: blur(8px);
+    }
+
+    .icon-ring {
+      position: absolute;
+      inset: -4px;
+      border-radius: 22px;
+      border: 1px solid rgba(217, 107, 0, 0.15);
+      animation: ringPulse 3s ease-in-out infinite;
+    }
+
+    .icon-img {
+      width: 64px; height: 64px;
+      border-radius: 16px;
+      display: block;
+      position: relative;
+      z-index: 1;
+      box-shadow:
+        0 4px 24px rgba(217, 107, 0, 0.2),
+        0 1px 2px rgba(0, 0, 0, 0.4);
+    }
+
+    /* ── Brand text ── */
+    .brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 20px;
+    }
+
     .logo {
       font-family: 'Bebas Neue', 'Arial Narrow', Arial, sans-serif;
-      font-size: 52px;
-      letter-spacing: 6px;
+      font-size: 38px;
+      letter-spacing: 10px;
       color: #fff;
       line-height: 1;
+      opacity: 0;
+      transform: translateY(8px);
+      animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.35s forwards;
     }
-    .logo span { color: #d96b00; }
+
+    .logo span {
+      color: #d96b00;
+      text-shadow: 0 0 24px rgba(217, 107, 0, 0.35);
+    }
+
     .subtitle {
-      font-size: 10px;
-      letter-spacing: 4px;
-      color: #555;
+      font-size: 8.5px;
+      font-weight: 400;
+      letter-spacing: 5px;
+      color: rgba(255, 255, 255, 0.2);
       text-transform: uppercase;
-      margin-top: -10px;
+      opacity: 0;
+      animation: fadeIn 0.5s ease 0.55s forwards;
     }
+
+    .divider {
+      width: 32px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(217, 107, 0, 0.3), transparent);
+      margin-top: 2px;
+      opacity: 0;
+      animation: fadeIn 0.5s ease 0.6s forwards;
+    }
+
+    /* ── Status area ── */
+    .status-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      opacity: 0;
+      animation: fadeIn 0.5s ease 0.75s forwards;
+      min-height: 56px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 16px;
+    }
+
+    .spinner {
+      width: 10px; height: 10px;
+      border: 1.5px solid rgba(217, 107, 0, 0.15);
+      border-top-color: #d96b00;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      flex-shrink: 0;
+      transition: opacity 0.4s, width 0.4s, margin 0.4s;
+    }
+    .spinner.hidden { opacity: 0; width: 0; margin: 0; overflow: hidden; }
+
     .status {
-      font-size: 11px;
-      color: #666;
+      font-size: 10px;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.35);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      transition: color 0.5s;
+    }
+
+    .status.ok {
+      color: #4caf50;
+      text-shadow: 0 0 10px rgba(76, 175, 80, 0.25);
+    }
+
+    /* ── Progress container ── */
+    .progress-area {
+      width: 260px;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.6s, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .progress-area.visible { opacity: 1; transform: translateY(0); }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+
+    .progress-label {
+      font-size: 9px;
+      font-weight: 500;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      min-height: 16px;
-      transition: color 0.3s;
+      color: rgba(255, 255, 255, 0.3);
     }
-    .status.ok { color: #4caf50; }
-    .progress-wrap {
-      width: 240px;
-      height: 2px;
-      background: #1e1e1e;
-      border-radius: 2px;
+
+    .progress-percent {
+      font-size: 11px;
+      font-weight: 600;
+      color: #d96b00;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.5px;
+      text-shadow: 0 0 10px rgba(217, 107, 0, 0.25);
+    }
+
+    .progress-track {
+      width: 100%; height: 3px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 6px;
       overflow: hidden;
-      opacity: 0;
-      transition: opacity 0.4s;
+      position: relative;
     }
-    .progress-wrap.visible { opacity: 1; }
-    .progress-bar {
-      height: 100%;
-      background: linear-gradient(90deg, #d96b00, #f0a040);
-      border-radius: 2px;
+
+    .progress-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #c45e00, #d96b00, #f0a040);
+      border-radius: 6px;
+      transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      position: relative;
+      box-shadow: 0 0 12px rgba(217, 107, 0, 0.35);
+    }
+
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(90deg, transparent 60%, rgba(255, 255, 255, 0.2) 80%, transparent 100%);
+      animation: barShimmer 2s ease-in-out infinite;
+    }
+
+    .progress-glow {
+      position: absolute;
+      top: -4px; bottom: -4px; left: 0;
       width: 0%;
-      transition: width 0.4s ease;
+      background: linear-gradient(90deg, transparent, rgba(217, 107, 0, 0.1));
+      border-radius: 6px;
+      transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: none;
     }
+
+    /* ── Version ── */
     .version {
       position: absolute;
-      bottom: 14px;
-      font-size: 10px;
-      color: #2a2a2a;
-      letter-spacing: 1px;
+      bottom: 12px;
+      font-size: 9px;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.08);
+      letter-spacing: 2px;
+      opacity: 0;
+      animation: fadeIn 0.5s ease 1s forwards;
     }
-    .dot {
-      width: 6px; height: 6px;
-      background: #d96b00;
-      border-radius: 50%;
-      animation: pulse 1.5s ease-in-out infinite;
+
+    /* ── Keyframes ── */
+    @keyframes iconIn {
+      to { opacity: 1; transform: scale(1); }
     }
-    .dot.hidden { display: none; }
-    @keyframes pulse {
-      0%, 100% { opacity: 0.3; transform: scale(0.8); }
-      50% { opacity: 1; transform: scale(1.2); }
+
+    @keyframes iconGlow {
+      0%, 100% { opacity: 0.5; transform: scale(1); }
+      50%      { opacity: 1;   transform: scale(1.1); }
+    }
+
+    @keyframes ringPulse {
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50%      { opacity: 0.8; transform: scale(1.06); }
+    }
+
+    @keyframes fadeInUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes barShimmer {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
     }
   </style>
 </head>
 <body>
-  <div class="logo"><span>A</span>LMOST</div>
-  <div class="subtitle">Panel de control</div>
-  <div class="dot" id="dot"></div>
-  <div class="status" id="status">Iniciando...</div>
-  <div class="progress-wrap" id="progressWrap">
-    <div class="progress-bar" id="progressBar"></div>
+  <div class="bg"></div>
+  <div class="noise"></div>
+
+  <div class="particles">
+    <div class="particle"></div><div class="particle"></div>
+    <div class="particle"></div><div class="particle"></div>
+    <div class="particle"></div><div class="particle"></div>
+    <div class="particle"></div><div class="particle"></div>
   </div>
+
+  <div class="main">
+    <div class="icon-wrap">
+      <div class="icon-glow"></div>
+      <div class="icon-ring"></div>
+      <img class="icon-img" src="../assets/icon.png" alt="" draggable="false" />
+    </div>
+
+    <div class="brand">
+      <div class="logo"><span>A</span>LMOST</div>
+      <div class="divider"></div>
+      <div class="subtitle">Panel de control</div>
+    </div>
+
+    <div class="status-area">
+      <div class="status-row">
+        <div class="spinner" id="spinner"></div>
+        <div class="status" id="status">Iniciando...</div>
+      </div>
+
+      <div class="progress-area" id="progressArea">
+        <div class="progress-header">
+          <span class="progress-label">Descargando</span>
+          <span class="progress-percent" id="percent">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-glow" id="progressGlow"></div>
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="version" id="version"></div>
 
   <script>
     const { ipcRenderer } = require('electron');
 
+    const $ = id => document.getElementById(id);
+    const $status    = $('status');
+    const $spinner   = $('spinner');
+    const $area      = $('progressArea');
+    const $fill      = $('progressFill');
+    const $glow      = $('progressGlow');
+    const $percent   = $('percent');
+    const $version   = $('version');
+
     ipcRenderer.on('splash-status', (_, { msg, type }) => {
-      const el = document.getElementById('status');
-      el.textContent = msg;
-      el.className = 'status' + (type === 'ok' ? ' ok' : '');
+      $status.textContent = msg;
+      $status.className = 'status' + (type === 'ok' ? ' ok' : '');
+      if (type === 'ok') $spinner.classList.add('hidden');
     });
 
-    ipcRenderer.on('splash-progress', (_, percent) => {
-      document.getElementById('progressWrap').classList.add('visible');
-      document.getElementById('progressBar').style.width = percent + '%';
-      document.getElementById('dot').classList.add('hidden');
-      document.getElementById('status').textContent =
-        'Descargando actualización... ' + Math.round(percent) + '%';
+    ipcRenderer.on('splash-progress', (_, rawPercent) => {
+      const p = Math.round(rawPercent);
+      $area.classList.add('visible');
+      $fill.style.width = p + '%';
+      $glow.style.width = p + '%';
+      $percent.textContent = p + '%';
+      $spinner.classList.add('hidden');
+      $status.textContent = 'Actualizando...';
     });
 
     ipcRenderer.on('splash-version', (_, v) => {
-      document.getElementById('version').textContent = 'v' + v;
+      $version.textContent = 'v' + v;
     });
   </script>
 </body>

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Almost Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&family=Oswald:wght@300;400;500;600;700;900&family=Permanent+Marker&family=Boogaloo&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Permanent+Marker&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./styles/base.css">
 <link rel="stylesheet" href="./styles/torneo.css">
 <link rel="stylesheet" href="./styles/duelos.css">
@@ -15,8 +15,13 @@
 <link rel="stylesheet" href="./styles/key-overlay.css">
 <link rel="stylesheet" href="./styles/extras.css">
 <link rel="stylesheet" href="./styles/todos.css">
+<link rel="stylesheet" href="./styles/audiolink.css">
+<link rel="stylesheet" href="./styles/obs-dual.css">
+<link rel="stylesheet" href="./styles/soundboard.css">
+<link rel="stylesheet" href="./styles/config.css">
+<link rel="stylesheet" href="./styles/premium.css">
 </head>
-<body>
+<body class="log-hidden">
 
   <div data-include="./partials/titlebar.html"></div>
   <div data-include="./partials/tabs.html"></div>
@@ -26,11 +31,15 @@
       <div data-include="./partials/views/torneo.html"></div>
       <div data-include="./partials/views/overlays.html"></div>
       <div data-include="./partials/views/spotify.html"></div>
+      <div data-include="./partials/views/kick.html"></div>
       <div data-include="./partials/views/duelos.html"></div>
       <div data-include="./partials/views/rl.html"></div>
       <div data-include="./partials/views/config.html"></div>
       <div data-include="./partials/views/sorteos.html"></div>
       <div data-include="./partials/views/todos.html"></div>
+      <div data-include="./partials/views/audiolink.html"></div>
+      <div data-include="./partials/views/obs-dual.html"></div>
+      <div data-include="./partials/views/soundboard.html"></div>
     </div>
     <div data-include="./partials/sidebar.html"></div>
   </div>
@@ -51,5 +60,8 @@
   <script src="./scripts/app.key-overlay.js" defer></script>
   <script src="./scripts/app.rl.js" defer></script>
   <script src="./scripts/app.todos.js" defer></script>
+  <script src="./scripts/app.audiolink.js" defer></script>
+  <script src="./scripts/app.obs-dual.js" defer></script>
+  <script src="./scripts/app.soundboard.js" defer></script>
 </body>
 </html>

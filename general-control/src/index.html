@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>general-control</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>General Control</h1>
+        <p>Panel unificado para almost-control y aguz-control</p>
+      </div>
+      <div class="topbar-actions">
+        <button id="btnRefresh">Actualizar</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="card">
+        <h2>Fuentes Supabase</h2>
+        <div id="sourcesConfig" class="sources-grid"></div>
+        <div class="row">
+          <button id="btnSaveConfig">Guardar configuración</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Instancias</h2>
+          <span id="instancesSummary" class="muted">Sin datos</span>
+        </div>
+        <div id="instancesWrap"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Comandos Remotos</h2>
+          <div class="row">
+            <button id="btnPruneCommands">Limpiar viejos</button>
+          </div>
+        </div>
+        <div id="commandsWrap"></div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

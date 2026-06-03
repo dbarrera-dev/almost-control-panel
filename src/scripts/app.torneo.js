@@ -99,20 +99,72 @@ function updateStats() {
 const COLORS=['#D96B00','#0891b2','#059669','#d97706','#7c3aed','#0e7490','#dc2626','#047857'];
 function getColor(nick){let h=0;for(let c of nick)h+=c.charCodeAt(0);return COLORS[h%COLORS.length];}
 
-function addP(nick, joinedAt, twitchNick) {
+function _h(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function _pRowId(nick) {
+  return 'p-' + encodeURIComponent(String(nick || '').trim());
+}
+
+function addP(nick, joinedAt, senderNick) {
+  const safeNick = String(nick || '').trim();
+  if (!safeNick) return;
   const list=document.getElementById('pList');
   if(pEmpty){list.innerHTML='';pEmpty=false;}
-  const item=document.createElement('div'); item.className='pitem'; item.id='p-'+nick;
+  const rowId = _pRowId(safeNick);
+  if (document.getElementById(rowId)) return;
+
+  const item=document.createElement('div'); item.className='pitem'; item.id=rowId; item.dataset.nick = safeNick;
   const t=joinedAt?new Date(joinedAt).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'';
-  const label = twitchNick && twitchNick !== nick
-    ? `<span style="color:var(--text3);font-weight:400">${twitchNick}</span> <span style="color:var(--text3);font-weight:400">:</span> ${nick}`
-    : nick;
-  item.innerHTML=`<div class="pav" style="background:${getColor(nick)}">${nick[0].toUpperCase()}</div><div class="pnick">${label}</div><div class="ptime">${t}</div><button class="prm" onclick="elimP('${nick}')" title="Eliminar">✕</button>`;
+
+  const pav = document.createElement('div');
+  pav.className = 'pav';
+  pav.style.background = getColor(safeNick);
+  pav.textContent = (safeNick[0] || '?').toUpperCase();
+
+  const pnick = document.createElement('div');
+  pnick.className = 'pnick';
+  if (senderNick && senderNick !== safeNick) {
+    const tw = document.createElement('span');
+    tw.style.color = 'var(--text3)';
+    tw.style.fontWeight = '400';
+    tw.textContent = senderNick;
+    const sep = document.createElement('span');
+    sep.style.color = 'var(--text3)';
+    sep.style.fontWeight = '400';
+    sep.textContent = ' : ';
+    pnick.appendChild(tw);
+    pnick.appendChild(sep);
+    pnick.appendChild(document.createTextNode(safeNick));
+  } else {
+    pnick.textContent = safeNick;
+  }
+
+  const ptime = document.createElement('div');
+  ptime.className = 'ptime';
+  ptime.textContent = t;
+
+  const rmBtn = document.createElement('button');
+  rmBtn.className = 'prm';
+  rmBtn.title = 'Eliminar';
+  rmBtn.textContent = '✕';
+  rmBtn.onclick = () => elimP(safeNick);
+
+  item.appendChild(pav);
+  item.appendChild(pnick);
+  item.appendChild(ptime);
+  item.appendChild(rmBtn);
   list.insertBefore(item,list.firstChild);
 }
 
 function removeP(nick) {
-  const el=document.getElementById('p-'+nick);
+  const el=document.getElementById(_pRowId(nick));
   if(el){el.style.opacity='0';el.style.transform='translateX(10px)';el.style.transition='all .2s';setTimeout(()=>el.remove(),200);}
 }
 
@@ -122,14 +174,19 @@ function elimP(nick) {
   _elimPNick = nick;
   showModal(
     'Eliminar participante',
-    `<div style="font-size:12px;color:var(--text2);line-height:1.7">¿Eliminar a <strong style="color:var(--text)">${nick}</strong> del torneo?</div>` +
+    `<div style="font-size:12px;color:var(--text2);line-height:1.7">¿Eliminar a <strong style="color:var(--text)">${_h(nick)}</strong> del torneo?</div>` +
     '<button class="btn btn-danger" style="width:100%;margin-top:14px" onclick="closeModal();_doElimP()">Sí, eliminar</button>'
   );
 }
 async function _doElimP() {
   const nick = _elimPNick;
   if(!nick || !torneoId) return;
-  await api.eliminarParticipante({nick, torneoId});
+  const r = await api.eliminarParticipante({nick, torneoId});
+  if (!r?.ok) {
+    toast('No se pudo eliminar participante', 'err');
+    log('warn', 'Error al eliminar participante: ' + (r?.error || 'desconocido'));
+    return;
+  }
   removeP(nick); pCount=Math.max(0,pCount-1); updateStats();
   log('warn',`${nick} eliminado manualmente`);
 }
@@ -149,15 +206,12 @@ function exportarParticipantes() {
   const items = document.querySelectorAll('#pList .pitem');
   const nicks = [];
   items.forEach(el => {
-    const pnick = el.querySelector('.pnick');
-    if (!pnick) return;
-    const text = pnick.textContent.trim();
-    const parts = text.split(':');
-    nicks.push(parts[parts.length - 1].trim());
+    const nick = (el.dataset.nick || '').trim();
+    if (nick) nicks.push(nick);
   });
   if (!nicks.length) return;
   navigator.clipboard.writeText(nicks.join('\n'));
-  showToast('✓ ' + nicks.length + ' nicks copiados', 'ok');
+  toast('✓ ' + nicks.length + ' nicks copiados', 'ok');
 }
 
 // ── Gestión de equipos ───────────────────────────────
@@ -169,21 +223,22 @@ function exportarEquipos() {
     'Equipo ' + (i+1) + ':\n' + eq.members.map(m => '  ' + m).join('\n')
   ).join('\n\n');
   navigator.clipboard.writeText(txt);
-  showToast('✓ Equipos copiados', 'ok');
+  toast('✓ Equipos copiados', 'ok');
 }
 
 function moverJugador(nick, fromIdx) {
+  const nickEnc = encodeURIComponent(String(nick || ''));
   const opts = equiposData.map(function(eq, i) {
     if (i === fromIdx) return '';
     const preview = eq.members.slice(0,3).join(', ') + (eq.members.length > 3 ? '...' : '');
-    return '<button class="btn btn-ghost" data-to="' + i + '" data-nick="' + nick.replace(/"/g,'&quot;') + '" data-from="' + fromIdx + '" onclick="confirmarMover(this.dataset.nick,+this.dataset.from,+this.dataset.to);closeModal()" style="width:100%;margin-bottom:6px;justify-content:flex-start;gap:10px">' +
+    return '<button class="btn btn-ghost" data-to="' + i + '" data-nick="' + nickEnc + '" data-from="' + fromIdx + '" onclick="confirmarMover(decodeURIComponent(this.dataset.nick),+this.dataset.from,+this.dataset.to);closeModal()" style="width:100%;margin-bottom:6px;justify-content:flex-start;gap:10px">' +
       '<span>Equipo ' + (i+1) + '</span>' +
-      '<span style="color:var(--text3);font-size:11px;margin-left:auto;font-weight:400">' + preview + '</span>' +
+      '<span style="color:var(--text3);font-size:11px;margin-left:auto;font-weight:400">' + _h(preview) + '</span>' +
       '</button>';
   }).join('');
   showModal(
     'Mover jugador',
-    '<div style="font-size:11px;color:var(--text2);margin-bottom:12px">¿A qué equipo mover a <strong style="color:var(--orange2)">' + nick + '</strong>?</div>' + opts
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:12px">¿A qué equipo mover a <strong style="color:var(--orange2)">' + _h(nick) + '</strong>?</div>' + opts
   );
 }
 
@@ -201,10 +256,11 @@ function renderEquiposGrid() {
     const c = document.createElement('div');
     c.className = 'tcard';
     const members = eq.members.map(function(m) {
+      const nickEnc = encodeURIComponent(String(m || ''));
       const btn = equiposData.length > 1
-        ? '<button data-nick="' + m.replace(/"/g,'&quot;') + '" data-from="' + i + '" onclick="moverJugador(this.dataset.nick,+this.dataset.from)" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:0 3px;opacity:.5;transition:opacity .15s" title="Mover" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">⇄</button>'
+        ? '<button data-nick="' + nickEnc + '" data-from="' + i + '" onclick="moverJugador(decodeURIComponent(this.dataset.nick),+this.dataset.from)" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:0 3px;opacity:.5;transition:opacity .15s" title="Mover" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">⇄</button>'
         : '';
-      return '<div class="tmember" style="justify-content:space-between"><span>▸ ' + m + '</span>' + btn + '</div>';
+      return '<div class="tmember" style="justify-content:space-between"><span>▸ ' + _h(m) + '</span>' + btn + '</div>';
     }).join('');
     c.innerHTML = '<div class="thead-c">Equipo ' + (i+1) + '</div><div class="tmembers">' + members + '</div>';
     grid.appendChild(c);
@@ -251,11 +307,13 @@ async function generarEquipos() {
   const tamanio=parseInt(document.getElementById('tSizeVal').value)||2;
   const r=await api.generarEquipos({torneoId,tamanio});
   if(!r.ok){log('warn',r.error||'Sin participantes');return;}
+  const equipos = Array.isArray(r.equipos) ? r.equipos : (Array.isArray(r.teams) ? r.teams : []);
+  if(!equipos.length){log('warn','No se pudieron generar equipos');return;}
   const grid=document.getElementById('tGrid'); grid.innerHTML='';
-  equiposData = r.equipos.map((ms, i) => ({ nombre: 'Equipo ' + (i+1), members: ms }));
+  equiposData = equipos.map((ms, i) => ({ nombre: 'Equipo ' + (i+1), members: ms }));
   renderEquiposGrid();
   document.getElementById('eResult').classList.remove('hidden');
-  log('info', r.equipos.length + ' equipos generados');
+  log('info', equipos.length + ' equipos generados');
 }
 
 async function loadHistorial() {
@@ -266,8 +324,8 @@ async function loadHistorial() {
     const f=new Date(t.creado_at).toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'});
     const cnt=t.participantes?.[0]?.count??'—';
     const badge=t.activo?`<span class="badge badge-on">● Activo</span>`:`<span class="badge badge-off">Finalizado</span>`;
-    const delBtn = t.activo ? '' : `<button class="btn btn-danger" style="padding:4px 10px;font-size:10px;margin-left:4px" onclick="eliminarTorneoHistorial('${t.id}','${t.nombre.replace(/'/g,'')}')">Eliminar</button>`;
-    return `<tr id="hr-${t.id}"><td style="font-weight:700">${t.nombre}</td><td style="color:var(--text2);font-size:11px">${f}</td><td>${badge}</td><td style="color:var(--orange2);font-family:'Bebas Neue',cursive;font-size:20px">${cnt}</td><td style="white-space:nowrap"><button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="verT('${t.id}')">Ver</button>${delBtn}</td></tr><tr id="hd-${t.id}" class="h-detail hidden"><td colspan="5"><div id="hp-${t.id}" class="h-ptags"></div></td></tr>`;
+    const delBtn = t.activo ? '' : `<button class="btn btn-danger" style="padding:4px 10px;font-size:10px;margin-left:4px" onclick="eliminarTorneoHistorial('${t.id}','${encodeURIComponent(String(t.nombre || ''))}')">Eliminar</button>`;
+    return `<tr id="hr-${t.id}"><td style="font-weight:700">${_h(t.nombre)}</td><td style="color:var(--text2);font-size:11px">${f}</td><td>${badge}</td><td style="color:var(--orange2);font-family:'Bebas Neue',cursive;font-size:20px">${cnt}</td><td style="white-space:nowrap"><button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="verT('${t.id}')">Ver</button>${delBtn}</td></tr><tr id="hd-${t.id}" class="h-detail hidden"><td colspan="5"><div id="hp-${t.id}" class="h-ptags"></div></td></tr>`;
   }).join('');
 }
 
@@ -285,11 +343,14 @@ async function verT(id) {
 }
 
 let _delTorneoId=null, _delTorneoNombre='';
-async function eliminarTorneoHistorial(id, nombre) {
+async function eliminarTorneoHistorial(id, nombreEnc) {
+  let nombre = '';
+  try { nombre = decodeURIComponent(String(nombreEnc || '')); }
+  catch { nombre = String(nombreEnc || ''); }
   _delTorneoId=id; _delTorneoNombre=nombre;
   showModal(
     'Eliminar torneo',
-    `<div style="font-size:12px;color:var(--text2);line-height:1.7">¿Eliminar <strong style="color:var(--text)">"${nombre}"</strong>?<br><span style="color:#f87171">Se borran todos sus participantes y equipos permanentemente.</span></div>` +
+    `<div style="font-size:12px;color:var(--text2);line-height:1.7">¿Eliminar <strong style="color:var(--text)">"${_h(nombre)}"</strong>?<br><span style="color:#f87171">Se borran todos sus participantes y equipos permanentemente.</span></div>` +
     '<button class="btn btn-danger" style="width:100%;margin-top:14px" onclick="closeModal();_doEliminarTorneo()">Sí, eliminar</button>'
   );
 }
@@ -306,4 +367,3 @@ async function _doEliminarTorneo() {
   document.getElementById('hd-'+id)?.remove();
   log('info',`Torneo "${nombre}" eliminado`);
 }
-

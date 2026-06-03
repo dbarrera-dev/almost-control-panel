@@ -1,0 +1,5 @@
+[functions.kick-token-refresh]
+verify_jwt = false
+
+[functions.kick-webhook]
+verify_jwt = false

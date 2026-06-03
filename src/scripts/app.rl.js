@@ -1,6 +1,6 @@
 // ROCKET LEAGUE OVERLAY
 // ══════════════════════════════════════════
-let rlCfg = { platform: 'epic', username: '', style: { bg: 'rgba(15,15,20,0.92)', text: '#ffffff', accent: '#2563eb', radius: 12 } };
+let rlCfg = { platform: 'epic', username: '', playlistId: 13, style: { bg: 'rgba(15,15,20,0.92)', text: '#ffffff', accent: '#2563eb', radius: 12 } };
 let rlLoaded = false;
 
 async function loadRLOverlay() {
@@ -107,4 +107,3 @@ function rlCopyUrl() {
     if (btn) { const t = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(() => btn.textContent = t, 1500); }
   });
 }
-

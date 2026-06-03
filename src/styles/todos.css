@@ -37,3 +37,25 @@
 .todo-form-grid { display:grid; grid-template-columns:1fr auto auto; gap:8px; margin-bottom:8px; align-items:start; }
 .todo-form-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
 
+/* ── Todos layout ── */
+.todos-layout { align-items:start; }
+.todo-create-grid {
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap:8px;
+  align-items:end;
+}
+.todo-add-btn { height:38px; padding:0 20px; flex-shrink:0; }
+.todo-list-card { min-height:0; }
+.todo-toolbar { margin-bottom:10px; }
+.todo-count-label { font-size:10px; color:var(--text3); letter-spacing:1px; font-family:'Inter',sans-serif; }
+.todo-mini-btn { padding:4px 10px; font-size:10px; }
+.todo-search-wrap { margin-bottom:10px; }
+.todo-search-wrap input { font-size:12px; padding:8px 12px; }
+.todo-list-body { max-height:600px; overflow-y:auto; padding-right:2px; }
+
+@media (max-width: 1100px) {
+  .todo-create-grid { grid-template-columns:1fr; }
+  .todo-add-btn { width:100%; }
+}
+

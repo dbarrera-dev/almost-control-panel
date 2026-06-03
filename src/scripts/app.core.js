@@ -1,6 +1,6 @@
 
 // ── State ──────────────────────────────────────────────────────────
-let connected=false, torneoId=null, pCount=0, joins=0, tSize=2, pEmpty=true;
+let torneoId=null, pCount=0, joins=0, tSize=2, pEmpty=true;
 let bracketData=[], overlayRound='qf', ovPanel='yc';
 let ycMin=5;
 let saving=false;
@@ -9,31 +9,65 @@ let saving=false;
 let sorteoActivo=false, sorteoParticipantes=[], sorteoWinCount=1, sorteoCurrentWinners=[];
 
 // ── Tabs ──────────────────────────────────────────────────────────
-function goTab(name) {
-  ['torneo','overlays','spotify','duelos','sorteos','rl','config','todos'].forEach(n => {
-    document.getElementById('view-'+n).classList.toggle('on', n===name);
-    document.getElementById('tab-'+n).classList.toggle('on', n===name);
-  });
-  if(name==='torneo') loadHistorial();
-  if(name==='overlays') {
-    loadOverlayUrl(ovPanel);
-    if(!bracketData.length) loadOverlays();
+const _TAB_LOADER_FN = {
+  torneo: 'loadHistorial',
+  overlays: '__coreLoadOverlaysTab',
+  config: 'loadConfigForm',
+  spotify: 'loadSpotify',
+  kick: 'loadKickRewardsTab',
+  duelos: 'renderDuelos',
+  sorteos: 'loadSorteo',
+  rl: 'loadRLOverlay',
+  todos: 'loadTodos',
+  audiolink: 'loadAudiolink',
+  'obs-dual': 'loadObsDual',
+  soundboard: 'loadSoundboard',
+};
+
+function __coreLoadOverlaysTab() {
+  loadOverlayUrl(ovPanel);
+  if (!bracketData.length) loadOverlays();
+}
+
+function _runTabLoader(name, attempt = 0) {
+  const fnName = _TAB_LOADER_FN[name];
+  if (!fnName) return;
+  const fn = globalThis[fnName];
+  if (typeof fn !== 'function') {
+    if (attempt < 10) setTimeout(() => _runTabLoader(name, attempt + 1), 80);
+    return;
   }
-  if(name==='config') loadConfigForm();
-  if(name==='spotify') loadSpotify();
-  if(name==='duelos') renderDuelos();
-  if(name==='sorteos') loadSorteo();
-  if(name==='rl') loadRLOverlay();
-  if(name==='todos') loadTodos();
+  try {
+    fn();
+  } catch (e) {
+    try { log('warn', `Error cargando tab "${name}": ${e?.message || e}`); } catch {}
+  }
+}
+
+function goTab(name) {
+  ['torneo','overlays','spotify','kick','duelos','sorteos','rl','config','todos','audiolink','obs-dual','soundboard'].forEach(n => {
+    const view = document.getElementById('view-' + n);
+    const tab = document.getElementById('tab-' + n);
+    if (view) view.classList.toggle('on', n === name);
+    if (tab) tab.classList.toggle('on', n === name);
+  });
+  _runTabLoader(name);
 }
 
 function goOverlay(name) {
-  ['yc','brb','fin','rl','teclas'].forEach(n => {
-    document.getElementById('ov-'+n).classList.toggle('hidden', n!==name);
-    document.getElementById('otab-'+n).classList.toggle('on', n===name);
+  ['yc','brb','fin','rl','rlstats','teclas','spotify'].forEach(n => {
+    const section = document.getElementById('ov-'+n);
+    const tab = document.getElementById('otab-'+n);
+    if (section) section.classList.toggle('hidden', n!==name);
+    if (tab) tab.classList.toggle('on', n===name);
   });
   ovPanel=name;
-  if(name==='teclas') { loadKeyOverlay(); return; }
+  if(name==='rlstats') {
+    if (typeof loadRlOverlayPanel === 'function') loadRlOverlayPanel();
+    return;
+  }
+  if(name==='teclas')  { loadKeyOverlay(); return; }
+  if(name==='spotify') { if (typeof spovInit === 'function') spovInit(); return; }
   loadOverlayUrl(name);
 }
 
@@ -49,14 +83,14 @@ function goBracketRound(r) {
 async function loadConfigForm() {
   try {
     const c = await api.getConfig();
-    document.getElementById('cUrl').value   = c.supabaseUrl||'';
-    document.getElementById('cKey').value   = c.supabaseKey||'';
-    document.getElementById('cUser').value  = c.botUsername||'';
-    document.getElementById('cOauth').value = c.botOauth||'';
-    document.getElementById('cChan').value  = c.twitchChannel||'';
-    document.getElementById('cLogo').value  = c.logoUrl||'';
-    if (document.getElementById('kChatroomId')) document.getElementById('kChatroomId').value = c.kickChatroomId||'';
-    document.getElementById('cAutoConnect').checked = c.autoConnectBot !== false;
+    const setVal = (id, value) => { const el = document.getElementById(id); if (el) el.value = value ?? ''; };
+    const setChk = (id, value) => { const el = document.getElementById(id); if (el) el.checked = !!value; };
+
+    setVal('cUrl', c.supabaseUrl || '');
+    setVal('cKey', c.supabaseKey || '');
+    setVal('cLogo', c.logoUrl || '');
+
+    setChk('cAutoConnect', c.autoConnectBot !== false);
     updateLogo(c.logoUrl||'');
     api.getLoginItemSettings().then(s => {
       document.getElementById('cOpenAtLogin').checked = s.openAtLogin === true;
@@ -65,6 +99,10 @@ async function loadConfigForm() {
   } catch (e) {
     log('warn', 'Error cargando config: ' + (e.message || e));
   }
+}
+
+function onBotModeChanged() {
+  // Compatibilidad: el modo activo ahora se maneja en Kick (onKickBotModeChanged)
 }
 
 function updateLogo(url) {
@@ -81,18 +119,43 @@ function updateLogo(url) {
 }
 
 function getCfg() {
+  const val = (id) => document.getElementById(id)?.value?.trim?.() || '';
+  const checked = (id, fallback = false) => {
+    const el = document.getElementById(id);
+    return el ? !!el.checked : fallback;
+  };
+
+  const kickBotMode = document.getElementById('envModeDev')?.checked ? 'dev' : 'prod';
+  // Volcar inputs actuales al bucket del modo activo para no perder cambios sin tocar el switcher
+  const creds = window._kCreds || (window._kCreds = {
+    prod: { clientId:'',clientSecret:'',channel:'',chatroomId:'',rewardId:'' },
+    dev:  { clientId:'',clientSecret:'',channel:'',chatroomId:'',rewardId:'' },
+  });
+  const active = creds[kickBotMode] || (creds[kickBotMode] = {});
+  active.clientId     = val('kClientId');
+  active.clientSecret = val('kClientSecret');
+  active.channel      = val('kChannel');
+  active.chatroomId   = val('kChatroomId');
+  const p = creds.prod || {};
+  const d = creds.dev  || {};
   return {
-    supabaseUrl:   document.getElementById('cUrl').value.trim(),
-    supabaseKey:   document.getElementById('cKey').value.trim(),
-    botUsername:   document.getElementById('cUser').value.trim(),
-    botOauth:      document.getElementById('cOauth').value.trim(),
-    twitchChannel: document.getElementById('cChan').value.trim(),
-    logoUrl:       document.getElementById('cLogo').value.trim(),
-    autoConnectBot: document.getElementById('cAutoConnect').checked,
-    kickChannel: document.getElementById('kChannel').value.trim(),
-    kickChatroomId: document.getElementById('kChatroomId') ? document.getElementById('kChatroomId').value.trim() : '',
-    kickSongRequestRewardId: document.getElementById('kRewardId').value.trim(),
-    autoConnectKickBot: document.getElementById('kAutoConnect').checked
+    supabaseUrl: val('cUrl'),
+    supabaseKey: val('cKey'),
+    logoUrl: val('cLogo'),
+    autoConnectBot: checked('cAutoConnect', true),
+    kickBotMode,
+    kickStartupMode: kickBotMode,
+    // Prod
+    kickClientId:               p.clientId     || '',
+    kickClientSecret:           p.clientSecret || '',
+    kickChannel:                p.channel      || '',
+    kickChatroomId:             p.chatroomId   || '',
+    // Dev
+    kickClientIdDev:            d.clientId     || '',
+    kickClientSecretDev:        d.clientSecret || '',
+    kickDevChannel:             d.channel      || '',
+    kickChatroomIdDev:          d.chatroomId   || '',
+    autoConnectKickBot: checked('kAutoConnect', true),
   };
 }
 
@@ -102,7 +165,10 @@ async function toggleOpenAtLogin() {
   toast(enabled ? 'La app abrirá al iniciar Windows' : 'Inicio automático desactivado', 'ok');
 }
 
+let _savingConfig = false;
 async function saveConfig() {
+  if (_savingConfig) return;
+  _savingConfig = true;
   const btn = document.querySelector('#view-config .btn-orange');
   if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
   try {
@@ -113,8 +179,28 @@ async function saveConfig() {
     showAlert('cfgAlert','err','Error al guardar');
     toast('Error al guardar','err');
   } finally {
+    _savingConfig = false;
     if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
   }
+}
+
+// ── Config nav helpers ───────────────────────────────────────────
+function cfgNavGo(sectionId, evt) {
+  const nav = document.querySelectorAll('#view-config .cfg-nav-item');
+  nav.forEach(n => n.classList.toggle('on', n.dataset.target === sectionId));
+  const sec = document.getElementById(sectionId);
+  if (sec) sec.scrollIntoView({ behavior:'smooth', block:'start' });
+  if (evt) evt.preventDefault();
+}
+
+function cfgToggleSecret(btn) {
+  const input = btn.parentNode?.querySelector('input');
+  if (!input) return;
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  btn.setAttribute('aria-label', showing ? 'Mostrar' : 'Ocultar');
+  const ico = btn.querySelector('svg');
+  if (ico) ico.style.opacity = showing ? '.7' : '1';
 }
 
 // ── Keyboard Shortcuts ───────────────────────────────────────────
@@ -122,9 +208,9 @@ document.addEventListener('keydown', (e) => {
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
-  // Alt+1..8 → switch tabs
+  // Alt+1..9 → switch tabs
   if (e.altKey && !e.ctrlKey && !e.shiftKey) {
-    const tabs = ['torneo','sorteos','duelos','todos','spotify','overlays','rl','config'];
+    const tabs = ['torneo','sorteos','duelos','todos','spotify','kick','overlays','rl','config','audiolink','obs-dual','soundboard'];
     const idx = parseInt(e.key) - 1;
     if (idx >= 0 && idx < tabs.length) { e.preventDefault(); goTab(tabs[idx]); return; }
   }

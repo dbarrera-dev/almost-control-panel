@@ -15,7 +15,7 @@ El instalador aparece en `dist/Almost Control Setup 1.0.0.exe`
 ## Módulos
 
 ### 🏆 Torneos
-- Bot conectado al chat de Twitch
+- Bot conectado al chat de Kick
 - Los viewers escriben `!join` y se guardan en Supabase
 - Generación de equipos random del tamaño que quieras
 - Historial de torneos
@@ -28,7 +28,7 @@ El instalador aparece en `dist/Almost Control Setup 1.0.0.exe`
 - Todo se guarda en Supabase → se refleja en OBS al instante
 
 ### ⚙️ Config
-- Credenciales de Supabase y Twitch guardadas localmente
+- Credenciales de Supabase y Kick guardadas localmente
 
 ## Comandos del chat
 - `!join` / `!torneo` / `!unirse` → Unirse al torneo

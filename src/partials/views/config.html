@@ -1,120 +1,423 @@
 <div class="view" id="view-config">
-    <div class="sh"><div class="sh-badge orange">CONFIG</div><h2>Configuración</h2></div>
-    <div id="cfgAlert" class="hidden"></div>
 
-    <!-- ── GENERAL ── -->
-    <div class="cfg-section-header">GENERAL</div>
-    <div class="card">
-      <div class="card-title">Logo del canal</div>
-      <div class="ig"><label>URL de imagen</label><input id="cLogo" type="text" placeholder="https://i.imgur.com/tu-logo.png" oninput="updateLogo(this.value.trim())" /></div>
-      <p style="font-size:11px;color:var(--text3);margin-top:2px">Se muestra en la barra de título. PNG, JPG, etc.</p>
+  <!-- ── Header premium ──────────────────────────────────────── -->
+  <header class="cfg-header">
+    <div class="cfg-header-eyebrow">
+      <span class="cfg-header-dot"></span>
+      <span>Config</span>
+      <span class="cfg-header-sep">·</span>
+      <span class="cfg-header-eyebrow-sub">setup principal</span>
     </div>
-    <div class="card">
-      <div class="card-title">Supabase</div>
-      <div class="g2">
-        <div class="ig"><label>URL del proyecto</label><input id="cUrl" type="text" placeholder="https://xxx.supabase.co" /></div>
-        <div class="ig"><label>Anon Key</label><input id="cKey" type="password" placeholder="eyJ..." /></div>
+    <div class="cfg-header-row">
+      <h1 class="cfg-header-title">Configuración</h1>
+      <div class="cfg-header-envchip" title="Ambiente activo">
+        <span class="cfg-header-envchip-l">Ambiente</span>
+        <span class="cfg-header-envchip-v">
+          <span class="cfg-header-envchip-dot"></span>
+          <span id="envBadgeLabel">Prod</span>
+        </span>
       </div>
     </div>
+    <p class="cfg-header-lede">Todo el setup principal en una sola vista, organizado por bloque. Cambiá el ambiente para alternar entre datos reales y datos de prueba sin pisar nada.</p>
+  </header>
 
-    <!-- ── TWITCH ── -->
-    <div class="cfg-section-header">TWITCH</div>
-    <div class="card">
-      <div class="card-title">Bot de Twitch</div>
-      <div class="g2">
-        <div class="ig"><label>Usuario del bot</label><input id="cUser" type="text" placeholder="MiCanalBot" /></div>
-        <div class="ig"><label>OAuth Token</label><input id="cOauth" type="password" placeholder="oauth:..." /></div>
-      </div>
-      <div class="ig"><label>Canal a leer (sin #)</label><input id="cChan" type="text" placeholder="nombre_del_canal" /></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-        <div>
-          <div style="font-size:12px;color:var(--text1);font-weight:600">Conectar bot al iniciar</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:3px;line-height:1.5">Desactivalo si no querés que el bot se conecte automáticamente al abrir la app</div>
-        </div>
-        <label class="toggle-wrap" style="flex-shrink:0;margin-left:16px">
-          <input type="checkbox" id="cAutoConnect" onchange="saveConfig()">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-        <div>
-          <div style="font-size:12px;color:var(--text1);font-weight:600">Abrir al iniciar Windows</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:3px;line-height:1.5">La app arranca automáticamente cuando encendés la PC</div>
-        </div>
-        <label class="toggle-wrap" style="flex-shrink:0;margin-left:16px">
-          <input type="checkbox" id="cOpenAtLogin" onchange="toggleOpenAtLogin()">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-        <button class="btn btn-ghost" onclick="connectFromConfig()">Conectar Bot Twitch</button>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Comandos del chat</div>
-      <div style="margin-bottom:14px">
-        <span class="section-label" style="margin-bottom:8px">Unirse al torneo</span>
-        <div class="cmd-pills">
-          <span class="cmd-pill orange">!join</span>
-          <span class="cmd-pill orange">!torneo</span>
-          <span class="cmd-pill orange">!unirse</span>
-        </div>
-        <p style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.6">Los viewers escriben cualquiera de estos comandos para anotarse al torneo activo.</p>
-      </div>
-      <div style="padding-top:14px;border-top:1px solid var(--border)">
-        <span class="section-label" style="margin-bottom:8px">Salir del torneo</span>
-        <div class="cmd-pills">
-          <span class="cmd-pill red">!salir</span>
-          <span class="cmd-pill red">!leave</span>
-        </div>
-      </div>
-    </div>
-    <!-- ── KICK ── -->
-    <div class="cfg-section-header">KICK</div>
-    <div class="card">
-      <div class="card-title">Bot de Kick</div>
-      <div class="g2">
-        <div class="ig"><label>Client ID</label><input id="kClientId" type="password" placeholder="Client ID de Kick" /></div>
-        <div class="ig"><label>Client Secret</label><input id="kClientSecret" type="password" placeholder="Client Secret de Kick" /></div>
-      </div>
-      <div class="ig" style="margin-top:8px"><label>Canal de Kick (sin @)</label><input id="kChannel" type="text" placeholder="nombre_del_canal" /></div>
-      <div class="ig" style="margin-top:8px"><label>Chatroom ID</label><input id="kChatroomId" type="text" placeholder="id del chatroom (numero)" /></div>
-      <p style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.5">Para obtenerlo: abrÃ­ en el navegador <code>https://kick.com/api/v2/channels/tu_canal</code> (logueado) y copiÃ¡ <code>chatroom.id</code>.</p>
-      <div class="ig" style="margin-top:8px"><label>ID de reward para song request</label><input id="kRewardId" type="text" placeholder="Pegar el reward ID de Kick" /></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-        <div>
-          <div style="font-size:12px;color:var(--text1);font-weight:600">Conectar bot al iniciar</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:3px;line-height:1.5">Desactivalo si no querés que el bot de Kick se conecte automáticamente</div>
-        </div>
-        <label class="toggle-wrap" style="flex-shrink:0;margin-left:16px">
-          <input type="checkbox" id="kAutoConnect" onchange="saveConfig()">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:12px">
-        <div id="kickConnStatus" style="font-size:11px;color:var(--text3);flex:1">Sin conectar</div>
-        <button class="btn btn-ghost" onclick="kickOAuth()">Autorizar cuenta</button>
-        <button class="btn btn-ghost" id="kickBotBtn" onclick="toggleKickBot()">Conectar bot</button>
-      </div>
-      <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
-        <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px">Cuenta bot (BotAlmost)</div>
-        <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Autorizá una segunda cuenta de Kick para que el bot responda en el chat. Esa cuenta debe ser moderadora del canal.</div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <div id="kickBotAccountStatus" style="font-size:11px;color:var(--text3);flex:1">Sin autorizar</div>
-          <button class="btn btn-ghost" onclick="kickBotAccountOAuth()">Autorizar cuenta bot</button>
-        </div>
-      </div>
-    </div>
+  <div id="cfgAlert" class="hidden"></div>
 
-    <!-- ── SPOTIFY ── -->
-    <div class="cfg-section-header">SPOTIFY</div>
-    <div class="card" id="spConnectionCard-cfg">
-      <div class="card-title">Conexión Spotify</div>
-      <p style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.6">Conectá tu cuenta de Spotify para controlar la música desde el panel. La configuración detallada está en la pestaña <em>Música</em>.</p>
-      <button class="btn btn-ghost" onclick="goTab('spotify')">Ir a Música →</button>
-    </div>
+  <!-- ── Layout: nav sticky + contenido ──────────────────────── -->
+  <div class="cfg-layout">
 
-    <div style="margin-top:4px">
-      <button class="btn btn-orange" onclick="saveConfig()">Guardar</button>
+    <!-- Nav lateral -->
+    <nav class="cfg-nav">
+      <div class="cfg-nav-title">Secciones</div>
+
+      <button type="button" class="cfg-nav-item on" data-target="cfg-sec-env" onclick="cfgNavGo('cfg-sec-env', event)">
+        <span class="cfg-nav-item-ico">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </span>
+        <span>Ambiente</span>
+      </button>
+
+      <button type="button" class="cfg-nav-item" data-target="cfg-sec-general" onclick="cfgNavGo('cfg-sec-general', event)">
+        <span class="cfg-nav-item-ico">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </span>
+        <span>General</span>
+      </button>
+
+      <button type="button" class="cfg-nav-item" data-target="cfg-sec-supabase" onclick="cfgNavGo('cfg-sec-supabase', event)">
+        <span class="cfg-nav-item-ico">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6a9 3 0 0 0 18 0V5"/><path d="M3 11v6a9 3 0 0 0 18 0v-6"/></svg>
+        </span>
+        <span>Supabase</span>
+      </button>
+
+      <button type="button" class="cfg-nav-item" data-target="cfg-sec-kick" onclick="cfgNavGo('cfg-sec-kick', event)">
+        <span class="cfg-nav-item-ico">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </span>
+        <span>Kick</span>
+      </button>
+
+      <button type="button" class="cfg-nav-item" data-target="cfg-sec-spotify" onclick="cfgNavGo('cfg-sec-spotify', event)">
+        <span class="cfg-nav-item-ico">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </span>
+        <span>Spotify</span>
+      </button>
+
+      <button type="button" class="cfg-nav-item" data-target="cfg-sec-cmds" onclick="cfgNavGo('cfg-sec-cmds', event)">
+        <span class="cfg-nav-item-ico">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        </span>
+        <span>Comandos</span>
+      </button>
+    </nav>
+
+    <!-- Contenido -->
+    <div class="cfg-content">
+
+      <!-- ── Ambiente ─────────────────────────────────────── -->
+      <section class="cfg-section cfg-env" id="cfg-sec-env">
+        <header class="cfg-section-head">
+          <div class="cfg-section-ico">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div class="cfg-section-head-text">
+            <div class="cfg-section-eyebrow">Ambiente activo</div>
+            <div class="cfg-section-title">Prod / Dev</div>
+            <p class="cfg-section-desc">Cambia toda la app entre <strong style="color:var(--text)">Prod</strong> (datos reales de almost) y <strong style="color:var(--text)">Dev</strong> (tus datos para pruebas). El cambio se aplica al instante a Kick, Spotify y rewards.</p>
+          </div>
+        </header>
+        <div class="cfg-section-body">
+          <div class="cfg-env-row">
+            <div class="cfg-env-info">
+              <div class="cfg-env-msg" id="envModeMsg">Ambiente PROD activo — datos reales del canal.</div>
+            </div>
+            <div class="cfg-bot-mode-pills" id="envModePills">
+              <label class="cfg-mode-pill">
+                <input type="radio" name="envMode" id="envModeProd" value="prod" onchange="onEnvModeChanged();document.getElementById('envBadgeLabel').textContent='Prod'">
+                <span>Prod</span>
+              </label>
+              <label class="cfg-mode-pill">
+                <input type="radio" name="envMode" id="envModeDev" value="dev" onchange="onEnvModeChanged();document.getElementById('envBadgeLabel').textContent='Dev'">
+                <span>Dev</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── General ──────────────────────────────────────── -->
+      <section class="cfg-section" id="cfg-sec-general">
+        <header class="cfg-section-head">
+          <div class="cfg-section-ico">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v10"/><path d="m4.22 4.22 4.24 4.24m6.36 6.36 4.24 4.24"/><path d="M1 12h6m6 0h10"/><path d="m4.22 19.78 4.24-4.24m6.36-6.36 4.24-4.24"/></svg>
+          </div>
+          <div class="cfg-section-head-text">
+            <div class="cfg-section-eyebrow">General</div>
+            <div class="cfg-section-title">Apariencia y arranque</div>
+            <p class="cfg-section-desc">Logo de la app y comportamiento al iniciar Windows.</p>
+          </div>
+        </header>
+        <div class="cfg-section-body">
+          <div class="cfg-row cfg-row-stack">
+            <div class="cfg-row-info">
+              <div class="cfg-row-label">Logo del canal</div>
+              <div class="cfg-row-desc">Se muestra en la barra de título. PNG, JPG, etc.</div>
+            </div>
+            <div class="cfg-row-control">
+              <input id="cLogo" type="text" placeholder="https://i.imgur.com/tu-logo.png" oninput="updateLogo(this.value.trim())" />
+            </div>
+          </div>
+
+          <div class="cfg-row">
+            <div class="cfg-row-info">
+              <div class="cfg-row-label">Abrir al iniciar Windows</div>
+              <div class="cfg-row-desc">La app arranca automáticamente cuando encendés la PC.</div>
+            </div>
+            <div class="cfg-row-control">
+              <label class="toggle-wrap">
+                <input type="checkbox" id="cOpenAtLogin" onchange="toggleOpenAtLogin()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="cfg-row">
+            <div class="cfg-row-info">
+              <div class="cfg-row-label">Auto conectar servicios</div>
+              <div class="cfg-row-desc">Conecta automáticamente los bots configurados al abrir la app.</div>
+            </div>
+            <div class="cfg-row-control">
+              <label class="toggle-wrap">
+                <input type="checkbox" id="cAutoConnect" onchange="saveConfig()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Supabase ─────────────────────────────────────── -->
+      <section class="cfg-section" id="cfg-sec-supabase">
+        <header class="cfg-section-head">
+          <div class="cfg-section-ico">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6a9 3 0 0 0 18 0V5"/><path d="M3 11v6a9 3 0 0 0 18 0v-6"/></svg>
+          </div>
+          <div class="cfg-section-head-text">
+            <div class="cfg-section-eyebrow">Base de datos</div>
+            <div class="cfg-section-title">Supabase</div>
+            <p class="cfg-section-desc">Credenciales del proyecto donde se guardan tokens, torneos y demás datos.</p>
+          </div>
+        </header>
+        <div class="cfg-section-body">
+          <div class="cfg-row cfg-row-stack">
+            <div class="cfg-row-info">
+              <div class="cfg-row-label">URL del proyecto</div>
+              <div class="cfg-row-desc">La URL pública de tu instancia Supabase.</div>
+            </div>
+            <div class="cfg-row-control">
+              <input id="cUrl" type="text" placeholder="https://xxx.supabase.co" />
+            </div>
+          </div>
+
+          <div class="cfg-row cfg-row-stack">
+            <div class="cfg-row-info">
+              <div class="cfg-row-label">Anon Key</div>
+              <div class="cfg-row-desc">Clave pública para autenticarse contra la API de Supabase.</div>
+            </div>
+            <div class="cfg-row-control">
+              <div class="cfg-input-secret">
+                <input id="cKey" type="password" placeholder="eyJ..." />
+                <button type="button" class="cfg-input-secret-eye" onclick="cfgToggleSecret(this)" title="Mostrar / ocultar">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Kick ─────────────────────────────────────────── -->
+      <section class="cfg-section" id="cfg-sec-kick">
+        <header class="cfg-section-head">
+          <div class="cfg-section-ico">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div class="cfg-section-head-text">
+            <div class="cfg-section-eyebrow">Streaming</div>
+            <div class="cfg-section-title">Kick</div>
+            <p class="cfg-section-desc">Credenciales OAuth, canal y autorización del bot.</p>
+          </div>
+        </header>
+        <div class="cfg-section-body">
+
+          <!-- Credenciales -->
+          <div class="cfg-row cfg-row-stack">
+            <div class="cfg-row-info">
+              <div class="cfg-row-label">Credenciales OAuth</div>
+              <div class="cfg-row-desc">Client ID y Secret de tu aplicación en Kick Developers.</div>
+            </div>
+            <div class="cfg-row-control" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="cfg-input-secret">
+                <input id="kClientId" type="password" placeholder="Client ID de Kick" />
+                <button type="button" class="cfg-input-secret-eye" onclick="cfgToggleSecret(this)" title="Mostrar / ocultar">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+              <div class="cfg-input-secret">
+                <input id="kClientSecret" type="password" placeholder="Client Secret de Kick" />
+                <button type="button" class="cfg-input-secret-eye" onclick="cfgToggleSecret(this)" title="Mostrar / ocultar">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Canal + chatroom -->
+          <div class="cfg-row cfg-row-stack">
+            <div class="cfg-row-info">
+              <div class="cfg-row-label" id="kChannelLabel">Canal de Kick (sin @)</div>
+              <div class="cfg-row-desc">Nombre del canal donde corre el bot. Si autorizás OAuth, se completa solo.</div>
+            </div>
+            <div class="cfg-row-control">
+              <input id="kChannel" type="text" placeholder="nombre_del_canal" />
+            </div>
+          </div>
+
+          <div class="cfg-row cfg-row-stack">
+            <div class="cfg-row-info">
+              <div class="cfg-row-label">Chatroom ID</div>
+              <div class="cfg-row-desc">
+                <div>ID numérico del chatroom del canal.</div>
+                <div class="cfg-help-link">Para obtenerlo: abrí en el navegador <code>https://kick.com/api/v2/channels/tu_canal</code> y copiá <code>chatroom.id</code>.</div>
+              </div>
+            </div>
+            <div class="cfg-row-control">
+              <input id="kChatroomId" type="text" placeholder="id del chatroom (numero)" />
+            </div>
+          </div>
+
+          <!-- Reward de song request -->
+          <div class="cfg-row cfg-row-stack">
+            <div class="cfg-row-info">
+              <div class="cfg-row-label">ID de reward para song request</div>
+              <div class="cfg-row-desc">Este ID viene de Supabase por ambiente. Para cambiarlo, usá la gestión de rewards desde la pestaña <em style="color:var(--text2)">Kick</em>.</div>
+            </div>
+            <div class="cfg-row-control">
+              <input id="kRewardId" type="text" placeholder="Sincronizado desde Supabase" readonly />
+            </div>
+          </div>
+
+          <!-- Auto conectar bot -->
+          <div class="cfg-row">
+            <div class="cfg-row-info">
+              <div class="cfg-row-label">Conectar bot al iniciar</div>
+              <div class="cfg-row-desc">Desactivalo si no querés que el bot de Kick se conecte automáticamente al abrir la app.</div>
+            </div>
+            <div class="cfg-row-control">
+              <label class="toggle-wrap">
+                <input type="checkbox" id="kAutoConnect" onchange="saveConfig()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Cuentas conectadas -->
+          <div class="cfg-bot-cards">
+
+            <div class="cfg-bot-card is-channel">
+              <div class="cfg-bot-card-head">
+                <div class="cfg-bot-card-headl">
+                  <span class="cfg-bot-card-num">1</span>
+                  <div>
+                    <div class="cfg-bot-card-role">Cuenta canal</div>
+                    <div class="cfg-bot-card-title">Cuenta del canal <span class="cfg-bot-card-tag">streamer</span></div>
+                  </div>
+                </div>
+                <div id="kickConnStatus" class="cfg-bot-card-status">Sin conectar</div>
+              </div>
+              <p class="cfg-bot-card-desc">Autorizá la cuenta dueña del canal. Iniciá sesión en kick.com con esa cuenta antes de autorizar.</p>
+              <div id="kickBroadcasterIdentity" class="cfg-kick-identity">
+                <div class="cfg-kick-identity-empty">Sin cuenta canal verificada.</div>
+              </div>
+              <div class="cfg-bot-card-actions">
+                <button class="btn btn-orange" id="kickBotBtn" onclick="toggleKickBot()">Conectar bot</button>
+                <button class="btn btn-ghost" onclick="kickOAuth()">Autorizar cuenta</button>
+              </div>
+            </div>
+
+            <div class="cfg-bot-card">
+              <div class="cfg-bot-card-head">
+                <div class="cfg-bot-card-headl">
+                  <span class="cfg-bot-card-num">2</span>
+                  <div>
+                    <div class="cfg-bot-card-role">Cuenta bot</div>
+                    <div class="cfg-bot-card-title">BotAlmost <span class="cfg-bot-card-tag muted">opcional</span></div>
+                  </div>
+                </div>
+                <div id="kickBotAccountStatus" class="cfg-bot-card-status">Sin autorizar</div>
+              </div>
+              <p class="cfg-bot-card-desc">Segunda cuenta para escribir en el chat. Debe ser moderadora del canal.</p>
+              <div id="kickBotIdentity" class="cfg-kick-identity">
+                <div class="cfg-kick-identity-empty">Sin cuenta bot verificada.</div>
+              </div>
+              <div class="cfg-bot-card-actions">
+                <button class="btn btn-ghost" onclick="kickBotAccountOAuth()">Autorizar cuenta bot</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reset -->
+          <div class="cfg-bot-reset-row">
+            <div class="cfg-bot-reset-info">
+              <span class="cfg-bot-reset-ico">!</span>
+              <div>
+                <div class="cfg-bot-reset-title">Reset total Kick</div>
+                <div class="cfg-bot-reset-desc">Borra client/channel/reward/tokens de PROD y DEV en Supabase y limpia local.</div>
+              </div>
+            </div>
+            <button class="btn btn-ghost cfg-bot-reset-btn" onclick="kickOpenResetModal()">Reset total</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Spotify shortcut ─────────────────────────────── -->
+      <section class="cfg-section" id="cfg-sec-spotify">
+        <header class="cfg-section-head">
+          <div class="cfg-section-ico" style="color:var(--sp);background:rgba(29,185,84,.1);border-color:rgba(29,185,84,.25)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          </div>
+          <div class="cfg-section-head-text">
+            <div class="cfg-section-eyebrow" style="color:var(--sp)">Música</div>
+            <div class="cfg-section-title">Spotify</div>
+            <p class="cfg-section-desc">Conectá tu cuenta de Spotify para controlar la música desde el panel.</p>
+          </div>
+        </header>
+        <div class="cfg-section-body">
+          <div class="cfg-spotify-shortcut">
+            <div class="cfg-spotify-shortcut-ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <div class="cfg-spotify-shortcut-info">
+              <div class="cfg-spotify-shortcut-title">Configuración detallada</div>
+              <div class="cfg-spotify-shortcut-desc">La autorización, comandos de chat y ajustes del player viven en la pestaña <em style="color:var(--text2)">Música</em>.</div>
+            </div>
+            <button class="btn btn-ghost" onclick="goTab('spotify')">Ir a Música →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Comandos del chat ────────────────────────────── -->
+      <section class="cfg-section" id="cfg-sec-cmds">
+        <header class="cfg-section-head">
+          <div class="cfg-section-ico">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          </div>
+          <div class="cfg-section-head-text">
+            <div class="cfg-section-eyebrow">Chat</div>
+            <div class="cfg-section-title">Comandos disponibles</div>
+            <p class="cfg-section-desc">Atajos que los viewers pueden usar en el chat para interactuar con el torneo activo.</p>
+          </div>
+        </header>
+        <div class="cfg-section-body">
+
+          <div class="cfg-cmd-group">
+            <div class="cfg-cmd-group-head">
+              <span class="cfg-cmd-group-title">Unirse al torneo</span>
+            </div>
+            <div class="cmd-pills">
+              <span class="cmd-pill orange">!join</span>
+              <span class="cmd-pill orange">!torneo</span>
+              <span class="cmd-pill orange">!unirse</span>
+            </div>
+            <p class="cfg-cmd-group-desc">Los viewers escriben cualquiera de estos comandos para anotarse al torneo activo.</p>
+          </div>
+
+          <div class="cfg-cmd-group">
+            <div class="cfg-cmd-group-head">
+              <span class="cfg-cmd-group-title">Salir del torneo</span>
+            </div>
+            <div class="cmd-pills">
+              <span class="cmd-pill red">!salir</span>
+              <span class="cmd-pill red">!leave</span>
+            </div>
+            <p class="cfg-cmd-group-desc">Permite abandonar el torneo si todavía no se sortearon los equipos.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Barra de guardar sticky ──────────────────────── -->
+      <div class="cfg-savebar">
+        <div class="cfg-savebar-info">
+          <div class="cfg-savebar-title">Guardar configuración</div>
+          <div class="cfg-savebar-desc">Aplica cambios de Supabase, Kick y ajustes generales del ambiente activo.</div>
+        </div>
+        <button class="btn btn-orange" onclick="saveConfig()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Guardar
+        </button>
+      </div>
     </div>
   </div>
+</div>

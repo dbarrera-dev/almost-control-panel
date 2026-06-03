@@ -23,12 +23,32 @@ function todoSetFilter(f) {
   todoRender(todosData);
 }
 
+function todoSearchRefresh() {
+  todoRender(todosData);
+}
+
 function todoRender(data) {
   const list = document.getElementById('todoList');
-  const filtered = todoFilter === 'all' ? data : data.filter(t => t.status === todoFilter);
+  const searchTerm = (document.getElementById('todoSearchInput')?.value || '').toLowerCase().trim();
+  const byStatus = todoFilter === 'all' ? data : data.filter(t => t.status === todoFilter);
+  const filtered = byStatus.filter((t) => {
+    if (!searchTerm) return true;
+    const title = String(t.title || '').toLowerCase();
+    const desc = String(t.description || '').toLowerCase();
+    return title.includes(searchTerm) || desc.includes(searchTerm);
+  });
 
   const countLabel = document.getElementById('todoCountLabel');
-  if (countLabel) countLabel.textContent = `${filtered.length} tarea${filtered.length !== 1 ? 's' : ''}`;
+  if (countLabel) {
+    const totalStatus = byStatus.length;
+    if (searchTerm && filtered.length !== totalStatus) {
+      countLabel.textContent = `${filtered.length} de ${totalStatus}`;
+    } else {
+      countLabel.textContent = `${filtered.length} tarea${filtered.length !== 1 ? 's' : ''}`;
+    }
+  }
+
+  todoUpdateStats(data);
 
   if (!filtered.length) {
     const msgs = {
@@ -37,7 +57,8 @@ function todoRender(data) {
       in_progress: 'Sin tareas en progreso.',
       done: 'Sin tareas completadas.'
     };
-    list.innerHTML = `<div class="empty" style="padding:40px 20px"><div class="empty-ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><p>${msgs[todoFilter]}</p></div>`;
+    const msg = searchTerm ? 'No hay tareas que coincidan con la búsqueda.' : msgs[todoFilter];
+    list.innerHTML = `<div class="empty" style="padding:40px 20px"><div class="empty-ico"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><p>${msg}</p></div>`;
     return;
   }
 
@@ -51,6 +72,19 @@ function todoRender(data) {
   });
 
   list.innerHTML = sorted.map(t => todoItemHTML(t)).join('');
+}
+
+function todoUpdateStats(data) {
+  const pending = data.filter(t => t.status === 'pending').length;
+  const progress = data.filter(t => t.status === 'in_progress').length;
+  const done = data.filter(t => t.status === 'done').length;
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = String(value);
+  };
+  set('todoStatPending', pending);
+  set('todoStatProgress', progress);
+  set('todoStatDone', done);
 }
 
 function todoItemHTML(t) {
@@ -190,14 +224,32 @@ api.onKeyOverlayStatus((s) => {
   const tog = document.getElementById('koToggle');
   const statusText = document.getElementById('koStatusText');
   const urlRow = document.getElementById('koUrlRow');
+  const localUrlEl = document.getElementById('koUrlInput');
+  const lanRow = document.getElementById('koLanUrlRow');
+  const lanUrlEl = document.getElementById('koLanUrlInput');
   if (!tog) return;
   tog.checked = s.running;
   if (s.running) {
-    statusText.textContent = 'Activo en ' + s.url;
+    const localUrl = s.url || 'http://localhost:9001';
+    statusText.textContent = 'Activo en ' + localUrl;
+    if (localUrlEl) localUrlEl.textContent = localUrl;
     if (urlRow) urlRow.classList.remove('hidden');
+    if (lanRow && lanUrlEl) {
+      if (s.lanUrl) {
+        lanRow.classList.remove('hidden');
+        lanUrlEl.textContent = s.lanUrl;
+      } else {
+        lanRow.classList.add('hidden');
+        lanUrlEl.textContent = '—';
+      }
+    }
   } else {
     statusText.textContent = s.error ? 'Error: ' + s.error : 'Desactivado';
     if (urlRow) urlRow.classList.add('hidden');
+    if (lanRow && lanUrlEl) {
+      lanRow.classList.add('hidden');
+      lanUrlEl.textContent = '—';
+    }
     koPreviewClear();
   }
 });

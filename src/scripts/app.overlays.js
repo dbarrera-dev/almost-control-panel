@@ -256,3 +256,214 @@ async function _doResetBracket() {
   else toast('Error al resetear','err');
 }
 
+// ── RL Stats Overlay (panel dentro de Overlays) ──────────────────
+let ovRlLoaded = false;
+let ovRlBound = false;
+let ovRlCfg = {
+  platform: 'epic',
+  username: '',
+  playlistId: 13,
+  realtimeEnabled: true,
+  statsApiPort: 49123,
+  style: { bg: 'rgba(15,15,20,0.92)', text: '#ffffff', accent: '#2563eb', radius: 12 }
+};
+
+function ovRlNormalizeCfg(cfg = {}) {
+  const style = cfg.style || {};
+  return {
+    platform: cfg.platform || 'epic',
+    username: cfg.username || '',
+    playlistId: Number(cfg.playlistId || 13),
+    realtimeEnabled: cfg.realtimeEnabled !== false,
+    statsApiPort: Number(cfg.statsApiPort || 49123),
+    style: {
+      bg: style.bg || 'rgba(15,15,20,0.92)',
+      text: style.text || '#ffffff',
+      accent: style.accent || '#2563eb',
+      radius: Number.isFinite(Number(style.radius)) ? Number(style.radius) : 12
+    }
+  };
+}
+
+function ovRlBgOpacityFromRgba(bg) {
+  const match = String(bg || '').match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\s*\)/i);
+  const alpha = match ? Number(match[1]) : 0.92;
+  const pct = Math.max(0, Math.min(100, Math.round(alpha * 100)));
+  return Number.isFinite(pct) ? pct : 92;
+}
+
+async function loadRlOverlayPanel() {
+  try {
+    if (!ovRlLoaded) {
+      const st = await api.rlOverlayStatus();
+      if (!st?.running) await api.rlOverlayStart();
+      ovRlLoaded = true;
+    }
+
+    const status = await api.rlOverlayStatus();
+    ovRlApplyStatus(status);
+
+    const payload = await api.rlOverlayGetConfig();
+    ovRlCfg = ovRlNormalizeCfg(payload?.config || ovRlCfg);
+    ovRlApplyUI();
+
+    if (payload?.stats) ovRlShowStats(payload);
+
+    if (!ovRlBound) {
+      api.onRLStatsUpdate((data) => ovRlShowStats(data));
+      ovRlBound = true;
+    }
+  } catch (e) {
+    log('warn', 'Error cargando panel RL overlay: ' + (e.message || e));
+  }
+}
+
+function ovRlApplyStatus(s) {
+  const badge = document.getElementById('ovRlStatusBadge');
+  if (!badge) return;
+  if (s?.running) {
+    badge.textContent = 'Activo';
+    badge.className = 'badge badge-on';
+  } else {
+    badge.textContent = 'Inactivo';
+    badge.className = 'badge badge-off';
+  }
+  if (s?.url) document.getElementById('ovRlUrlText').textContent = s.url;
+}
+
+function ovRlApplyUI() {
+  document.getElementById('ovRlPlatform').value = ovRlCfg.platform || 'epic';
+  document.getElementById('ovRlUsername').value = ovRlCfg.username || '';
+  document.getElementById('ovRlPlaylist').value = String(ovRlCfg.playlistId || 13);
+  document.getElementById('ovRlRealtimeMode').value = ovRlCfg.realtimeEnabled === false ? 'tracker' : 'realtime';
+  document.getElementById('ovRlStatsPort').value = String(ovRlCfg.statsApiPort || 49123);
+  document.getElementById('ovRlAccent').value = ovRlCfg.style.accent || '#2563eb';
+  document.getElementById('ovRlAccentVal').textContent = ovRlCfg.style.accent || '#2563eb';
+  document.getElementById('ovRlTextColor').value = ovRlCfg.style.text || '#ffffff';
+  document.getElementById('ovRlTextVal').textContent = ovRlCfg.style.text || '#ffffff';
+  document.getElementById('ovRlRadius').value = ovRlCfg.style.radius ?? 12;
+  document.getElementById('ovRlRadiusVal').textContent = `${ovRlCfg.style.radius ?? 12}px`;
+  const op = ovRlBgOpacityFromRgba(ovRlCfg.style.bg);
+  document.getElementById('ovRlBgOp').value = op;
+  document.getElementById('ovRlBgOpVal').textContent = `${op}%`;
+}
+
+function ovRlFormatResult(session) {
+  const last = session?.lastResult || '';
+  if (last === 'win') return 'WIN';
+  if (last === 'loss') return 'LOSS';
+  return '—';
+}
+
+function ovRlFormatStreak(session) {
+  const streak = Number(session?.streak || 0);
+  if (streak > 0) return `W${streak}`;
+  if (streak < 0) return `L${Math.abs(streak)}`;
+  return '0';
+}
+
+function ovRlShowStats(payload = {}) {
+  const stats = payload?.stats;
+  const delta = payload?.delta || {};
+  const session = payload?.session || {};
+  const realtime = payload?.realtime || {};
+  if (!stats) return;
+
+  document.getElementById('ovRlStatsCard').style.display = '';
+  document.getElementById('ovRlMMR').textContent = stats.mmr ?? '—';
+  document.getElementById('ovRlWins').textContent = stats.wins ?? '—';
+  document.getElementById('ovRlLosses').textContent = stats.losses ?? '—';
+  document.getElementById('ovRlGoals').textContent = stats.goals ?? '—';
+  document.getElementById('ovRlRank').textContent = stats.rank || '—';
+  document.getElementById('ovRlDivision').textContent = stats.division ? `· ${stats.division}` : '';
+  document.getElementById('ovRlPlaylistName').textContent = stats.playlist || '';
+
+  const mmrD = Number(delta.mmr || 0);
+  const mmrTxt = mmrD > 0 ? `+${mmrD}` : `${mmrD}`;
+  const mmrEl = document.getElementById('ovRlSessionMMR');
+  mmrEl.textContent = mmrTxt;
+  mmrEl.style.color = mmrD > 0 ? '#22c55e' : mmrD < 0 ? '#ef4444' : 'var(--text1)';
+
+  const res = ovRlFormatResult(session);
+  const resEl = document.getElementById('ovRlSessionResult');
+  resEl.textContent = res;
+  resEl.style.color = res === 'WIN' ? '#22c55e' : res === 'LOSS' ? '#ef4444' : 'var(--text1)';
+  if (ovRlCfg.realtimeEnabled !== false) {
+    if (realtime.connected) {
+      const who = realtime.playerName ? ` (${realtime.playerName})` : '';
+      document.getElementById('ovRlLastResult').textContent = res === '—'
+        ? `Realtime conectado${who}`
+        : `Última partida: ${res}${who}`;
+    } else {
+      document.getElementById('ovRlLastResult').textContent = `Esperando Rocket en puerto ${realtime.port || ovRlCfg.statsApiPort || 49123}`;
+    }
+  } else {
+    document.getElementById('ovRlLastResult').textContent = res === '—' ? 'Modo tracker activo' : `Última partida: ${res}`;
+  }
+
+  const streakText = ovRlFormatStreak(session);
+  const streakEl = document.getElementById('ovRlSessionStreak');
+  streakEl.textContent = streakText;
+  streakEl.style.color = streakText.startsWith('W') ? '#22c55e' : streakText.startsWith('L') ? '#ef4444' : 'var(--text1)';
+
+  document.getElementById('ovRlSessionWL').textContent = `${session.wins || 0} / ${session.losses || 0}`;
+  document.getElementById('ovRlSessionGoals').textContent = `${session.goals || 0}`;
+}
+
+async function ovRlSaveConfig() {
+  const mode = document.getElementById('ovRlRealtimeMode').value;
+  ovRlCfg.platform = document.getElementById('ovRlPlatform').value;
+  ovRlCfg.username = document.getElementById('ovRlUsername').value.trim();
+  ovRlCfg.playlistId = parseInt(document.getElementById('ovRlPlaylist').value, 10) || 13;
+  ovRlCfg.realtimeEnabled = mode !== 'tracker';
+  ovRlCfg.statsApiPort = parseInt(document.getElementById('ovRlStatsPort').value, 10) || 49123;
+  await api.rlOverlaySetConfig(ovRlCfg);
+}
+
+async function ovRlSaveStyle() {
+  ovRlCfg.style.accent = document.getElementById('ovRlAccent').value;
+  ovRlCfg.style.text = document.getElementById('ovRlTextColor').value;
+  document.getElementById('ovRlAccentVal').textContent = ovRlCfg.style.accent;
+  document.getElementById('ovRlTextVal').textContent = ovRlCfg.style.text;
+  await api.rlOverlaySetConfig(ovRlCfg);
+}
+
+function ovRlOnRadius(v) {
+  ovRlCfg.style.radius = parseInt(v, 10) || 12;
+  document.getElementById('ovRlRadiusVal').textContent = `${ovRlCfg.style.radius}px`;
+  api.rlOverlaySetConfig(ovRlCfg);
+}
+
+function ovRlOnBgOp(v) {
+  const value = parseInt(v, 10) || 92;
+  document.getElementById('ovRlBgOpVal').textContent = `${value}%`;
+  ovRlCfg.style.bg = `rgba(15,15,20,${(value / 100).toFixed(2)})`;
+  api.rlOverlaySetConfig(ovRlCfg);
+}
+
+async function ovRlRefresh(btn) {
+  const prev = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Actualizando...'; }
+  try {
+    const payload = await api.rlOverlayRefresh();
+    if (payload?.stats) ovRlShowStats(payload);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = prev || '↻ Actualizar stats ahora'; }
+  }
+}
+
+async function ovRlResetSession() {
+  await api.rlOverlayResetSession();
+  const payload = await api.rlOverlayRefresh();
+  if (payload?.stats) ovRlShowStats(payload);
+}
+
+function ovRlCopyUrl(btn) {
+  const txt = document.getElementById('ovRlUrlText')?.textContent || 'http://localhost:9003';
+  navigator.clipboard.writeText(txt).then(() => {
+    if (!btn) return;
+    const prev = btn.textContent;
+    btn.textContent = '✓ Copiado';
+    setTimeout(() => { btn.textContent = prev; }, 1400);
+  });
+}

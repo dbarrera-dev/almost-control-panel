@@ -1,71 +1,218 @@
 <div class="view" id="view-sorteos">
-    <div class="sh"><div class="sh-badge orange">SORTEOS</div><h2>Sorteos en vivo</h2><p>El bot registra a quien escribe el comando · sorteá ganadores al instante</p></div>
 
-    <!-- Config del sorteo -->
-    <div class="card">
-      <div class="card-title">Configuración del sorteo</div>
-      <div class="g2">
-        <div class="ig">
-          <label>Comando de participación</label>
-          <input id="sorteoCmd" type="text" placeholder="!sorteo" value="!sorteo" oninput="updateSorteoCmd(this.value)" />
+  <!-- ── Header premium ──────────────────────────────────────── -->
+  <header class="s-header">
+    <div class="s-header-eyebrow">
+      <span class="s-header-dot"></span>
+      <span>Sorteos</span>
+      <span class="s-header-sep">·</span>
+      <span class="s-header-eyebrow-sub">ruleta en vivo</span>
+    </div>
+    <div class="s-header-row">
+      <h1 class="s-header-title">Sorteos en vivo</h1>
+      <div class="s-header-tip">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Clickeá el centro de la ruleta para girar</span>
+      </div>
+    </div>
+    <p class="s-header-lede">La gente entra escribiendo el comando configurado · cada giro elige un ganador con animación y confetti.</p>
+  </header>
+
+  <!-- Toolbar compacto -->
+  <div class="s-bar" id="sorteoStatusBar">
+    <div class="s-bar-state">
+      <span class="s-bar-dot"></span>
+      <span class="s-bar-statetxt" id="sorteoStatusTxt">SORTEO CERRADO</span>
+      <span class="s-bar-cmd">por <code id="sorteoCmdLabel">!sorteo</code></span>
+    </div>
+    <div class="s-bar-actions">
+      <button class="btn btn-orange" id="sorteoToggleBtn" onclick="toggleSorteo()">Abrir sorteo</button>
+      <button class="s-icon-btn" onclick="sorteoOpenWinners()" title="Ganadores de esta ronda">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        <span>Ganadores</span>
+        <span class="s-bar-badge" id="sorteoWinnersBadge">0</span>
+      </button>
+      <button class="s-icon-btn" onclick="sorteoOpenHistorial()" title="Historial">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.74 9.74 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+        <span>Historial</span>
+      </button>
+      <button class="s-icon-btn s-icon-btn-square" onclick="sorteoOpenOptions()" title="Opciones de ruleta">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Grid principal -->
+  <div class="s-grid">
+    <section class="s-panel-wheel">
+      <div class="s-wheel-stage" id="sorteoWheelStage">
+        <div class="s-wheel-pointer" aria-hidden="true"></div>
+        <canvas id="sorteoWheelCanvas" width="640" height="640"></canvas>
+        <button class="s-wheel-hub" id="sorteoWheelSpinBtn" onclick="sorteoWheelSpin()" disabled aria-label="Girar ruleta">
+          <span class="s-wheel-hub-n" id="sorteoCountBig">0</span>
+          <span class="s-wheel-hub-l">GIRAR</span>
+        </button>
+        <div class="s-wheel-empty hidden" id="sorteoWheelEmpty"></div>
+      </div>
+      <div class="s-wheel-last" id="sorteoWheelLastWinner">Último ganador: —</div>
+
+      <div class="s-quickadd">
+        <div class="s-quickadd-head">
+          <span class="s-quickadd-label">Agregar manualmente</span>
+          <span class="s-quickadd-hint">separá con coma o salto de línea</span>
         </div>
-        <div class="ig">
-          <label>Cantidad de ganadores</label>
-          <div class="counter-row">
-            <button class="counter-btn" onclick="sorteoWinCount=Math.max(1,sorteoWinCount-1);document.getElementById('sorteoWinVal').value=sorteoWinCount">−</button>
-            <input id="sorteoWinVal" type="number" class="num-small" value="1" min="1" max="20" oninput="sorteoWinCount=parseInt(this.value)||1" />
-            <button class="counter-btn" onclick="sorteoWinCount=Math.min(20,sorteoWinCount+1);document.getElementById('sorteoWinVal').value=sorteoWinCount">+</button>
+        <div class="s-quickadd-row">
+          <textarea
+            id="sorteoManualInput"
+            class="s-quickadd-input"
+            rows="1"
+            placeholder="@nick1, @nick2, @nick3..."
+            onkeydown="sorteoHandleManualKeydown(event)"
+          ></textarea>
+          <button class="btn btn-orange s-quickadd-btn" id="sorteoManualAddBtn" onclick="sorteoAddManualFromInput()">Agregar</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="s-panel s-panel-part">
+      <header class="s-panel-head">
+        <div class="s-panel-title">Participantes <b id="sorteoPartCount">0</b></div>
+      </header>
+      <input id="sorteoSearch" class="s-search" type="text" placeholder="Buscar participante..." oninput="filterSorteoList(this.value)" />
+      <div id="sorteoPartList" class="s-part-list">
+        <div class="sorteo-empty">
+          <div class="empty-ico">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
+          </div>
+          <p>Abrí el sorteo · la gente escribe el comando para entrar.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ─── Modal: Opciones ─────────────────────────── -->
+  <div class="s-modal hidden" id="sorteoOptionsModal" onclick="if(event.target===this)sorteoCloseModal('sorteoOptionsModal')">
+    <div class="s-modal-card">
+      <header class="s-modal-head">
+        <div class="s-modal-title">Opciones de sorteo</div>
+        <button class="s-modal-close" onclick="sorteoCloseModal('sorteoOptionsModal')" aria-label="Cerrar">✕</button>
+      </header>
+      <div class="s-modal-body">
+        <div class="s-form-grid">
+          <div class="ig">
+            <label>Comando de participación</label>
+            <input id="sorteoCmd" type="text" placeholder="!sorteo" value="!sorteo" oninput="updateSorteoCmd(this.value)" />
+          </div>
+          <div class="ig">
+            <label>Ganadores por sorteo</label>
+            <div class="counter-row">
+              <button class="counter-btn" onclick="sorteoWinCount=Math.max(1,sorteoWinCount-1);document.getElementById('sorteoWinVal').value=sorteoWinCount">−</button>
+              <input id="sorteoWinVal" type="number" class="num-small" value="1" min="1" max="20" oninput="sorteoWinCount=parseInt(this.value)||1" />
+              <button class="counter-btn" onclick="sorteoWinCount=Math.min(20,sorteoWinCount+1);document.getElementById('sorteoWinVal').value=sorteoWinCount">+</button>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Estado + controles -->
-    <div class="sorteo-status-bar" id="sorteoStatusBar">
-      <div class="sorteo-status-dot"></div>
-      <span class="sorteo-status-txt" id="sorteoStatusTxt">SORTEO CERRADO</span>
-      <div style="text-align:right">
-        <div class="sorteo-count-badge" id="sorteoCountBig">0</div>
-        <div class="sorteo-count-lbl">participantes</div>
-      </div>
-    </div>
-
-    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-      <button class="btn btn-orange" id="sorteoToggleBtn" onclick="toggleSorteo()">Abrir sorteo</button>
-      <button class="btn btn-gold" id="sortearBtn" onclick="sortear()" disabled>Sortear</button>
-      <button class="btn btn-danger" id="limpiarBtn" onclick="limpiarSorteo()">Limpiar participantes</button>
-    </div>
-
-    <!-- Ganadores -->
-    <div id="sorteoWinnersWrap" class="hidden">
-      <div class="sorteo-winners-box">
-        <span class="section-label" style="color:var(--gold);margin-bottom:8px">GANADORES</span>
-        <div id="sorteoWinnersList"></div>
-      </div>
-    </div>
-
-    <!-- Lista de participantes -->
-    <div class="card">
-      <div class="card-title" style="justify-content:space-between">
-        Participantes <span style="color:var(--orange2);font-family:'Bebas Neue',cursive;font-size:18px" id="sorteoPartCount">0</span>
-      </div>
-      <input id="sorteoSearch" type="text" placeholder="Buscar participante..." oninput="filterSorteoList(this.value)" style="margin-bottom:10px;width:100%;padding:8px 12px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text1)" />
-      <div id="sorteoPartList" style="display:flex;flex-direction:column;gap:5px;max-height:380px;overflow-y:auto;scrollbar-width:thin">
-        <div class="empty" style="padding:20px"><div class="empty-ico" style="font-size:24px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/><path d="m17 13 5 5m-5 0 5-5"/></svg></div><p>Abrí el sorteo · la gente escribe el comando para entrar</p></div>
-      </div>
-    </div>
-
-    <!-- Historial de sorteos -->
-    <div id="sorteoHistorialWrap" class="hidden">
-      <div class="card">
-        <div class="card-title" style="justify-content:space-between">
-          Historial de sorteos
-          <button class="btn btn-ghost" style="padding:3px 10px;font-size:9px" onclick="loadSorteoHistorial()">↻ Actualizar</button>
+        <div class="s-modal-section">
+          <div class="s-modal-sectionhead">Ruleta</div>
+          <div class="s-form-grid">
+            <div class="ig">
+              <label>Duración del giro (seg)</label>
+              <input id="sorteoWheelDuration" type="number" min="3" max="20" value="7" oninput="sorteoWheelHandleDurationInput(this.value)" />
+            </div>
+            <label class="s-check-block">
+              <input type="checkbox" id="sorteoWheelAutoRemove" checked />
+              <span>Excluir ganador para próximos giros</span>
+            </label>
+          </div>
+          <div class="s-modal-actions">
+            <button class="btn btn-ghost" id="sorteoWheelSyncBtn" onclick="sorteoWheelSync()">Sincronizar con participantes</button>
+            <button class="btn btn-danger" id="sorteoWheelResetBtn" onclick="sorteoWheelReset()">Reiniciar ruleta</button>
+          </div>
         </div>
-        <table class="htable">
-          <thead><tr><th>Fecha</th><th>Hora</th><th>Ganadores</th><th style="text-align:center">Participantes</th></tr></thead>
-          <tbody id="sorteoHistorialBody"></tbody>
-        </table>
+
+        <details class="s-modal-details">
+          <summary>
+            <span>Nombres en la ruleta</span>
+            <button type="button" class="btn btn-ghost s-mini-btn" onclick="event.preventDefault();event.stopPropagation();sorteoWheelReseed()">Recargar todos</button>
+          </summary>
+          <div class="s-wheel-names" id="sorteoWheelNames"></div>
+        </details>
       </div>
     </div>
   </div>
+
+  <!-- ─── Modal: Ganadores de esta ronda ─────────── -->
+  <div class="s-modal hidden" id="sorteoWinnersModal" onclick="if(event.target===this)sorteoCloseModal('sorteoWinnersModal')">
+    <div class="s-modal-card">
+      <header class="s-modal-head">
+        <div class="s-modal-title">Ganadores de esta ronda</div>
+        <button class="s-modal-close" onclick="sorteoCloseModal('sorteoWinnersModal')" aria-label="Cerrar">✕</button>
+      </header>
+      <div class="s-modal-body">
+        <div id="sorteoWinnersWrap" class="hidden">
+          <div id="sorteoWinnersList" class="s-winners-list"></div>
+        </div>
+        <div id="sorteoResultsEmpty" class="s-results-empty">
+          <p>Todavía no hay ganadores en esta ronda. Girá la ruleta para sortear.</p>
+        </div>
+        <div class="s-modal-actions s-modal-actions-end">
+          <button class="btn btn-danger" id="limpiarBtn" onclick="limpiarSorteo()">Limpiar participantes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Modal: Historial ───────────────────────── -->
+  <div class="s-modal hidden" id="sorteoHistorialModal" onclick="if(event.target===this)sorteoCloseModal('sorteoHistorialModal')">
+    <div class="s-modal-card s-modal-card-wide">
+      <header class="s-modal-head">
+        <div class="s-modal-title">Historial de sorteos</div>
+        <div class="s-modal-headactions">
+          <button class="btn btn-ghost s-mini-btn" onclick="loadSorteoHistorial()">↻ Actualizar</button>
+          <button class="s-modal-close" onclick="sorteoCloseModal('sorteoHistorialModal')" aria-label="Cerrar">✕</button>
+        </div>
+      </header>
+      <div class="s-modal-body">
+        <div id="sorteoHistorialWrap" class="hidden">
+          <table class="htable s-history-table">
+            <thead>
+              <tr><th>Fecha</th><th>Hora</th><th>Ganadores</th><th class="sorteo-col-center">Participantes</th></tr>
+            </thead>
+            <tbody id="sorteoHistorialBody"></tbody>
+          </table>
+        </div>
+        <div class="s-results-empty" id="sorteoHistorialEmpty">
+          <p>Todavía no hay sorteos guardados.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay del ganador (canvas confetti) -->
+  <div id="sorteoWheelWinnerOverlay" class="sorteo-wheel-overlay hidden">
+    <canvas id="sorteoWheelConfettiCanvas"></canvas>
+    <div class="sorteo-wheel-overlay-rays" aria-hidden="true"></div>
+    <div class="sorteo-wheel-overlay-card">
+      <div class="sorteo-wheel-overlay-glow" aria-hidden="true"></div>
+      <div class="sorteo-wheel-overlay-crown" aria-hidden="true">
+        <svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 18h20l-1.5-9-4.5 4-4-6-4 6L3.5 9 2 18Z"/>
+          <circle cx="2" cy="7" r="1.4" fill="currentColor"/>
+          <circle cx="22" cy="7" r="1.4" fill="currentColor"/>
+          <circle cx="12" cy="4" r="1.6" fill="currentColor"/>
+        </svg>
+      </div>
+      <div class="sorteo-wheel-overlay-label">¡TENEMOS GANADOR!</div>
+      <div class="sorteo-wheel-overlay-name" id="sorteoWheelOverlayName">—</div>
+      <div class="sorteo-wheel-overlay-sub">Felicitaciones</div>
+      <div class="sorteo-wheel-overlay-actions">
+        <button class="btn btn-gold" onclick="sorteoWheelSpinAgain()">Girar otra vez</button>
+        <button class="btn btn-ghost" onclick="sorteoWheelCloseWinner()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Botón fantasma para que el JS pueda referenciar #sortearBtn sin romper -->
+  <button id="sortearBtn" onclick="sortear()" hidden></button>
+</div>

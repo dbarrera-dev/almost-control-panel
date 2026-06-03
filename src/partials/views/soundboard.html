@@ -1,0 +1,126 @@
+<div class="view" id="view-soundboard">
+  <div class="sh">
+    <div class="sh-badge" style="background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.26)">SOUNDBOARD</div>
+    <h2>Botonera de Sonidos</h2>
+    <p>Subí sonidos, disparalos manualmente y asigná atajos globales para usarlos aunque la app esté en segundo plano.</p>
+  </div>
+
+  <div class="page-grid two sb-layout">
+    <div class="page-col">
+      <div class="card" id="sbCreateCard">
+        <div class="card-title" style="margin-bottom:12px">Nuevo sonido</div>
+        <div class="sb-storage-hint" id="sbStorageHint">Fuente única: Supabase Storage (bucket). Si subís manualmente al bucket, acá solo cargás la ruta.</div>
+        <div class="ig" style="margin-bottom:10px">
+          <label>Archivo de audio</label>
+          <input id="sbFileInput" type="file" accept="audio/*" onchange="sbOnFileSelected(event)">
+          <span class="sb-hint">Opcional. Si ya lo subiste manualmente al bucket, no hace falta elegir archivo.</span>
+        </div>
+        <div class="g2" style="margin-bottom:10px">
+          <div class="ig" style="margin-bottom:0">
+            <label>Bucket</label>
+            <input id="sbStorageBucketInput" type="text" placeholder="soundboard" value="soundboard" />
+          </div>
+          <div class="ig" style="margin-bottom:0">
+            <label>Ruta en bucket</label>
+            <input id="sbStoragePathInput" type="text" placeholder="Ej: sounds/airhorn.mp3" />
+          </div>
+        </div>
+        <span class="sb-hint">Si elegís archivo y dejás vacío, se autogenera ruta.</span>
+
+        <div class="g2" style="margin-bottom:10px">
+          <div class="ig" style="margin-bottom:0">
+            <label>Nombre</label>
+            <input id="sbNameInput" type="text" maxlength="80" placeholder="Ej: Airhorn" />
+          </div>
+          <div class="ig" style="margin-bottom:0">
+            <label>Volumen</label>
+            <input id="sbVolumeInput" type="number" min="0" max="100" step="1" value="100" />
+          </div>
+        </div>
+
+        <div class="g2" style="margin-bottom:8px">
+          <div class="ig" style="margin-bottom:0">
+            <label>Atajo global <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+            <input id="sbHotkeyInput" type="text" readonly placeholder="Click y presioná el combo..." onfocus="sbStartHotkeyCapture()" onblur="sbStopHotkeyCapture()" />
+          </div>
+          <div class="ig" style="margin-bottom:0;display:flex;align-items:flex-end;gap:8px">
+            <button class="btn btn-ghost sb-clear-hotkey-btn" onclick="sbClearHotkeyInput()">Limpiar atajo</button>
+          </div>
+        </div>
+
+        <div class="sb-actions-row">
+          <button id="sbUploadBtn" class="btn btn-orange" onclick="sbUploadSound()">Subir sonido</button>
+          <div class="sb-toggle-wrap">
+            <label class="sb-switch">
+              <input id="sbHotkeysToggle" type="checkbox" onchange="sbToggleGlobalHotkeys(this.checked)">
+              <span class="sb-slider"></span>
+            </label>
+            <div>
+              <div class="sb-toggle-title">Atajos globales</div>
+              <div class="sb-toggle-sub">Activa/desactiva todos los atajos de la botonera.</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="sbUploadMsg" class="sb-inline-msg"></div>
+      </div>
+
+      <div class="card compact">
+        <div class="card-title">Resumen</div>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="n" id="sbStatsTotal">0</div><div class="l">Sonidos</div></div>
+          <div class="kpi"><div class="n" id="sbStatsHotkeys">0</div><div class="l">Con atajo</div></div>
+          <div class="kpi"><div class="n" id="sbStatsEnabled">0</div><div class="l">Habilitados</div></div>
+        </div>
+      </div>
+
+      <div class="card compact" id="sbPlayerCard">
+        <div class="card-title">Reproductor</div>
+        <div class="sb-player-top">
+          <div id="sbPlayerState" class="sb-player-state">Sin reproducción activa</div>
+          <div id="sbPlayerCount" class="sb-player-count">0 activos</div>
+        </div>
+
+        <div class="sb-master-row">
+          <label for="sbMasterVolumeRange">Volumen maestro</label>
+          <div class="sb-master-controls">
+            <input id="sbMasterVolumeRange" type="range" min="0" max="100" step="1" value="100" oninput="sbSetMasterVolume(this.value, 'range')">
+            <input id="sbMasterVolumeInput" type="number" min="0" max="100" step="1" value="100" oninput="sbSetMasterVolume(this.value, 'input')">
+          </div>
+        </div>
+
+        <div class="sb-player-actions">
+          <button id="sbMuteBtn" class="btn btn-ghost sb-mini-btn" onclick="sbToggleMute()">Silenciar</button>
+          <button class="btn btn-ghost sb-mini-btn" onclick="sbStopAllAudio()">⏹ Parar todo</button>
+        </div>
+
+        <div id="sbNowPlayingList" class="sb-now-playing-list">
+          <div class="sb-now-empty">No hay sonidos reproduciéndose.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-col">
+      <div class="card sb-list-card">
+        <div class="toolbar-row" style="margin-bottom:10px">
+          <div class="toolbar-group">
+            <button class="chip-tab on" id="sbFilter-all" onclick="sbSetFilter('all')">Todos</button>
+            <button class="chip-tab" id="sbFilter-enabled" onclick="sbSetFilter('enabled')">Habilitados</button>
+            <button class="chip-tab" id="sbFilter-hotkey" onclick="sbSetFilter('hotkey')">Con atajo</button>
+          </div>
+          <div class="toolbar-group">
+            <button class="btn btn-ghost sb-mini-btn" onclick="sbStopAllAudio()">⏹ Parar audios</button>
+            <button class="btn btn-ghost sb-mini-btn" onclick="sbRefresh(true)">↻</button>
+          </div>
+        </div>
+        <div id="sbLastPlay" class="sb-last-play">Aún no se reprodujo ningún sonido en esta sesión.</div>
+        <div id="sbList" class="sb-list">
+          <div class="empty" style="padding:34px 20px">
+            <div class="empty-ico" style="font-size:30px">🔈</div>
+            <p>No hay sonidos cargados todavía.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

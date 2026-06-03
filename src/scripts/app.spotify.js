@@ -11,23 +11,136 @@ let spProgressMs  = 0;
 let spDurationMs  = 0;
 let spProgressInterval = null;
 let _spPollFailCount = 0;
-const _SP_POLL_BASE = 5000;
-const _SP_POLL_MAX  = 60000;
+const _SP_POLL_BASE = 3000;
+const _SP_POLL_MAX  = 12000;
+let spQueueCache = [];
+let srKickEnabled = false;
+let _syncSrKickInFlight = null;
+let _loadSpotifyInFlight = null;
+let _srKickLastSyncAt = 0;
+const _SR_KICK_SYNC_MS = 15000;
+let _spSearchReqSeq = 0;
+let _spQueueSyncInFlight = null;
+let _spQueueLastSyncAt = 0;
+const _SP_QUEUE_SYNC_MS = 5000;
+let _spTransportInFlight = false;
+let _spTransportLastAt = 0;
+const _SP_TRANSPORT_COOLDOWN_MS = 900;
+
+function _spotifyUiReady() {
+  return !!(
+    document.getElementById('view-spotify')
+    && document.getElementById('spClientId')
+    && document.getElementById('spStatusBadge')
+    && document.getElementById('spConnected')
+    && document.getElementById('spNotConnected')
+  );
+}
+
+async function _waitForSpotifyUiReady(maxAttempts = 12, delayMs = 80) {
+  for (let i = 0; i <= maxAttempts; i++) {
+    if (_spotifyUiReady()) return true;
+    if (i < maxAttempts) await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return false;
+}
+
+function _spIsTabActive(name) {
+  return !!document.getElementById('spview-' + name)?.classList.contains('on');
+}
+
+async function _syncSpotifyQueueAuto(opts = {}) {
+  const options = (opts && typeof opts === 'object') ? opts : {};
+  const force = !!options.force;
+  if (!spConnected) return;
+  const now = Date.now();
+  if (!force && (now - _spQueueLastSyncAt) < _SP_QUEUE_SYNC_MS) return;
+  if (_spQueueSyncInFlight) return _spQueueSyncInFlight;
+  const renderMain = _spIsTabActive('cola');
+  _spQueueSyncInFlight = loadSpotifyQueue({ renderMain, silent: true })
+    .catch(() => {})
+    .finally(() => { _spQueueSyncInFlight = null; });
+  return _spQueueSyncInFlight;
+}
+
+async function _syncSongRequestKickState() {
+  if (_syncSrKickInFlight) return _syncSrKickInFlight;
+  _syncSrKickInFlight = (async () => {
+    const srCfg = await api.spotifyGetSongrequestConfig().catch(() => ({ enabled: false, kickEnabled: false, rewardId: '' }));
+    const rewardStatus = await api.kickRewardGetStatus().catch((e) => ({ ok: false, error: e?.message || String(e) }));
+
+    const currentKickEnabled = srCfg?.kickEnabled !== false;
+    const currentEnabled = srCfg?.enabled !== false;
+    let rewardEnabled = currentKickEnabled;
+    let canSyncByRewardState = false;
+
+    if (rewardStatus?.ok) {
+      rewardEnabled = rewardStatus.enabled === true;
+      canSyncByRewardState = true;
+    } else {
+      // Si no pudimos leer estado de reward (por ejemplo Kick desconectado),
+      // no forzamos cambios ni limpiamos el ID: mantenemos el último estado conocido.
+      srKickEnabled = currentKickEnabled;
+      _setSongRequestKickMasterUI(srKickEnabled);
+      const detail = rewardStatus?.error ? ` ${rewardStatus.error}` : '';
+      _setSongRequestKickMasterMsg(`No pude validar la reward de Kick.${detail}`, 'warn');
+      return;
+    }
+
+    // Sincronizar estado del módulo con el estado real de la reward.
+    if (canSyncByRewardState && (currentKickEnabled !== rewardEnabled || currentEnabled !== rewardEnabled)) {
+      await api.spotifySongrequestToggleKick(rewardEnabled).catch(() => {});
+    }
+
+    srKickEnabled = rewardEnabled;
+    _setSongRequestKickMasterUI(srKickEnabled);
+
+    if (rewardEnabled) {
+      _setSongRequestKickMasterMsg('Song Request activo (reward habilitada en Kick).', 'ok');
+    } else {
+      const detail = rewardStatus?.error ? ` ${rewardStatus.error}` : '';
+      _setSongRequestKickMasterMsg(`Song Request inactivo (reward deshabilitada o no disponible).${detail}`, 'warn');
+    }
+  })();
+  try { return await _syncSrKickInFlight; }
+  finally { _syncSrKickInFlight = null; }
+}
 
 // ── Spotify sub-tab navigation ─────────────────────────────────────
 function goSpTab(name) {
-  ['player','explorar','cola','overlay'].forEach(n => {
-    document.getElementById('spview-' + n).classList.toggle('on', n === name);
+  ['player','explorar','cola'].forEach(n => {
+    const view = document.getElementById('spview-' + n);
+    if (view) view.classList.toggle('on', n === name);
     const tab = document.getElementById('sptab-' + n);
     if (tab) tab.classList.toggle('on', n === name);
   });
-  if (name === 'explorar' && spConnected) { loadSpotifyPlaylists(); }
-  if (name === 'cola'     && spConnected) { loadSpotifyQueue(); }
+  if (name === 'player'   && spConnected) { _syncSpotifyQueueAuto({ force: true }).catch(() => {}); }
+  if (name === 'explorar' && spConnected) {
+    const meta = document.getElementById('spSearchMeta');
+    const results = document.getElementById('spSearchResults');
+    if (meta) meta.textContent = 'Tip: también podés pegar links de Spotify (track, playlist, álbum o artista) en el buscador.';
+    if (results && !results.innerHTML.trim()) {
+      results.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:20px 0">Escribí algo y buscá para ver resultados.</div>`;
+    }
+  }
+  if (name === 'cola'     && spConnected) { _syncSpotifyQueueAuto({ force: true }).catch(() => {}); }
 }
 
 // ── Spotify load ───────────────────────────────────────────────────
 async function loadSpotify() {
+  if (_loadSpotifyInFlight) return _loadSpotifyInFlight;
+  _loadSpotifyInFlight = _loadSpotifyImpl().finally(() => { _loadSpotifyInFlight = null; });
+  return _loadSpotifyInFlight;
+}
+
+async function _loadSpotifyImpl() {
   try {
+    const uiReady = await _waitForSpotifyUiReady();
+    if (!uiReady) {
+      log('warn', 'Spotify: UI todavía no está lista, reintentá abrir la pestaña.');
+      return;
+    }
+
     await spovInit();
     const creds = await api.spotifyGetCredentials();
     if (creds.clientId)     document.getElementById('spClientId').value     = creds.clientId;
@@ -37,7 +150,8 @@ async function loadSpotify() {
     spConnected = r.ok && r.connected;
     const dot = document.getElementById('spStatusDot');
     if (dot) dot.classList.toggle('on', spConnected);
-    document.getElementById('spStatusBadge').textContent = spConnected ? '● Conectado' : 'Sin conectar';
+    const modeLabel = r.mode === 'dev' ? ' [DEV]' : '';
+    document.getElementById('spStatusBadge').textContent = (spConnected ? '● Conectado' : 'Sin conectar') + modeLabel;
     document.getElementById('spStatusBadge').className   = spConnected ? 'badge badge-on' : 'badge badge-off';
     document.getElementById('spNotConnected').classList.toggle('hidden',  spConnected);
     document.getElementById('spConnected').classList.toggle('hidden',    !spConnected);
@@ -46,23 +160,19 @@ async function loadSpotify() {
 
     if (spConnected) {
       await loadNowPlaying();
-      const srCfg = await api.spotifyGetSongrequestConfig();
-      const srInput  = document.getElementById('songRewardIdInput');
-      document.getElementById('srTwitchToggle').checked = srCfg.twitchEnabled !== false;
-      document.getElementById('srKickToggle').checked   = srCfg.kickEnabled   !== false;
-      if (srInput && srCfg.rewardId) srInput.value = srCfg.rewardId;
-      api.twitchGetCredentials().then(cr => {
-        if (cr.clientId)        document.getElementById('twitchClientIdInput').value    = cr.clientId;
-        if (cr.broadcasterToken) document.getElementById('broadcasterTokenInput').value = cr.broadcasterToken;
-        if (cr.clientId && cr.broadcasterToken) twitchRewardRefresh();
-      }).catch(() => {});
+      _syncSpotifyQueueAuto({ force: true }).catch(() => {});
+      const srKick = document.getElementById('srKickToggle');
+      await _syncSongRequestKickState();
+      _srKickLastSyncAt = Date.now();
+      if (srKick) srKick.checked = srKickEnabled;
       loadRequestQueue();
       _spPollFailCount = 0;
-      if (spPollInterval) clearInterval(spPollInterval);
+      if (spPollInterval) { clearInterval(spPollInterval); spPollInterval = null; }
       spPollInterval = setInterval(pollNowPlaying, _SP_POLL_BASE);
     } else {
       _stopProgressTimer();
-      clearInterval(spPollInterval); spPollInterval = null;
+      if (spPollInterval) { clearInterval(spPollInterval); spPollInterval = null; }
+      _spQueueLastSyncAt = 0;
     }
   } catch (e) {
     log('warn', 'Error cargando Spotify: ' + (e.message || e));
@@ -91,11 +201,22 @@ async function pollNowPlaying() {
       spDurationMs = r.duration_ms || 0;
       _updateProgressBar();
     }
+
+    const now = Date.now();
+    if ((now - _srKickLastSyncAt) >= _SR_KICK_SYNC_MS) {
+      _srKickLastSyncAt = now;
+      _syncSongRequestKickState().catch(() => {});
+    }
+
     const newTrack   = r.track?.name || null;
     const stateChanged = r.playing !== spIsPlaying;
-    if (newTrack === spLastTrackName && !stateChanged) return;
+    if (newTrack === spLastTrackName && !stateChanged) {
+      _syncSpotifyQueueAuto().catch(() => {});
+      return;
+    }
     spLastTrackName = newTrack;
     _applyNowPlaying(r);
+    _syncSpotifyQueueAuto({ force: true }).catch(() => {});
   } catch (e) {
     _spPollFailCount++;
     _rescheduleSpPoll();
@@ -296,28 +417,83 @@ api.onSpotifyOAuthStatus(({ step }) => {
 
 function updateSpControls() { _updateSpControls(); }
 
+function _spSetTransportButtonsBusy(busy) {
+  const playPauseBtn = document.getElementById('spPlayPauseBtn');
+  const prevBtn = document.getElementById('spPrevBtn');
+  const nextBtn = document.getElementById('spNextBtn');
+  if (playPauseBtn) playPauseBtn.disabled = !!busy;
+  if (prevBtn) prevBtn.disabled = !!busy;
+  if (nextBtn) nextBtn.disabled = !!busy;
+}
+
+async function _spAfterTransportSync() {
+  // Evita quedar en polling lento después de errores transitorios durante next/prev.
+  _spPollFailCount = 0;
+  _rescheduleSpPoll();
+
+  await loadNowPlaying().catch(() => {});
+  _syncSpotifyQueueAuto({ force: true }).catch(() => {});
+
+  // Segundo refresh para cubrir delay típico de Spotify al aplicar saltos.
+  setTimeout(() => {
+    loadNowPlaying().catch(() => {});
+    _syncSpotifyQueueAuto({ force: true }).catch(() => {});
+  }, 1200);
+}
+
+async function _spRunTransport(action) {
+  const now = Date.now();
+  if (_spTransportInFlight) return { ok: false, throttled: true };
+  if ((now - _spTransportLastAt) < _SP_TRANSPORT_COOLDOWN_MS) return { ok: false, throttled: true };
+
+  _spTransportInFlight = true;
+  _spTransportLastAt = now;
+  _spSetTransportButtonsBusy(true);
+  try {
+    const r = action === 'prev' ? await api.spotifyPrev() : await api.spotifyNext();
+    if (!r?.ok) return r || { ok: false, error: 'Error al cambiar canción' };
+    await _spAfterTransportSync();
+    return r;
+  } finally {
+    setTimeout(() => {
+      _spTransportInFlight = false;
+      _spSetTransportButtonsBusy(false);
+    }, 350);
+  }
+}
+
 async function spAction(action) {
-  const r = action === 'prev' ? await api.spotifyPrev() : await api.spotifyNext();
-  if (!r?.ok) { showSpotifyError(r?.error || 'Error al cambiar canción'); return; }
-  setTimeout(loadNowPlaying, 600);
+  const r = await _spRunTransport(action);
+  if (!r?.ok && !r?.throttled) {
+    showSpotifyError(r?.error || 'Error al cambiar canción');
+  }
 }
 
 async function spTogglePlayPause() {
+  if (_spTransportInFlight) return;
   const btn = document.getElementById('spPlayPauseBtn');
   btn.disabled = true;
-  const r = spIsPlaying ? await api.spotifyPause() : await api.spotifyPlay();
-  btn.disabled = false;
-  if (!r?.ok) {
-    const msg = r?.status === 404
-      ? 'Sin dispositivo activo — abrí Spotify primero'
-      : (r?.error || 'Error al controlar Spotify');
-    showSpotifyError(msg);
-    setTimeout(loadNowPlaying, 500);
-    return;
+  _spTransportInFlight = true;
+  try {
+    const r = spIsPlaying ? await api.spotifyPause() : await api.spotifyPlay();
+    if (!r?.ok) {
+      const msg = r?.status === 404
+        ? 'Sin dispositivo activo — abrí Spotify primero'
+        : (r?.error || 'Error al controlar Spotify');
+      showSpotifyError(msg);
+      setTimeout(() => loadNowPlaying().catch(() => {}), 500);
+      return;
+    }
+    spIsPlaying = !spIsPlaying;
+    _updateSpControls();
+    await _spAfterTransportSync();
+  } catch (e) {
+    showSpotifyError(e?.message || 'Error al controlar Spotify');
+    setTimeout(() => loadNowPlaying().catch(() => {}), 500);
+  } finally {
+    _spTransportInFlight = false;
+    btn.disabled = false;
   }
-  spIsPlaying = !spIsPlaying;
-  _updateSpControls();
-  setTimeout(loadNowPlaying, 600);
 }
 
 function showSpotifyError(msg) {
@@ -352,7 +528,7 @@ async function spToggleShuffle() {
 let _spVolumeCommitting = false;
 
 function spVolumeInput(val) {
-  spVolume = parseInt(val);
+  spVolume = Math.max(0, Math.min(100, parseInt(val, 10) || 0));
   const lbl = document.getElementById('spVolumeLabel');
   if (lbl) lbl.textContent = spVolume + '%';
   clearTimeout(spVolumeTimer);
@@ -361,7 +537,7 @@ function spVolumeInput(val) {
 
 async function spVolumeCommit(val) {
   clearTimeout(spVolumeTimer);
-  spVolume = parseInt(val);
+  spVolume = Math.max(0, Math.min(100, parseInt(val, 10) || 0));
   _spVolumeCommitting = true;
   const r = await api.spotifySetVolume(spVolume);
   _spVolumeCommitting = false;
@@ -375,6 +551,17 @@ async function spVolumeCommit(val) {
       if (slider) slider.value = spVolume;
       if (lbl)    lbl.textContent = spVolume + '%';
     }
+  } else {
+    setTimeout(() => {
+      api.spotifyNowPlaying().then((state) => {
+        if (!state?.ok || state.volume === null || state.volume === undefined) return;
+        spVolume = state.volume;
+        const slider = document.getElementById('spVolumeSlider');
+        const lbl = document.getElementById('spVolumeLabel');
+        if (slider) slider.value = spVolume;
+        if (lbl) lbl.textContent = spVolume + '%';
+      }).catch(() => {});
+    }, 350);
   }
 }
 
@@ -385,24 +572,101 @@ let spovCfg = {
   style: { bg: 'rgba(15,15,20,0.92)', text: '#ffffff', accent: '#1DB954', radius: 12 }
 };
 let spovLoaded = false;
+let spovInitPromise = null;
 
-async function spovInit() {
-  if (spovLoaded) return;
-  spovLoaded = true;
-  const st = await api.spotifyOverlayStatus();
-  const r  = await api.spotifyOverlayGetConfig();
-  spovCfg  = r.config || spovCfg;
+function _spovUiReady() {
+  return !!(
+    document.getElementById('spovAccent')
+    && document.getElementById('spovTextColor')
+    && document.getElementById('spovRadius')
+    && document.getElementById('spovBgOpacity')
+  );
+}
+
+function spovApplyStatus(st = {}) {
   const badge = document.getElementById('spovStatusBadge');
-  if (st.running) { badge.textContent = '● Activo'; badge.className = 'badge'; badge.style.background = '#1DB954'; badge.style.color = '#000'; }
-  else            { badge.textContent = 'Inactivo'; badge.className = 'badge badge-off'; badge.style = ''; }
-  spovApplyUI();
+  if (badge) {
+    if (st.running) { badge.textContent = '● Activo'; badge.className = 'badge'; badge.style.background = '#1DB954'; badge.style.color = '#000'; }
+    else            { badge.textContent = 'Inactivo'; badge.className = 'badge badge-off'; badge.style = ''; }
+  }
+
+  const baseUrl = String(st.url || 'http://localhost:9002').replace(/\/+$/, '');
+  const requesterUrl = st.requesterUrl || `${baseUrl}/requester`;
+  const spovUrl = document.getElementById('spovUrl');
+  const spovReq = document.getElementById('spovRequesterUrl');
+  if (spovUrl) spovUrl.textContent = baseUrl;
+  if (spovReq) spovReq.textContent = requesterUrl;
+
+  const lanWrap = document.getElementById('spovLanWrap');
+  const lanReqWrap = document.getElementById('spovLanReqWrap');
+  const lanUrlEl = document.getElementById('spovLanUrl');
+  const lanReqUrlEl = document.getElementById('spovLanRequesterUrl');
+  if (lanWrap && lanUrlEl) {
+    if (st.lanUrl) {
+      lanWrap.classList.remove('hidden');
+      lanUrlEl.textContent = st.lanUrl;
+    } else lanWrap.classList.add('hidden');
+  }
+  if (lanReqWrap && lanReqUrlEl) {
+    if (st.lanRequesterUrl) {
+      lanReqWrap.classList.remove('hidden');
+      lanReqUrlEl.textContent = st.lanRequesterUrl;
+    } else lanReqWrap.classList.add('hidden');
+  }
+
+  const connMsg = document.getElementById('spovConnMsg');
+  if (!connMsg) return;
+  if (st.running && st.error) {
+    connMsg.style.color = 'var(--orange2)';
+    connMsg.textContent = st.error;
+    return;
+  }
+  if (!st.running && st.error) {
+    connMsg.style.color = 'var(--red)';
+    connMsg.textContent = st.error;
+    return;
+  }
+  if (st.running && Number(st.wsClients || 0) === 0) {
+    connMsg.style.color = 'var(--text3)';
+    connMsg.textContent = 'Overlay activo, sin cliente OBS conectado todavía.';
+    return;
+  }
+  if (st.running && Number(st.wsClients || 0) > 0) {
+    connMsg.style.color = 'var(--green)';
+    connMsg.textContent = `Cliente OBS conectado (${st.wsClients}).`;
+    return;
+  }
+  connMsg.style.color = 'var(--text3)';
+  connMsg.textContent = '';
+}
+
+async function spovInit(attempt = 0) {
+  if (spovLoaded) return;
+  if (!_spovUiReady()) {
+    if (attempt < 12) setTimeout(() => { spovInit(attempt + 1).catch(() => {}); }, 80);
+    return;
+  }
+  if (spovInitPromise) return spovInitPromise;
+  spovInitPromise = (async () => {
+    const st = await api.spotifyOverlayStatus();
+    const r  = await api.spotifyOverlayGetConfig();
+    spovCfg  = r.config || spovCfg;
+    spovApplyStatus(st || {});
+    spovApplyUI();
+    spovLoaded = true;
+  })()
+    .catch((e) => {
+      spovLoaded = false;
+      throw e;
+    })
+    .finally(() => {
+      spovInitPromise = null;
+    });
+  return spovInitPromise;
 }
 
 api.onSpotifyOverlayStatus((st) => {
-  const badge = document.getElementById('spovStatusBadge');
-  if (!badge) return;
-  if (st.running) { badge.textContent = '● Activo'; badge.className = 'badge'; badge.style.background = '#1DB954'; badge.style.color = '#000'; }
-  else            { badge.textContent = 'Inactivo'; badge.className = 'badge badge-off'; badge.style = ''; }
+  spovApplyStatus(st || {});
 });
 
 function spovApplyUI() {
@@ -471,8 +735,9 @@ function spovOnBgOpacity(val) {
   spovSaveStyle();
 }
 
-function spovCopyUrl(btn) {
-  const url = document.getElementById('spovUrl').textContent;
+function spovCopyUrl(btn, id = 'spovUrl') {
+  const url = document.getElementById(id)?.textContent?.trim();
+  if (!url) return;
   const ta = document.createElement('textarea');
   ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
   document.body.appendChild(ta); ta.select();
@@ -483,53 +748,162 @@ function spovCopyUrl(btn) {
   setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
 }
 
-async function spAddToQueue() {
-  const inp = document.getElementById('spQueueInput');
-  const msg = document.getElementById('spQueueMsg');
-  const link = inp.value.trim();
-  if (!link) return;
-  msg.style.color = 'var(--text3)';
-  msg.textContent = 'Añadiendo...';
-  const r = await api.spotifyAddToQueue(link, 'dqiuqui');
-  if (r.ok) {
-    msg.style.color = '#4ade80';
-    msg.textContent = 'Canción añadida a la cola';
-    inp.value = '';
-    setTimeout(() => { msg.textContent = ''; }, 3000);
-  } else {
-    msg.style.color = '#f87171';
-    msg.textContent = (r.error || 'No se pudo añadir. ¿Spotify está reproduciendo?');
-  }
+function _hSp(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-async function loadSpotifyPlaylists() {
-  const list = document.getElementById('spPlaylistList');
-  list.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:16px 0">Cargando playlists...</div>`;
-  const r = await api.spotifyGetPlaylists();
-  if (!r.ok) {
-    list.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:16px 0">No se pudieron cargar las playlists.<br><span style="font-size:10px;opacity:.6">Si acabas de conectar la cuenta, reconectala para actualizar los permisos.</span></div>`;
-    return;
-  }
-  if (!r.playlists.length) {
-    list.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:16px 0">No se encontraron playlists guardadas.</div>`;
-    return;
-  }
-  list.innerHTML = r.playlists.map(p => `
-    <div class="sp-item" id="pl-${p.id}" onclick="spPlayPlaylist('${p.uri}','${p.id}')">
-      ${p.image
-        ? `<img class="sp-item-art" src="${p.image}" alt="" />`
-        : `<div class="sp-item-ph">♪</div>`}
-      <div class="sp-item-info">
-        <div class="sp-item-name">${p.name}</div>
-        <div class="sp-item-sub">${p.tracks} canciones</div>
+function _spQueueRowHtml(track, index, compact) {
+  const n = Number(index) + 1;
+  const name = _hSp(track?.name || '—');
+  const artist = _hSp(track?.artist || '');
+  const image = String(track?.image || '');
+  if (compact) {
+    return `
+      <div class="sp-queue-row-compact">
+        <span class="sp-queue-row-num">${n}</span>
+        ${image
+          ? `<img class="sp-item-art" style="width:30px;height:30px" src="${image}" alt="" />`
+          : `<div class="sp-item-ph" style="width:30px;height:30px">♪</div>`}
+        <div class="sp-item-info">
+          <div class="sp-item-name">${name}</div>
+          <div class="sp-item-sub">${artist}</div>
+        </div>
       </div>
-      <button class="btn btn-ghost" id="pl-btn-${p.id}" style="padding:4px 10px;font-size:11px;flex-shrink:0">▶</button>
+    `;
+  }
+  return `
+    <div class="sp-item">
+      <span style="font-size:10px;color:var(--text3);min-width:16px;text-align:center;flex-shrink:0;font-family:'Bebas Neue',cursive;font-size:14px">${n}</span>
+      ${image
+        ? `<img class="sp-item-art" style="width:32px;height:32px" src="${image}" alt="" />`
+        : `<div class="sp-item-ph" style="width:32px;height:32px">♪</div>`}
+      <div class="sp-item-info">
+        <div class="sp-item-name">${name}</div>
+        <div class="sp-item-sub">${artist}</div>
+      </div>
+      <button class="todo-action-btn del"
+        onclick="spRemoveFromSpotifyQueue(decodeURIComponent('${encodeURIComponent(String(track?.uri || track?.id || ''))}'), decodeURIComponent('${encodeURIComponent(String(track?.name || ''))}'))"
+        title="Quitar esta canción de la cola">✕</button>
     </div>
-  `).join('');
+  `;
 }
 
-async function spPlayPlaylist(uri, id) {
-  const btn = document.getElementById('pl-btn-' + id);
+function _renderSpotifyQueueMain(queue, opts = {}) {
+  const { silent = false } = opts;
+  const list = document.getElementById('spQueueList');
+  if (!list) return;
+  if (!Array.isArray(queue) || !queue.length) {
+    list.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px 0">${silent ? 'La cola está vacía.' : 'La cola está vacía.'}</div>`;
+    return;
+  }
+  list.innerHTML = queue.map((t, i) => _spQueueRowHtml(t, i, false)).join('');
+}
+
+function _renderSpotifyQueuePreview(queue) {
+  const preview = document.getElementById('spQueuePreviewList');
+  if (!preview) return;
+  if (!Array.isArray(queue) || !queue.length) {
+    preview.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">La cola está vacía.</div>`;
+    return;
+  }
+  const top = queue.slice(0, 5);
+  preview.innerHTML = top.map((t, i) => _spQueueRowHtml(t, i, true)).join('');
+}
+
+function _spSetQueueMessage(text, color) {
+  ['spQueueMsg', 'spQueueMsgPlayer'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.color = color || 'var(--text3)';
+    el.textContent = text || '';
+  });
+}
+
+function _spGetQueueInputBySource(source) {
+  const fromPlayer = source === 'player';
+  const id = fromPlayer ? 'spQueueInputPlayer' : 'spQueueInput';
+  return document.getElementById(id);
+}
+
+async function spAddToQueue(source = 'cola') {
+  const input = _spGetQueueInputBySource(source);
+  if (!input) return;
+  const link = input.value.trim();
+  if (!link) return;
+
+  _spSetQueueMessage('Añadiendo...', 'var(--text3)');
+  const r = await api.spotifyAddToQueue(link, null, null, { trackAsRequest: false });
+  if (r.ok) {
+    _spSetQueueMessage(r.message || 'Añadido a la lista', '#4ade80');
+    input.value = '';
+    loadSpotifyQueue({ renderMain: true, silent: true }).catch(() => {});
+    setTimeout(() => _spSetQueueMessage('', 'var(--text3)'), 3000);
+  } else {
+    _spSetQueueMessage((r.error || 'No se pudo añadir. ¿Spotify está reproduciendo?'), '#f87171');
+  }
+}
+
+async function spRemoveFromSpotifyQueue(uriOrTrackId, name = '') {
+  const target = String(uriOrTrackId || '').trim();
+  if (!target) return;
+  const r = await api.spotifyRemoveQueueItem(target);
+  if (!r?.ok) {
+    toast(`No se pudo quitar de la lista: ${r?.error || 'error desconocido'}`, 'err');
+    return;
+  }
+  const trackId = String(target).includes(':') ? String(target).split(':')[2] : String(target);
+  if (trackId) {
+    await api.spotifyRemoveFromRequestQueue(trackId, { removeFromSpotify: false }).catch(() => {});
+  }
+  toast(`Quitada de la lista${name ? `: ${name}` : ''}`, 'ok');
+  await loadSpotifyQueue();
+  await loadRequestQueue();
+}
+
+function _spGetSearchOptions() {
+  const typeTrack = !!document.getElementById('spTypeTrack')?.checked;
+  const typeArtist = !!document.getElementById('spTypeArtist')?.checked;
+  const typeAlbum = !!document.getElementById('spTypeAlbum')?.checked;
+  const typePlaylist = !!document.getElementById('spTypePlaylist')?.checked;
+  const sort = (document.getElementById('spSearchSort')?.value || 'relevance').toLowerCase();
+  const limitRaw = Number(document.getElementById('spSearchLimit')?.value || 10);
+  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(10, Math.round(limitRaw))) : 10;
+  const types = [];
+  if (typeTrack) types.push('track');
+  if (typeArtist) types.push('artist');
+  if (typeAlbum) types.push('album');
+  if (typePlaylist) types.push('playlist');
+  return {
+    types: types.length ? types : ['track'],
+    sort: sort === 'popularity' ? 'popularity' : 'relevance',
+    limit,
+  };
+}
+
+function _spSearchSection(title, count, html) {
+  return `
+    <div style="border:1px solid var(--border);border-radius:10px;padding:10px;background:rgba(255,255,255,.02)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <strong style="font-size:11px;color:var(--text2)">${_hSp(title)}</strong>
+        <span style="font-size:10px;color:var(--text3)">${count}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">${html}</div>
+    </div>
+  `;
+}
+
+function _spOpenExternal(url) {
+  if (!url) return;
+  api.openExternal(url).catch(() => {});
+}
+
+async function spPlayContextFromSearch(uri, btnId) {
+  const btn = document.getElementById(btnId);
   if (btn) { btn.textContent = '...'; btn.disabled = true; }
   const r = await api.spotifyPlayContext(uri);
   if (btn) {
@@ -540,171 +914,305 @@ async function spPlayPlaylist(uri, id) {
 }
 
 async function spSearch() {
-  const query = document.getElementById('spSearchInput').value.trim();
-  if (!query) return;
+  const query = document.getElementById('spSearchInput')?.value.trim() || '';
+  const meta = document.getElementById('spSearchMeta');
   const results = document.getElementById('spSearchResults');
+  if (!query || !results) return;
+
+  const opts = _spGetSearchOptions();
+  const reqSeq = ++_spSearchReqSeq;
+  if (meta) meta.textContent = `Buscando "${query}"...`;
   results.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px 0">Buscando...</div>`;
-  const r = await api.spotifySearch(query);
-  if (!r.ok) {
-    results.innerHTML = `<div style="font-size:11px;color:#f87171;text-align:center;padding:12px 0">Error: ${r.error || 'desconocido'}</div>`;
+
+  let r = null;
+  try {
+    r = await api.spotifySearch({ query, ...opts });
+  } catch (e) {
+    r = { ok: false, error: e?.message || String(e) };
+  }
+  if (reqSeq !== _spSearchReqSeq) return;
+  if (!r?.ok) {
+    if (meta) meta.textContent = 'Error en la búsqueda';
+    results.innerHTML = `<div style="font-size:11px;color:#f87171;text-align:center;padding:12px 0">Error: ${_hSp(r?.error || 'desconocido')}</div>`;
     return;
   }
-  if (!r.tracks.length) {
-    results.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px 0">Sin resultados.</div>`;
+
+  const tracks = Array.isArray(r.tracks) ? r.tracks : [];
+  const artists = Array.isArray(r.artists) ? r.artists : [];
+  const albums = Array.isArray(r.albums) ? r.albums : [];
+  const playlists = Array.isArray(r.playlists) ? r.playlists : [];
+  const total = tracks.length + artists.length + albums.length + playlists.length;
+
+  if (meta) {
+    meta.textContent = `Resultados: ${total} · Tracks ${tracks.length} · Artistas ${artists.length} · Álbumes ${albums.length} · Playlists ${playlists.length}`;
+  }
+  if (!total) {
+    results.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px 0">Sin resultados para "${_hSp(query)}".</div>`;
     return;
   }
-  results.innerHTML = r.tracks.map(t => `
-    <div class="sp-item">
-      ${t.image
-        ? `<img class="sp-item-art" src="${t.image}" alt="" />`
-        : `<div class="sp-item-ph">♪</div>`}
-      <div class="sp-item-info">
-        <div class="sp-item-name">${t.name}</div>
-        <div class="sp-item-sub">${t.artist}</div>
-      </div>
-      <button class="btn btn-ghost" id="sr-btn-${t.id}" style="padding:4px 10px;font-size:11px;flex-shrink:0"
-        onclick="spSearchAddToQueue('${t.uri}','${t.id}','${t.name.replace(/'/g,"\\'")} - ${t.artist.replace(/'/g,"\\'")}')">+ Cola</button>
-    </div>
-  `).join('');
+
+  const tracksHtml = tracks.length
+    ? tracks.map((t, idx) => {
+      const rowId = `sr-track-btn-${t.id || idx}`;
+      const trackLabel = `${t.name || 'Track'} - ${t.artist || ''}`.trim();
+      return `
+        <div class="sp-item">
+          ${t.image ? `<img class="sp-item-art" src="${_hSp(t.image)}" alt="" />` : `<div class="sp-item-ph">♪</div>`}
+          <div class="sp-item-info">
+            <div class="sp-item-name">${_hSp(t.name || 'Sin título')}</div>
+            <div class="sp-item-sub">${_hSp(t.artist || '—')} · ${_hSp(t.album || '—')}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <button class="btn btn-ghost" id="${rowId}" style="padding:4px 10px;font-size:11px"
+              onclick="spSearchAddToQueue(decodeURIComponent('${encodeURIComponent(t.uri || '')}'),'${rowId}',decodeURIComponent('${encodeURIComponent(trackLabel)}'))">+ Cola</button>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px"
+              onclick="_spOpenExternal('${_hSp(t.url || '')}')">Abrir</button>
+          </div>
+        </div>
+      `;
+    }).join('')
+    : `<div style="font-size:10px;color:var(--text3);text-align:center;padding:8px 0">Sin tracks.</div>`;
+
+  const artistsHtml = artists.length
+    ? artists.map((a, idx) => {
+      const playId = `sr-artist-play-${a.id || idx}`;
+      return `
+        <div class="sp-item">
+          ${a.image ? `<img class="sp-item-art" src="${_hSp(a.image)}" alt="" />` : `<div class="sp-item-ph">🎤</div>`}
+          <div class="sp-item-info">
+            <div class="sp-item-name">${_hSp(a.name || 'Sin nombre')}</div>
+            <div class="sp-item-sub">Popularidad ${Number(a.popularity) || 0} · Seguidores ${(Number(a.followers) || 0).toLocaleString('es-UY')}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <button class="btn btn-ghost" id="${playId}" style="padding:4px 10px;font-size:11px"
+              onclick="spPlayContextFromSearch(decodeURIComponent('${encodeURIComponent(a.uri || '')}'),'${playId}')">▶</button>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px"
+              onclick="_spOpenExternal('${_hSp(a.url || '')}')">Abrir</button>
+          </div>
+        </div>
+      `;
+    }).join('')
+    : `<div style="font-size:10px;color:var(--text3);text-align:center;padding:8px 0">Sin artistas.</div>`;
+
+  const albumsHtml = albums.length
+    ? albums.map((a, idx) => {
+      const playId = `sr-album-play-${a.id || idx}`;
+      return `
+        <div class="sp-item">
+          ${a.image ? `<img class="sp-item-art" src="${_hSp(a.image)}" alt="" />` : `<div class="sp-item-ph">💿</div>`}
+          <div class="sp-item-info">
+            <div class="sp-item-name">${_hSp(a.name || 'Sin nombre')}</div>
+            <div class="sp-item-sub">${_hSp(a.artist || '—')} · ${_hSp(a.year || '—')} · ${Number(a.totalTracks) || 0} temas</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <button class="btn btn-ghost" id="${playId}" style="padding:4px 10px;font-size:11px"
+              onclick="spPlayContextFromSearch(decodeURIComponent('${encodeURIComponent(a.uri || '')}'),'${playId}')">▶</button>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px"
+              onclick="_spOpenExternal('${_hSp(a.url || '')}')">Abrir</button>
+          </div>
+        </div>
+      `;
+    }).join('')
+    : `<div style="font-size:10px;color:var(--text3);text-align:center;padding:8px 0">Sin álbumes.</div>`;
+
+  const playlistsHtml = playlists.length
+    ? playlists.map((p, idx) => {
+      const addId = `sr-playlist-add-${p.id || idx}`;
+      const playlistLabel = `${p.name || 'Playlist'}${p.owner ? ` - ${p.owner}` : ''}`.trim();
+      return `
+        <div class="sp-item">
+          ${p.image ? `<img class="sp-item-art" src="${_hSp(p.image)}" alt="" />` : `<div class="sp-item-ph">♫</div>`}
+          <div class="sp-item-info">
+            <div class="sp-item-name">${_hSp(p.name || 'Sin nombre')}</div>
+            <div class="sp-item-sub">${_hSp(p.owner || '—')} · ${Number(p.totalTracks) || 0} temas</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <button class="btn btn-ghost" id="${addId}" style="padding:4px 10px;font-size:11px"
+              onclick="spSearchAddToQueue(decodeURIComponent('${encodeURIComponent(p.uri || '')}'),'${addId}',decodeURIComponent('${encodeURIComponent(playlistLabel)}'))">+ Cola</button>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px"
+              onclick="_spOpenExternal('${_hSp(p.url || '')}')">Abrir</button>
+          </div>
+        </div>
+      `;
+    }).join('')
+    : `<div style="font-size:10px;color:var(--text3);text-align:center;padding:8px 0">Sin playlists.</div>`;
+
+  results.innerHTML = [
+    _spSearchSection('Tracks', tracks.length, tracksHtml),
+    _spSearchSection('Artistas', artists.length, artistsHtml),
+    _spSearchSection('Álbumes', albums.length, albumsHtml),
+    _spSearchSection('Playlists', playlists.length, playlistsHtml),
+  ].join('');
 }
 
-async function spSearchAddToQueue(uri, id, trackName) {
-  const btn = document.getElementById('sr-btn-' + id);
+async function spSearchAddToQueue(uri, btnId, trackName) {
+  const btn = document.getElementById(btnId);
   if (btn) { btn.textContent = '...'; btn.disabled = true; }
-  const r = await api.spotifyAddToQueue(uri, 'dqiuqui', trackName);
+  const r = await api.spotifyAddToQueue(uri, null, trackName, { trackAsRequest: false });
   if (btn) {
     btn.textContent = r?.ok ? '✓' : '✕';
-    if (r?.ok) setTimeout(() => { if (btn) { btn.textContent = '+ Cola'; btn.disabled = false; } }, 2000);
+    if (r?.ok) setTimeout(() => { if (btn) { btn.textContent = '+ Cola'; btn.disabled = false; } }, 2500);
     else btn.disabled = false;
   }
-  if (r?.ok) setTimeout(loadSpotifyQueue, 1000);
+  if (r?.ok) {
+    toast(r?.message || 'Añadido a la lista', 'ok');
+    setTimeout(loadSpotifyQueue, 1000);
+  }
 }
 
-async function loadSpotifyQueue() {
+async function loadSpotifyQueue(opts = {}) {
+  const options = (opts && typeof opts === 'object') ? opts : {};
+  const renderMain = options.renderMain !== false;
+  const silent = !!options.silent;
+
   const list = document.getElementById('spQueueList');
-  const r = await api.spotifyGetQueue();
+  const r = await api.spotifyGetQueue({ limit: 80 });
   if (!r.ok) {
-    list.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px 0">No se pudo cargar la cola.</div>`;
+    if (renderMain && list) {
+      list.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px 0">No se pudo cargar la cola.</div>`;
+    }
+    if (!silent) {
+      const preview = document.getElementById('spQueuePreviewList');
+      if (preview) preview.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">No se pudo cargar la cola.</div>`;
+    }
     return;
   }
-  if (!r.queue.length) {
-    list.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px 0">La cola está vacía.</div>`;
-    return;
-  }
-  list.innerHTML = r.queue.map((t, i) => `
-    <div class="sp-item">
-      <span style="font-size:10px;color:var(--text3);min-width:16px;text-align:center;flex-shrink:0;font-family:'Bebas Neue',cursive;font-size:14px">${i + 1}</span>
-      ${t.image
-        ? `<img class="sp-item-art" style="width:32px;height:32px" src="${t.image}" alt="" />`
-        : `<div class="sp-item-ph" style="width:32px;height:32px">♪</div>`}
-      <div class="sp-item-info">
-        <div class="sp-item-name">${t.name}</div>
-        <div class="sp-item-sub">${t.artist}</div>
-      </div>
-    </div>
-  `).join('');
-}
 
-async function toggleSongRequestTwitch(enabled) {
-  await api.spotifySongrequestToggleTwitch(enabled);
-  twitchRewardSet(enabled).catch(() => {});
-  toast(enabled ? 'Song Request Twitch activado' : 'Song Request Twitch desactivado', 'ok');
+  spQueueCache = Array.isArray(r.queue) ? r.queue : [];
+  _spQueueLastSyncAt = Date.now();
+  _renderSpotifyQueuePreview(spQueueCache);
+  if (renderMain) _renderSpotifyQueueMain(spQueueCache, { silent });
 }
 
 async function toggleSongRequestKick(enabled) {
-  await api.spotifySongrequestToggleKick(enabled);
-  kickRewardSet(enabled).catch(() => {});
-  toast(enabled ? 'Song Request Kick activado' : 'Song Request Kick desactivado', 'ok');
+  const prev = srKickEnabled;
+  const btn = document.getElementById('srKickMasterBtn');
+  if (btn) btn.disabled = true;
+  _setSongRequestKickMasterMsg(enabled ? 'Activando Song Request en Kick...' : 'Desactivando Song Request en Kick...', 'muted');
+
+  const cfgRes = await api.spotifySongrequestToggleKick(enabled).catch((e) => ({ ok: false, error: e?.message || String(e) }));
+  const rewardRes = await kickRewardSet(enabled).catch((e) => ({ ok: false, error: e?.message || String(e) }));
+  const cfgOk = cfgRes?.ok !== false;
+  const rewardOk = rewardRes?.ok !== false;
+
+  if (!cfgOk || !rewardOk) {
+    if (cfgOk && !rewardOk) await api.spotifySongrequestToggleKick(prev).catch(() => {});
+    srKickEnabled = prev;
+    _setSongRequestKickMasterUI(srKickEnabled);
+    const errorMsg = (!cfgOk && cfgRes?.error)
+      ? cfgRes.error
+      : (rewardRes?.error || 'No se pudo cambiar el estado en Kick.');
+    _setSongRequestKickMasterMsg(errorMsg, 'err');
+    toast('No se pudo actualizar Song Request en Kick', 'err');
+    if (btn) btn.disabled = false;
+    return { ok: false, error: errorMsg };
+  }
+
+  srKickEnabled = !!enabled;
+  _setSongRequestKickMasterUI(srKickEnabled);
+  _setSongRequestKickMasterMsg(
+    srKickEnabled
+      ? 'Song Request activado y reward habilitada en Kick.'
+      : 'Song Request desactivado y reward deshabilitada en Kick.',
+    srKickEnabled ? 'ok' : 'warn'
+  );
+  toast(srKickEnabled ? 'Song Request Kick activado' : 'Song Request Kick desactivado', 'ok');
+  if (btn) btn.disabled = false;
+  return { ok: true, enabled: srKickEnabled };
 }
 
-async function saveSongRewardId() {
-  const id = document.getElementById('songRewardIdInput').value.trim();
-  await api.spotifySongrequestSetReward(id);
+function _setSongRequestKickMasterMsg(text, tone = 'muted') {
+  const el = document.getElementById('srKickMasterMsg');
+  if (!el) return;
+  el.textContent = text || '';
+  if (tone === 'ok') el.style.color = 'var(--green)';
+  else if (tone === 'warn') el.style.color = 'var(--orange2)';
+  else if (tone === 'err') el.style.color = 'var(--red)';
+  else el.style.color = 'var(--text3)';
 }
 
-function toggleRewardIdVisibility() {
-  const input = document.getElementById('songRewardIdInput');
-  const btn = event.target;
-  const show = input.type === 'password';
-  input.type = show ? 'text' : 'password';
-  btn.textContent = show ? 'Ocultar' : 'Mostrar';
-}
-
-function toggleTwitchClientIdVisibility() {
-  const input = document.getElementById('twitchClientIdInput');
-  const btn = event.target;
-  const show = input.type === 'password';
-  input.type = show ? 'text' : 'password';
-  btn.textContent = show ? 'Ocultar' : 'Mostrar';
-}
-
-function toggleBroadcasterTokenVisibility() {
-  const input = document.getElementById('broadcasterTokenInput');
-  const btn = event.target;
-  const show = input.type === 'password';
-  input.type = show ? 'text' : 'password';
-  btn.textContent = show ? 'Ocultar' : 'Mostrar';
-}
-
-let _saveTwitchCfgTimer = null;
-async function saveTwitchCredentials() {
-  clearTimeout(_saveTwitchCfgTimer);
-  _saveTwitchCfgTimer = setTimeout(async () => {
-    const clientId        = document.getElementById('twitchClientIdInput').value;
-    const broadcasterToken = document.getElementById('broadcasterTokenInput').value;
-    await api.twitchSaveCredentials({ clientId, broadcasterToken });
-  }, 800);
-}
-
-function _setRewardStatusBadge(enabled) {
-  const badge = document.getElementById('rewardStatusBadge');
-  if (!badge) return;
-  if (enabled === true)  { badge.className = 'badge badge-on';  badge.textContent = 'Habilitada'; }
-  else if (enabled === false) { badge.className = 'badge badge-off'; badge.textContent = 'Deshabilitada'; }
-  else                   { badge.className = 'badge';            badge.textContent = '—'; }
-}
-
-async function twitchRewardRefresh() {
-  const msg = document.getElementById('rewardToggleMsg');
-  msg.textContent = 'Consultando...';
-  msg.style.color = 'var(--text3)';
-  const r = await api.twitchRewardGetStatus();
-  if (r.ok) {
-    _setRewardStatusBadge(r.enabled);
-    msg.textContent = '';
-  } else {
-    msg.textContent = r.error === 'config_missing' ? 'Falta Client ID o token.' : (r.error || 'Error al consultar.');
-    msg.style.color = 'var(--red)';
+function _setSongRequestKickMasterUI(enabled) {
+  const badge = document.getElementById('srKickMasterBadge');
+  const btn = document.getElementById('srKickMasterBtn');
+  const srKick = document.getElementById('srKickToggle');
+  if (srKick) srKick.checked = !!enabled;
+  if (badge) {
+    if (enabled) {
+      badge.textContent = 'Activo';
+      badge.style.background = 'rgba(83,208,103,.15)';
+      badge.style.color = '#53d067';
+    } else {
+      badge.textContent = 'Inactivo';
+      badge.style.background = 'rgba(248,113,113,.1)';
+      badge.style.color = '#f87171';
+    }
+  }
+  if (btn) {
+    btn.textContent = enabled ? 'Deshabilitar Song Request' : 'Habilitar Song Request';
+    btn.style.color = enabled ? '#f87171' : '#53d067';
+    btn.style.borderColor = enabled ? 'rgba(248,113,113,.25)' : 'rgba(83,208,103,.35)';
+    btn.disabled = false;
   }
 }
 
-async function twitchRewardSet(enabled) {
-  const msg = document.getElementById('rewardToggleMsg');
-  msg.textContent = enabled ? 'Habilitando...' : 'Deshabilitando...';
-  msg.style.color = 'var(--text3)';
-  const r = await api.twitchRewardToggle(enabled);
-  if (r.ok) {
-    _setRewardStatusBadge(enabled);
-    msg.textContent = enabled ? 'Recompensa habilitada.' : 'Recompensa deshabilitada.';
-    msg.style.color = enabled ? 'var(--green)' : 'var(--red)';
-  } else {
-    msg.textContent = 'Error: ' + (r.error || 'no se pudo cambiar.');
-    msg.style.color = 'var(--red)';
+function _applySongRequestRealtimeConfig(config, source = 'local') {
+  if (!config || typeof config !== 'object') return;
+  srKickEnabled = config.kickEnabled !== false;
+  _setSongRequestKickMasterUI(srKickEnabled);
+  _srKickLastSyncAt = Date.now();
+  if (source === 'supabase') {
+    _setSongRequestKickMasterMsg(
+      srKickEnabled
+        ? 'Song Request activado desde otra PC (Supabase realtime).'
+        : 'Song Request desactivado desde otra PC (Supabase realtime).',
+      srKickEnabled ? 'ok' : 'warn'
+    );
   }
+}
+
+function toggleSongRequestKickFromButton() {
+  toggleSongRequestKick(!srKickEnabled).catch(() => {});
 }
 
 // ── Song Request Queue ────────────────────────────────────────────
 let srRequestQueue = [];   // [{ nick, trackId, trackName }]
 let srActiveRequester = null; // { nick, trackId, trackName }
 
+function _hSr(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function _srDisplayTrackName(entry) {
+  const rawName = String(entry?.trackName || '').trim();
+  if (
+    rawName
+    && !/^spotify:(?:track|episode):/i.test(rawName)
+    && !/^https?:\/\/(?:open|play)\.spotify\.com\//i.test(rawName)
+  ) {
+    return rawName;
+  }
+  return String(entry?.trackId || '').trim() || '—';
+}
+
 async function loadRequestQueue() {
-  const r = await api.spotifyGetRequestQueue();
-  srRequestQueue  = r.queue  || [];
-  srActiveRequester = r.active || null;
+  try {
+    const r = await api.spotifyGetRequestQueue();
+    srRequestQueue  = Array.isArray(r?.queue) ? r.queue : [];
+    srActiveRequester = r?.active || null;
+  } catch {
+    srRequestQueue = [];
+    srActiveRequester = null;
+  }
   _renderRequestQueue();
 }
 
 function _renderRequestQueue() {
+  if (!Array.isArray(srRequestQueue)) srRequestQueue = [];
   // Badge en el tab
   const badge = document.getElementById('spSongreqBadge');
   const total = srRequestQueue.length + (srActiveRequester ? 1 : 0);
@@ -715,7 +1223,7 @@ function _renderRequestQueue() {
   if (activeWrap) {
     if (srActiveRequester) {
       activeWrap.classList.remove('hidden');
-      document.getElementById('srActiveTrack').textContent = srActiveRequester.trackName || srActiveRequester.trackId || '—';
+      document.getElementById('srActiveTrack').textContent = _srDisplayTrackName(srActiveRequester);
       document.getElementById('srActiveNick').textContent  = '@' + srActiveRequester.nick;
     } else {
       activeWrap.classList.add('hidden');
@@ -735,29 +1243,38 @@ function _renderRequestQueue() {
     <div class="sp-item" style="gap:10px">
       <span style="font-family:'Bebas Neue',cursive;font-size:16px;color:var(--text3);min-width:18px;text-align:center;flex-shrink:0">${i + 1}</span>
       <div class="sp-item-info">
-        <div class="sp-item-name">${r.trackName || r.trackId}</div>
-        <div class="sp-item-sub">pedida por <strong style="color:var(--text2)">@${r.nick}</strong></div>
+        <div class="sp-item-name">${_hSr(_srDisplayTrackName(r))}</div>
+        <div class="sp-item-sub">pedida por <strong style="color:var(--text2)">@${_hSr(r.nick)}</strong></div>
       </div>
-      <button class="todo-action-btn del" onclick="srRemoveFromQueue('${r.trackId}')"
-        title="Quitar del tracking (la canción ya está en la cola de Spotify)">✕</button>
+      <button class="todo-action-btn del" onclick="srRemoveFromQueue(decodeURIComponent('${encodeURIComponent(String(r.trackId || ''))}'))"
+        title="Quitar del tracking y de la cola de Spotify">✕</button>
     </div>
   `).join('');
 }
 
 async function srSkipActive() {
   if (!srActiveRequester) return;
-  await api.spotifyRemoveFromRequestQueue(srActiveRequester.trackId);
+  if (_spTransportInFlight) return;
+  await api.spotifyRemoveFromRequestQueue(srActiveRequester.trackId, { removeFromSpotify: false });
   srActiveRequester = null;
   _renderRequestQueue();
-  await api.spotifyNext(); // saltear la canción actual
-  setTimeout(loadNowPlaying, 800);
+  const r = await _spRunTransport('next'); // saltear la canción actual
+  if (!r?.ok && !r?.throttled) {
+    showSpotifyError(r?.error || 'No se pudo saltear la canción');
+  }
 }
 
 async function srRemoveFromQueue(trackId) {
-  await api.spotifyRemoveFromRequestQueue(trackId);
+  const res = await api.spotifyRemoveFromRequestQueue(trackId, { removeFromSpotify: true }).catch((e) => ({ ok: false, error: e?.message || String(e) }));
+  if (!res?.ok) {
+    toast(`No se pudo quitar: ${res?.error || 'error desconocido'}`, 'err');
+    return;
+  }
   srRequestQueue = srRequestQueue.filter(r => r.trackId !== trackId);
   _renderRequestQueue();
-  toast('Quitado del tracking', 'ok');
+  if (res.warning) toast(`Quitado del tracking (aviso: ${res.warning})`, 'warn');
+  else toast('Quitado del tracking y de la cola de Spotify', 'ok');
+  loadSpotifyQueue().catch(() => {});
 }
 
 // Evento push desde main.js cuando llega un nuevo request o cambia el activo
@@ -767,8 +1284,15 @@ api.onRequestQueueUpdate(({ queue, active }) => {
   _renderRequestQueue();
 });
 
+if (typeof api.onSpotifySongrequestUpdated === 'function') {
+  api.onSpotifySongrequestUpdated((payload) => {
+    const config = payload?.config;
+    if (!config) return;
+    _applySongRequestRealtimeConfig(config, payload?.source || 'local');
+  });
+}
+
 // Compatibilidad con el evento viejo (por si llegan fuera del flujo normal)
 api.onSongRequested(({ nick, trackName, trackId }) => {
   _renderRequestQueue();
 });
-
