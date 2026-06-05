@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -137,10 +137,11 @@
     }
 
     .subtitle {
-      font-size: 8.5px;
-      font-weight: 400;
-      letter-spacing: 5px;
-      color: rgba(255, 255, 255, 0.2);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 3.5px;
+      color: rgba(240, 160, 64, 0.55);
       text-transform: uppercase;
       opacity: 0;
       animation: fadeIn 0.5s ease 0.55s forwards;
@@ -184,17 +185,18 @@
     .spinner.hidden { opacity: 0; width: 0; margin: 0; overflow: hidden; }
 
     .status {
+      font-family: 'JetBrains Mono', monospace;
       font-size: 10px;
-      font-weight: 400;
-      color: rgba(255, 255, 255, 0.35);
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.4);
       letter-spacing: 2px;
       text-transform: uppercase;
       transition: color 0.5s;
     }
 
     .status.ok {
-      color: #4caf50;
-      text-shadow: 0 0 10px rgba(76, 175, 80, 0.25);
+      color: #53d067;
+      text-shadow: 0 0 12px rgba(83, 208, 103, 0.3);
     }
 
     /* ── Progress container ── */
@@ -214,6 +216,7 @@
     }
 
     .progress-label {
+      font-family: 'JetBrains Mono', monospace;
       font-size: 9px;
       font-weight: 500;
       letter-spacing: 1.5px;
@@ -222,9 +225,10 @@
     }
 
     .progress-percent {
+      font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
-      font-weight: 600;
-      color: #d96b00;
+      font-weight: 700;
+      color: #f0a040;
       font-variant-numeric: tabular-nums;
       letter-spacing: 0.5px;
       text-shadow: 0 0 10px rgba(217, 107, 0, 0.25);
@@ -265,17 +269,23 @@
       pointer-events: none;
     }
 
-    /* ── Version ── */
+    /* ── Version badge ── */
     .version {
       position: absolute;
-      bottom: 12px;
-      font-size: 9px;
-      font-weight: 400;
-      color: rgba(255, 255, 255, 0.08);
-      letter-spacing: 2px;
+      top: 14px; right: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: #f0a040;
+      padding: 4px 9px;
+      border: 1px solid rgba(217, 107, 0, 0.3);
+      border-radius: 3px;
+      background: rgba(217, 107, 0, 0.08);
       opacity: 0;
-      animation: fadeIn 0.5s ease 1s forwards;
+      animation: fadeIn 0.5s ease 0.8s forwards;
     }
+    .version:empty { display: none; }
 
     /* ── Keyframes ── */
     @keyframes iconIn {
@@ -331,7 +341,7 @@
     <div class="brand">
       <div class="logo"><span>A</span>LMOST</div>
       <div class="divider"></div>
-      <div class="subtitle">Panel de control</div>
+      <div class="subtitle">// Panel de control</div>
     </div>
 
     <div class="status-area">
@@ -356,8 +366,6 @@
   <div class="version" id="version"></div>
 
   <script>
-    const { ipcRenderer } = require('electron');
-
     const $ = id => document.getElementById(id);
     const $status    = $('status');
     const $spinner   = $('spinner');
@@ -367,13 +375,13 @@
     const $percent   = $('percent');
     const $version   = $('version');
 
-    ipcRenderer.on('splash-status', (_, { msg, type }) => {
+    window.splashApi?.on('splash-status', ({ msg, type } = {}) => {
       $status.textContent = msg;
       $status.className = 'status' + (type === 'ok' ? ' ok' : '');
       if (type === 'ok') $spinner.classList.add('hidden');
     });
 
-    ipcRenderer.on('splash-progress', (_, rawPercent) => {
+    window.splashApi?.on('splash-progress', (rawPercent) => {
       const p = Math.round(rawPercent);
       $area.classList.add('visible');
       $fill.style.width = p + '%';
@@ -383,7 +391,7 @@
       $status.textContent = 'Actualizando...';
     });
 
-    ipcRenderer.on('splash-version', (_, v) => {
+    window.splashApi?.on('splash-version', (v) => {
       $version.textContent = 'v' + v;
     });
   </script>

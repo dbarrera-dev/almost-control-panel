@@ -1,4 +1,5 @@
 const { getActiveSongRequestRewardId, getSongRequestRewardField, getSongRequestRewardSupabaseColumn, getSpotifyTokenRowId, getKickBroadcasterRowId } = require('../kick-utils');
+const { searchSpotifyTrack } = require('../spotify-utils');
 const SPOTIFY_SONGREQUEST_ROW_KEY = 'spotify_songrequest';
 const DEFAULT_SPOTIFY_SONGREQUEST_CONFIG = Object.freeze({
   enabled: true,
@@ -29,11 +30,23 @@ function registerSpotifyIpc({
   let songrequestSyncRetryBackoffMs = 0;
   let songrequestSyncInFlight = false;
   let lastSyncedSongrequestHash = '';
-  let songrequestRemoteBootstrapped = false;
+  let lastSyncedSongrequestKey = '';
+  let appliedSongrequestKey = '';
+  let songrequestRemoteBootstrappedKey = '';
   let songrequestBootstrapPromise = null;
+  let songrequestBootstrapKey = '';
+  let spotifySongrequestRealtimeKey = '';
 
   function getSpotifyTokenRow() {
     return getSpotifyTokenRowId(loadConfig());
+  }
+
+  function getActiveKickMode(cfg = loadConfig()) {
+    return cfg?.kickBotMode === 'dev' ? 'dev' : 'prod';
+  }
+
+  function getSpotifySongrequestRowKey(cfg = loadConfig()) {
+    return `${SPOTIFY_SONGREQUEST_ROW_KEY}:${getActiveKickMode(cfg)}`;
   }
 
   function normalizeSpotifySongrequestConfig(raw, fallback = DEFAULT_SPOTIFY_SONGREQUEST_CONFIG) {
@@ -49,19 +62,23 @@ function registerSpotifyIpc({
 
   function currentSongrequestSnapshot() {
     const cfg = loadConfig();
+    const rowKey = getSpotifySongrequestRowKey(cfg);
+    const stateRewardId = appliedSongrequestKey === rowKey ? state.songRequestRewardId : '';
     const fallback = {
       enabled: state.songRequestEnabled !== false,
       kickEnabled: state.songRequestKickEnabled !== false,
-      rewardId: String(state.songRequestRewardId || cfg.songRequestRewardId || '').trim(),
+      rewardId: String(stateRewardId || getActiveSongRequestRewardId(cfg) || cfg.songRequestRewardId || '').trim(),
     };
     return normalizeSpotifySongrequestConfig(fallback, DEFAULT_SPOTIFY_SONGREQUEST_CONFIG);
   }
 
   function defaultSongrequestSnapshot() {
     const cfg = loadConfig();
+    const rowKey = getSpotifySongrequestRowKey(cfg);
+    const stateRewardId = appliedSongrequestKey === rowKey ? state.songRequestRewardId : '';
     return normalizeSpotifySongrequestConfig({
       ...DEFAULT_SPOTIFY_SONGREQUEST_CONFIG,
-      rewardId: String(state.songRequestRewardId || getActiveSongRequestRewardId(cfg) || '').trim(),
+      rewardId: String(stateRewardId || getActiveSongRequestRewardId(cfg) || '').trim(),
     }, DEFAULT_SPOTIFY_SONGREQUEST_CONFIG);
   }
 
@@ -77,6 +94,7 @@ function registerSpotifyIpc({
     state.songRequestEnabled = normalized.enabled !== false;
     state.songRequestKickEnabled = normalized.kickEnabled !== false;
     state.songRequestRewardId = String(normalized.rewardId || '').trim();
+    appliedSongrequestKey = options.rowKey || getSpotifySongrequestRowKey();
 
     if (options.persistLocal !== false) {
       const cfg = loadConfig();
@@ -109,9 +127,10 @@ function registerSpotifyIpc({
 
   async function pushSpotifySongrequestToSupabase(cfg) {
     if (!state.supabase) return { ok: false, error: 'Sin conexión a Supabase' };
+    const rowKey = getSpotifySongrequestRowKey();
     const { error } = await state.supabase
       .from('overlay_settings')
-      .upsert({ key: SPOTIFY_SONGREQUEST_ROW_KEY, value: cfg }, { onConflict: 'key' });
+      .upsert({ key: rowKey, value: cfg }, { onConflict: 'key' });
     if (error) return { ok: false, error: error.message || 'No se pudo guardar Song Request en Supabase' };
     return { ok: true };
   }
@@ -146,7 +165,8 @@ function registerSpotifyIpc({
     if (songrequestSyncInFlight) return { ok: false, skipped: true, error: 'Sync en progreso' };
     const snapshot = currentSongrequestSnapshot();
     const hash = songrequestHash(snapshot);
-    if (trigger !== 'retry' && hash && hash === lastSyncedSongrequestHash) {
+    const rowKey = getSpotifySongrequestRowKey();
+    if (trigger !== 'retry' && hash && hash === lastSyncedSongrequestHash && rowKey === lastSyncedSongrequestKey) {
       return { ok: true, skipped: true };
     }
     songrequestSyncInFlight = true;
@@ -154,6 +174,7 @@ function registerSpotifyIpc({
       const res = await pushSpotifySongrequestToSupabase(snapshot);
       if (res.ok) {
         lastSyncedSongrequestHash = hash;
+        lastSyncedSongrequestKey = rowKey;
         songrequestSyncRetryBackoffMs = 0;
         clearSongrequestSyncRetryTimer();
         return { ok: true };
@@ -168,21 +189,31 @@ function registerSpotifyIpc({
   async function pullSpotifySongrequestFromSupabase() {
     if (!state.supabase) return null;
     try {
+      const rowKey = getSpotifySongrequestRowKey();
       const { data, error } = await state.supabase
+        .from('overlay_settings')
+        .select('value')
+        .eq('key', rowKey)
+        .maybeSingle();
+      if (!error && data?.value) return data.value;
+
+      const { data: legacyData, error: legacyError } = await state.supabase
         .from('overlay_settings')
         .select('value')
         .eq('key', SPOTIFY_SONGREQUEST_ROW_KEY)
         .maybeSingle();
-      if (error || !data?.value) return null;
-      return data.value;
+      if (legacyError || !legacyData?.value) return null;
+      return legacyData.value;
     } catch {
       return null;
     }
   }
 
   async function ensureSpotifySongrequestBootstrap(broadcast = false) {
-    if (songrequestRemoteBootstrapped) return { ok: true };
-    if (songrequestBootstrapPromise) return songrequestBootstrapPromise;
+    const rowKey = getSpotifySongrequestRowKey();
+    if (songrequestRemoteBootstrappedKey === rowKey) return { ok: true };
+    if (songrequestBootstrapPromise && songrequestBootstrapKey === rowKey) return songrequestBootstrapPromise;
+    songrequestBootstrapKey = rowKey;
     songrequestBootstrapPromise = (async () => {
       const remote = await pullSpotifySongrequestFromSupabase();
       if (remote) {
@@ -190,9 +221,11 @@ function registerSpotifyIpc({
           persistLocal: true,
           broadcast,
           source: 'supabase',
+          rowKey,
         });
         lastSyncedSongrequestHash = songrequestHash(applied);
-        songrequestRemoteBootstrapped = true;
+        lastSyncedSongrequestKey = rowKey;
+        songrequestRemoteBootstrappedKey = rowKey;
         return { ok: true, source: 'remote' };
       }
 
@@ -203,9 +236,11 @@ function registerSpotifyIpc({
           persistLocal: true,
           broadcast: false,
           source: 'supabase-seed',
+          rowKey,
         });
         lastSyncedSongrequestHash = songrequestHash(applied);
-        songrequestRemoteBootstrapped = true;
+        lastSyncedSongrequestKey = rowKey;
+        songrequestRemoteBootstrappedKey = rowKey;
         return { ok: true, source: 'seeded' };
       }
 
@@ -214,10 +249,12 @@ function registerSpotifyIpc({
         persistLocal: false,
         broadcast: false,
         source: 'default-fallback',
+        rowKey,
       });
       return { ok: false, error: seedRes.error || 'No se pudo bootstrappear Song Request desde Supabase' };
     })().finally(() => {
       songrequestBootstrapPromise = null;
+      songrequestBootstrapKey = '';
     });
     return songrequestBootstrapPromise;
   }
@@ -226,6 +263,7 @@ function registerSpotifyIpc({
     if (!spotifySongrequestRealtimeChannel || !spotifySongrequestRealtimeSupabaseRef) {
       spotifySongrequestRealtimeChannel = null;
       spotifySongrequestRealtimeSupabaseRef = null;
+      spotifySongrequestRealtimeKey = '';
       spotifySongrequestRealtimeStatus = 'CLOSED';
       return;
     }
@@ -233,6 +271,7 @@ function registerSpotifyIpc({
     const ch = spotifySongrequestRealtimeChannel;
     spotifySongrequestRealtimeChannel = null;
     spotifySongrequestRealtimeSupabaseRef = null;
+    spotifySongrequestRealtimeKey = '';
     spotifySongrequestRealtimeStatus = 'CLOSED';
     Promise.resolve(sb.removeChannel(ch)).catch(() => {});
   }
@@ -246,21 +285,24 @@ function registerSpotifyIpc({
     const channelHealthy = (
       spotifySongrequestRealtimeChannel
       && spotifySongrequestRealtimeSupabaseRef === supabase
+      && spotifySongrequestRealtimeKey === getSpotifySongrequestRowKey()
       && (spotifySongrequestRealtimeStatus === 'SUBSCRIBED' || spotifySongrequestRealtimeStatus === 'JOINING')
     );
     if (channelHealthy) return;
     stopSpotifySongrequestRealtime();
+    const rowKey = getSpotifySongrequestRowKey();
     spotifySongrequestRealtimeSupabaseRef = supabase;
+    spotifySongrequestRealtimeKey = rowKey;
     spotifySongrequestRealtimeStatus = 'JOINING';
     spotifySongrequestRealtimeChannel = supabase
-      .channel(`spotify-songrequest-sync-${Date.now()}`)
+      .channel(`spotify-songrequest-sync-${rowKey.replace(/[^a-z0-9_-]/gi, '-')}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'overlay_settings',
-          filter: `key=eq.${SPOTIFY_SONGREQUEST_ROW_KEY}`,
+          filter: `key=eq.${rowKey}`,
         },
         (payload) => {
           const remoteValue = payload?.new?.value ?? payload?.record?.value ?? null;
@@ -269,9 +311,11 @@ function registerSpotifyIpc({
             persistLocal: true,
             broadcast: true,
             source: 'supabase',
+            rowKey,
           });
           lastSyncedSongrequestHash = songrequestHash(applied);
-          songrequestRemoteBootstrapped = true;
+          lastSyncedSongrequestKey = rowKey;
+          songrequestRemoteBootstrappedKey = rowKey;
         }
       )
       .subscribe((status) => {
@@ -336,6 +380,102 @@ function registerSpotifyIpc({
     if (body !== null) headers['Content-Type'] = 'application/json';
     const payload = body === null ? null : JSON.stringify(body);
     return httpsRequest(method, 'api.spotify.com', endpoint, headers, payload);
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+  }
+
+  function clampSpotifyVolume(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(100, Math.round(n)));
+  }
+
+  function buildSpotifyVolumeEndpoint(volume, deviceId = '') {
+    const params = new URLSearchParams({ volume_percent: String(clampSpotifyVolume(volume)) });
+    const cleanDeviceId = String(deviceId || '').trim();
+    if (cleanDeviceId) params.set('device_id', cleanDeviceId);
+    return `/v1/me/player/volume?${params.toString()}`;
+  }
+
+  async function readSpotifyVolumeSnapshot() {
+    try {
+      const stateNow = await spotifyNowPlayingData();
+      if (!stateNow) return { ok: false, status: 204, volume: null, deviceId: '', error: 'Sin dispositivo activo' };
+      return {
+        ok: true,
+        status: 200,
+        volume: stateNow.device?.volume_percent ?? null,
+        deviceId: String(stateNow.device?.id || '').trim(),
+      };
+    } catch (e) {
+      return { ok: false, status: 0, volume: null, deviceId: '', error: e?.message || String(e) };
+    }
+  }
+
+  async function setSpotifyVolumeVerified(rawVolume) {
+    const requestedVolume = clampSpotifyVolume(rawVolume);
+    const before = await readSpotifyVolumeSnapshot();
+    const deviceId = before.deviceId || '';
+    const tolerance = 1;
+    let lastResult = null;
+    let lastVolume = before.volume;
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const endpoint = buildSpotifyVolumeEndpoint(requestedVolume, deviceId);
+      const res = await spotifyPlayerCommand('PUT', endpoint, null);
+      lastResult = res;
+      if (!res?.ok) {
+        return {
+          ok: false,
+          status: res?.status || 0,
+          error: res?.error || 'No se pudo cambiar el volumen',
+          requestedVolume,
+          volume: lastVolume,
+          verified: false,
+          deviceId,
+        };
+      }
+
+      await wait(attempt === 0 ? 220 : (attempt === 1 ? 520 : 900));
+      const after = await readSpotifyVolumeSnapshot();
+      if (after.ok && after.volume !== null && after.volume !== undefined) {
+        lastVolume = clampSpotifyVolume(after.volume);
+        if (Math.abs(lastVolume - requestedVolume) <= tolerance) {
+          return {
+            ok: true,
+            status: res.status,
+            requestedVolume,
+            volume: lastVolume,
+            verified: true,
+            deviceId: after.deviceId || deviceId,
+          };
+        }
+      } else if (after.status === 204) {
+        return {
+          ok: true,
+          status: res.status,
+          requestedVolume,
+          volume: null,
+          verified: false,
+          deviceId,
+          warning: 'Spotify no reporta dispositivo activo para verificar el volumen',
+        };
+      }
+    }
+
+    return {
+      ok: true,
+      status: lastResult?.status || 204,
+      requestedVolume,
+      volume: lastVolume,
+      verified: false,
+      deviceId,
+      warning: lastVolume === null || lastVolume === undefined
+        ? 'Spotify no devolvió el volumen real del dispositivo'
+        : `Spotify reporta ${lastVolume}% después de pedir ${requestedVolume}%`,
+    };
   }
 
   const SPOTIFY_SEARCH_MAX_LIMIT = 10;
@@ -522,7 +662,7 @@ function registerSpotifyIpc({
   ipcMain.handle('spotify-next',          async ()       => runTransportCommand('next', 'POST', '/v1/me/player/next'));
   ipcMain.handle('spotify-prev',          async ()       => runTransportCommand('prev', 'POST', '/v1/me/player/previous'));
   ipcMain.handle('spotify-shuffle',            async (_, st)       => spotifyPlayerCommand('PUT',  `/v1/me/player/shuffle?state=${st}`));
-  ipcMain.handle('spotify-set-volume',         async (_, vol)      => spotifyPlayerCommand('PUT',  `/v1/me/player/volume?volume_percent=${Math.max(0, Math.min(100, Math.round(vol)))}`));
+  ipcMain.handle('spotify-set-volume',         async (_, vol)      => setSpotifyVolumeVerified(vol));
   ipcMain.handle('spotify-play-context',       async (_, uri)      => spotifyPlayerCommand('PUT',  '/v1/me/player/play', { context_uri: uri }));
   ipcMain.handle('spotify-set-repeat',         async (_, repeatState)    => spotifyPlayerCommand('PUT',  `/v1/me/player/repeat?state=${repeatState}`));
   ipcMain.handle('spotify-transfer-playback',  async (_, deviceId) => spotifyPlayerCommand('PUT',  '/v1/me/player', { device_ids: [deviceId], play: true }));
@@ -876,21 +1016,42 @@ function registerSpotifyIpc({
       const albumsRaw = Array.isArray(r.data?.albums?.items) ? r.data.albums.items : [];
       const playlistsRaw = Array.isArray(r.data?.playlists?.items) ? r.data.playlists.items : [];
 
+      const mapSpotifyTrackSearchResult = (t) => ({
+        id: t.id,
+        uri: t.uri,
+        name: t.name,
+        artist: (t.artists || []).map(a => a.name).join(', '),
+        album: t.album?.name || '',
+        durationMs: Number(t.duration_ms) || 0,
+        popularity: Number(t.popularity) || 0,
+        explicit: !!t.explicit,
+        isPlayable: t.is_playable !== false,
+        image: t.album?.images?.[2]?.url || t.album?.images?.[0]?.url || '',
+        url: t.external_urls?.spotify || '',
+        matchConfidence: Number(t._confidence || 0) || undefined,
+        matchSource: t._source || undefined,
+      });
+
       const tracks = tracksRaw
         .filter(t => t && typeof t === 'object')
-        .map(t => ({
-          id: t.id,
-          uri: t.uri,
-          name: t.name,
-          artist: (t.artists || []).map(a => a.name).join(', '),
-          album: t.album?.name || '',
-          durationMs: Number(t.duration_ms) || 0,
-          popularity: Number(t.popularity) || 0,
-          explicit: !!t.explicit,
-          isPlayable: t.is_playable !== false,
-          image: t.album?.images?.[2]?.url || t.album?.images?.[0]?.url || '',
-          url: t.external_urls?.spotify || '',
-        }));
+        .map(mapSpotifyTrackSearchResult);
+
+      if (sort === 'relevance' && types.includes('track')) {
+        const bestTrack = await searchSpotifyTrack(query, tokenRes.accessToken).catch(() => null);
+        if (bestTrack?.id) {
+          const existingIndex = tracks.findIndex((t) => t.id === bestTrack.id);
+          const bestMapped = mapSpotifyTrackSearchResult(bestTrack);
+          if (existingIndex > 0) {
+            const [existing] = tracks.splice(existingIndex, 1);
+            tracks.unshift({ ...existing, ...bestMapped });
+          } else if (existingIndex === 0) {
+            tracks[0] = { ...tracks[0], ...bestMapped };
+          } else {
+            tracks.unshift(bestMapped);
+            tracks.splice(limit);
+          }
+        }
+      }
       const artists = artistsRaw
         .filter(a => a && typeof a === 'object')
         .map(a => ({

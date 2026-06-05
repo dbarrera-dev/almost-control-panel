@@ -1,111 +1,28 @@
 <div class="view" id="view-config">
 
-  <!-- ── Header premium ──────────────────────────────────────── -->
-  <header class="cfg-header">
-    <div class="cfg-header-eyebrow">
-      <span class="cfg-header-dot"></span>
-      <span>Config</span>
-      <span class="cfg-header-sep">·</span>
-      <span class="cfg-header-eyebrow-sub">setup principal</span>
+  <!-- ── Cabecera de página ──────────────────────────────────── -->
+  <header class="page-head">
+    <div class="page-head-main">
+      <div class="page-eyebrow">// Sistema</div>
+      <h1 class="page-title">Configuración</h1>
+      <p class="page-sub">Todo el setup principal en una sola vista. Cambiá el ambiente para alternar entre datos reales y de prueba sin pisar nada.</p>
     </div>
-    <div class="cfg-header-row">
-      <h1 class="cfg-header-title">Configuración</h1>
-      <div class="cfg-header-envchip" title="Ambiente activo">
+    <div class="page-actions">
+      <button type="button" class="cfg-header-envchip cfg-envbtn" onclick="cfgOpenEnvModal()" title="Cambiar ambiente">
         <span class="cfg-header-envchip-l">Ambiente</span>
         <span class="cfg-header-envchip-v">
           <span class="cfg-header-envchip-dot"></span>
           <span id="envBadgeLabel">Prod</span>
         </span>
-      </div>
+        <svg class="cfg-envbtn-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
     </div>
-    <p class="cfg-header-lede">Todo el setup principal en una sola vista, organizado por bloque. Cambiá el ambiente para alternar entre datos reales y datos de prueba sin pisar nada.</p>
   </header>
 
   <div id="cfgAlert" class="hidden"></div>
 
-  <!-- ── Layout: nav sticky + contenido ──────────────────────── -->
-  <div class="cfg-layout">
-
-    <!-- Nav lateral -->
-    <nav class="cfg-nav">
-      <div class="cfg-nav-title">Secciones</div>
-
-      <button type="button" class="cfg-nav-item on" data-target="cfg-sec-env" onclick="cfgNavGo('cfg-sec-env', event)">
-        <span class="cfg-nav-item-ico">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </span>
-        <span>Ambiente</span>
-      </button>
-
-      <button type="button" class="cfg-nav-item" data-target="cfg-sec-general" onclick="cfgNavGo('cfg-sec-general', event)">
-        <span class="cfg-nav-item-ico">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        </span>
-        <span>General</span>
-      </button>
-
-      <button type="button" class="cfg-nav-item" data-target="cfg-sec-supabase" onclick="cfgNavGo('cfg-sec-supabase', event)">
-        <span class="cfg-nav-item-ico">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6a9 3 0 0 0 18 0V5"/><path d="M3 11v6a9 3 0 0 0 18 0v-6"/></svg>
-        </span>
-        <span>Supabase</span>
-      </button>
-
-      <button type="button" class="cfg-nav-item" data-target="cfg-sec-kick" onclick="cfgNavGo('cfg-sec-kick', event)">
-        <span class="cfg-nav-item-ico">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        </span>
-        <span>Kick</span>
-      </button>
-
-      <button type="button" class="cfg-nav-item" data-target="cfg-sec-spotify" onclick="cfgNavGo('cfg-sec-spotify', event)">
-        <span class="cfg-nav-item-ico">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-        </span>
-        <span>Spotify</span>
-      </button>
-
-      <button type="button" class="cfg-nav-item" data-target="cfg-sec-cmds" onclick="cfgNavGo('cfg-sec-cmds', event)">
-        <span class="cfg-nav-item-ico">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-        </span>
-        <span>Comandos</span>
-      </button>
-    </nav>
-
-    <!-- Contenido -->
-    <div class="cfg-content">
-
-      <!-- ── Ambiente ─────────────────────────────────────── -->
-      <section class="cfg-section cfg-env" id="cfg-sec-env">
-        <header class="cfg-section-head">
-          <div class="cfg-section-ico">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          </div>
-          <div class="cfg-section-head-text">
-            <div class="cfg-section-eyebrow">Ambiente activo</div>
-            <div class="cfg-section-title">Prod / Dev</div>
-            <p class="cfg-section-desc">Cambia toda la app entre <strong style="color:var(--text)">Prod</strong> (datos reales de almost) y <strong style="color:var(--text)">Dev</strong> (tus datos para pruebas). El cambio se aplica al instante a Kick, Spotify y rewards.</p>
-          </div>
-        </header>
-        <div class="cfg-section-body">
-          <div class="cfg-env-row">
-            <div class="cfg-env-info">
-              <div class="cfg-env-msg" id="envModeMsg">Ambiente PROD activo — datos reales del canal.</div>
-            </div>
-            <div class="cfg-bot-mode-pills" id="envModePills">
-              <label class="cfg-mode-pill">
-                <input type="radio" name="envMode" id="envModeProd" value="prod" onchange="onEnvModeChanged();document.getElementById('envBadgeLabel').textContent='Prod'">
-                <span>Prod</span>
-              </label>
-              <label class="cfg-mode-pill">
-                <input type="radio" name="envMode" id="envModeDev" value="dev" onchange="onEnvModeChanged();document.getElementById('envBadgeLabel').textContent='Dev'">
-                <span>Dev</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </section>
+  <!-- ── Contenido (columna única) ───────────────────────────── -->
+  <div class="cfg-content">
 
       <!-- ── General ──────────────────────────────────────── -->
       <section class="cfg-section" id="cfg-sec-general">
@@ -202,13 +119,19 @@
       <section class="cfg-section" id="cfg-sec-kick">
         <header class="cfg-section-head">
           <div class="cfg-section-ico">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M1.333 0h8v5.333H12V2.667h2.667V0h8v8H20v2.667h-2.667v2.666H20V16h2.667v8h-8v-2.667H12v-2.666H9.333V24h-8Z"/></svg>
           </div>
           <div class="cfg-section-head-text">
             <div class="cfg-section-eyebrow">Streaming</div>
             <div class="cfg-section-title">Kick</div>
             <p class="cfg-section-desc">Credenciales OAuth, canal y autorización del bot.</p>
           </div>
+          <details class="kick-menu cfg-section-menu">
+            <summary class="kick-menu-trigger" title="Más acciones"><span></span><span></span><span></span></summary>
+            <div class="kick-menu-pop">
+              <button type="button" class="danger" onclick="kickOpenResetModal()">Reset total de Kick</button>
+            </div>
+          </details>
         </header>
         <div class="cfg-section-body">
 
@@ -288,15 +211,13 @@
 
             <div class="cfg-bot-card is-channel">
               <div class="cfg-bot-card-head">
-                <div class="cfg-bot-card-headl">
-                  <span class="cfg-bot-card-num">1</span>
-                  <div>
-                    <div class="cfg-bot-card-role">Cuenta canal</div>
-                    <div class="cfg-bot-card-title">Cuenta del canal <span class="cfg-bot-card-tag">streamer</span></div>
-                  </div>
+                <span class="cfg-bot-card-num">1</span>
+                <div class="cfg-bot-card-headinfo">
+                  <div class="cfg-bot-card-role">Cuenta canal</div>
+                  <div class="cfg-bot-card-title">Cuenta del canal <span class="cfg-bot-card-tag">streamer</span></div>
                 </div>
-                <div id="kickConnStatus" class="cfg-bot-card-status">Sin conectar</div>
               </div>
+              <div id="kickConnStatus" class="cfg-bot-card-status">Sin conectar</div>
               <p class="cfg-bot-card-desc">Autorizá la cuenta dueña del canal. Iniciá sesión en kick.com con esa cuenta antes de autorizar.</p>
               <div id="kickBroadcasterIdentity" class="cfg-kick-identity">
                 <div class="cfg-kick-identity-empty">Sin cuenta canal verificada.</div>
@@ -309,15 +230,13 @@
 
             <div class="cfg-bot-card">
               <div class="cfg-bot-card-head">
-                <div class="cfg-bot-card-headl">
-                  <span class="cfg-bot-card-num">2</span>
-                  <div>
-                    <div class="cfg-bot-card-role">Cuenta bot</div>
-                    <div class="cfg-bot-card-title">BotAlmost <span class="cfg-bot-card-tag muted">opcional</span></div>
-                  </div>
+                <span class="cfg-bot-card-num">2</span>
+                <div class="cfg-bot-card-headinfo">
+                  <div class="cfg-bot-card-role">Cuenta bot</div>
+                  <div class="cfg-bot-card-title">BotAlmost <span class="cfg-bot-card-tag muted">opcional</span></div>
                 </div>
-                <div id="kickBotAccountStatus" class="cfg-bot-card-status">Sin autorizar</div>
               </div>
+              <div id="kickBotAccountStatus" class="cfg-bot-card-status">Sin autorizar</div>
               <p class="cfg-bot-card-desc">Segunda cuenta para escribir en el chat. Debe ser moderadora del canal.</p>
               <div id="kickBotIdentity" class="cfg-kick-identity">
                 <div class="cfg-kick-identity-empty">Sin cuenta bot verificada.</div>
@@ -328,82 +247,6 @@
             </div>
           </div>
 
-          <!-- Reset -->
-          <div class="cfg-bot-reset-row">
-            <div class="cfg-bot-reset-info">
-              <span class="cfg-bot-reset-ico">!</span>
-              <div>
-                <div class="cfg-bot-reset-title">Reset total Kick</div>
-                <div class="cfg-bot-reset-desc">Borra client/channel/reward/tokens de PROD y DEV en Supabase y limpia local.</div>
-              </div>
-            </div>
-            <button class="btn btn-ghost cfg-bot-reset-btn" onclick="kickOpenResetModal()">Reset total</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── Spotify shortcut ─────────────────────────────── -->
-      <section class="cfg-section" id="cfg-sec-spotify">
-        <header class="cfg-section-head">
-          <div class="cfg-section-ico" style="color:var(--sp);background:rgba(29,185,84,.1);border-color:rgba(29,185,84,.25)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          </div>
-          <div class="cfg-section-head-text">
-            <div class="cfg-section-eyebrow" style="color:var(--sp)">Música</div>
-            <div class="cfg-section-title">Spotify</div>
-            <p class="cfg-section-desc">Conectá tu cuenta de Spotify para controlar la música desde el panel.</p>
-          </div>
-        </header>
-        <div class="cfg-section-body">
-          <div class="cfg-spotify-shortcut">
-            <div class="cfg-spotify-shortcut-ico">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            </div>
-            <div class="cfg-spotify-shortcut-info">
-              <div class="cfg-spotify-shortcut-title">Configuración detallada</div>
-              <div class="cfg-spotify-shortcut-desc">La autorización, comandos de chat y ajustes del player viven en la pestaña <em style="color:var(--text2)">Música</em>.</div>
-            </div>
-            <button class="btn btn-ghost" onclick="goTab('spotify')">Ir a Música →</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── Comandos del chat ────────────────────────────── -->
-      <section class="cfg-section" id="cfg-sec-cmds">
-        <header class="cfg-section-head">
-          <div class="cfg-section-ico">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-          </div>
-          <div class="cfg-section-head-text">
-            <div class="cfg-section-eyebrow">Chat</div>
-            <div class="cfg-section-title">Comandos disponibles</div>
-            <p class="cfg-section-desc">Atajos que los viewers pueden usar en el chat para interactuar con el torneo activo.</p>
-          </div>
-        </header>
-        <div class="cfg-section-body">
-
-          <div class="cfg-cmd-group">
-            <div class="cfg-cmd-group-head">
-              <span class="cfg-cmd-group-title">Unirse al torneo</span>
-            </div>
-            <div class="cmd-pills">
-              <span class="cmd-pill orange">!join</span>
-              <span class="cmd-pill orange">!torneo</span>
-              <span class="cmd-pill orange">!unirse</span>
-            </div>
-            <p class="cfg-cmd-group-desc">Los viewers escriben cualquiera de estos comandos para anotarse al torneo activo.</p>
-          </div>
-
-          <div class="cfg-cmd-group">
-            <div class="cfg-cmd-group-head">
-              <span class="cfg-cmd-group-title">Salir del torneo</span>
-            </div>
-            <div class="cmd-pills">
-              <span class="cmd-pill red">!salir</span>
-              <span class="cmd-pill red">!leave</span>
-            </div>
-            <p class="cfg-cmd-group-desc">Permite abandonar el torneo si todavía no se sortearon los equipos.</p>
-          </div>
         </div>
       </section>
 
@@ -417,6 +260,29 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           Guardar
         </button>
+      </div>
+  </div>
+
+  <!-- ── Modal: Ambiente activo ──────────────────────────────── -->
+  <div class="s-modal hidden" id="cfgEnvModal" onclick="if(event.target===this)cfgCloseEnvModal()">
+    <div class="s-modal-card">
+      <header class="s-modal-head">
+        <div class="s-modal-title">Ambiente activo</div>
+        <button class="s-modal-close" onclick="cfgCloseEnvModal()" aria-label="Cerrar">✕</button>
+      </header>
+      <div class="s-modal-body">
+        <p class="cfg-env-modal-lede">Cambiá toda la app entre <strong style="color:var(--text)">Prod</strong> (datos reales de almost) y <strong style="color:var(--text)">Dev</strong> (tus datos para pruebas). Se aplica al instante a Kick, Spotify y rewards.</p>
+        <div class="cfg-bot-mode-pills cfg-env-modal-pills" id="envModePills">
+          <label class="cfg-mode-pill">
+            <input type="radio" name="envMode" id="envModeProd" value="prod" onchange="onEnvModeChanged();document.getElementById('envBadgeLabel').textContent='Prod'">
+            <span>Prod</span>
+          </label>
+          <label class="cfg-mode-pill">
+            <input type="radio" name="envMode" id="envModeDev" value="dev" onchange="onEnvModeChanged();document.getElementById('envBadgeLabel').textContent='Dev'">
+            <span>Dev</span>
+          </label>
+        </div>
+        <div class="cfg-env-msg" id="envModeMsg">Ambiente PROD activo — datos reales del canal.</div>
       </div>
     </div>
   </div>

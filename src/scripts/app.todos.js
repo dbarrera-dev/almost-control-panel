@@ -150,11 +150,11 @@ async function todoAdd() {
     status:      document.getElementById('todoStatus').value,
     due_date:    document.getElementById('todoDueDate').value || null
   };
-  const btn = document.querySelector('#todoAddCard button.btn-orange');
-  btn.disabled = true;
+  const btn = document.getElementById('todoAddSubmit');
+  if (btn) btn.disabled = true;
   try {
     const r = await api.todosAdd(todo);
-    btn.disabled = false;
+    if (btn) btn.disabled = false;
     if (!r.ok) {
       const msg = document.getElementById('todoAddMsg');
       msg.style.color = 'var(--red)';
@@ -166,15 +166,41 @@ async function todoAdd() {
     document.getElementById('todoDueDate').value = '';
     document.getElementById('todoPriority').value = 'medium';
     document.getElementById('todoStatus').value = 'pending';
+    // Notificar al dropdown custom (.uisel) que el valor cambió por código
+    ['todoPriority', 'todoStatus'].forEach((id) => {
+      document.getElementById(id).dispatchEvent(new Event('change'));
+    });
     document.getElementById('todoAddMsg').textContent = '';
     todosData.unshift(r.data);
     todoRender(todosData);
     todoUpdateBadge();
+    todoCloseModal();
     toast('Tarea agregada', 'ok');
   } catch (e) {
-    btn.disabled = false;
+    if (btn) btn.disabled = false;
     toast('Error al agregar tarea', 'err');
   }
+}
+
+// ── Modal nueva tarea ─────────────────────────────────────────
+function todoOpenModal() {
+  const m = document.getElementById('todoModal');
+  if (!m) return;
+  document.getElementById('todoAddMsg').textContent = '';
+  m.classList.remove('hidden');
+  document.addEventListener('keydown', _todoModalEscClose);
+  setTimeout(() => document.getElementById('todoTitle')?.focus(), 40);
+}
+
+function todoCloseModal() {
+  const m = document.getElementById('todoModal');
+  if (!m) return;
+  m.classList.add('hidden');
+  document.removeEventListener('keydown', _todoModalEscClose);
+}
+
+function _todoModalEscClose(e) {
+  if (e.key === 'Escape') todoCloseModal();
 }
 
 async function todoCycleStatus(id) {

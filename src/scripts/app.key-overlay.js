@@ -13,11 +13,17 @@ let koConfig = {
     fadeDelay: 0,
     inactiveOpacity: 0.3,
   },
-  background: { type: 'default', value: '', name: '' },
+  background: { type: 'default', value: '', name: '', scale: 1, offsetX: 0, offsetY: 0 },
   gamepadEnabled: false,
   gamepadButtons: {},
 };
 const koActiveKeys = new Map();
+
+function koClampNum(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
 
 function koNormalizeBackground(raw) {
   const bg = raw && typeof raw === 'object' ? raw : {};
@@ -25,8 +31,15 @@ function koNormalizeBackground(raw) {
     ? String(bg.type || '').toLowerCase()
     : 'default';
   const value = String(bg.value || '').trim();
-  if (!value || type === 'default') return { type: 'default', value: '', name: '' };
-  return { type, value, name: String(bg.name || '').trim().slice(0, 255) };
+  if (!value || type === 'default') return { type: 'default', value: '', name: '', scale: 1, offsetX: 0, offsetY: 0 };
+  return {
+    type,
+    value,
+    name: String(bg.name || '').trim().slice(0, 255),
+    scale: koClampNum(bg.scale, 0.1, 5, 1),
+    offsetX: koClampNum(bg.offsetX, -3, 3, 0),
+    offsetY: koClampNum(bg.offsetY, -3, 3, 0),
+  };
 }
 
 function koNormalizeConfig(raw) {
@@ -74,22 +87,54 @@ function koSetBackgroundMeta(msg, tone) {
         : 'var(--text3)';
 }
 
+// Estado del editor de fondo (preview en vivo + arrastre/zoom)
+let koRunning = false;
+let koOverlayUrl = 'http://localhost:9001';
+let koBgDragging = false;
+let koBgDragStart = null;
+let koFrameLayout = null;       // {x,y,w,h} reportado por el overlay embebido (coords internas)
+let koFrameFit = { scale: 1, tx: 0, ty: 0 }; // ajuste para encajar el teclado en el stage
+let koBgPushRaf = null;
+let koBgWheelTimer = null;
+
+function koBgStartFrame() {
+  const frame = document.getElementById('koBgFrame');
+  if (!frame) return;
+  const target = koOverlayUrl || 'http://localhost:9001';
+  if (frame.dataset.loaded !== target) {
+    frame.src = target;
+    frame.dataset.loaded = target;
+  }
+}
+
+function koBgStopFrame() {
+  const frame = document.getElementById('koBgFrame');
+  if (frame && frame.dataset.loaded) {
+    frame.src = 'about:blank';
+    frame.dataset.loaded = '';
+    frame.style.transform = '';
+  }
+  const outline = document.getElementById('koBgFrameOutline');
+  if (outline) outline.style.display = 'none';
+  koFrameLayout = null;
+  koFrameFit = { scale: 1, tx: 0, ty: 0 };
+}
+
 function koApplyBackgroundUI() {
   const bg = koNormalizeBackground(koConfig.background);
   const urlInput = document.getElementById('koBgUrl');
-  const previewWrap = document.getElementById('koBgPreviewWrap');
-  const preview = document.getElementById('koBgPreview');
-  if (urlInput) urlInput.value = bg.type === 'url' ? bg.value : '';
-
-  if (!bg.value) {
-    if (previewWrap) previewWrap.style.display = 'none';
-    koSetBackgroundMeta('Usando fondo por defecto.', null);
-    return;
+  const editor = document.getElementById('koBgEditor');
+  const hint = document.getElementById('koBgEditorHint');
+  if (urlInput && document.activeElement !== urlInput) {
+    urlInput.value = bg.type === 'url' ? bg.value : '';
   }
 
-  if (preview && previewWrap) {
-    preview.src = bg.value;
-    previewWrap.style.display = '';
+  if (!bg.value) {
+    if (editor) editor.style.display = 'none';
+    if (hint) hint.style.display = 'none';
+    koBgStopFrame();
+    koSetBackgroundMeta('Usando fondo por defecto.', null);
+    return;
   }
 
   if (bg.type === 'url') {
@@ -97,7 +142,158 @@ function koApplyBackgroundUI() {
   } else {
     koSetBackgroundMeta(`Imagen subida activa${bg.name ? `: ${bg.name}` : ''}`, 'ok');
   }
+
+  const scaleEl = document.getElementById('koBgScale');
+  const scaleVal = document.getElementById('koBgScaleVal');
+  if (scaleEl && !koBgDragging) scaleEl.value = bg.scale;
+  if (scaleVal) scaleVal.textContent = `${Math.round(bg.scale * 100)}%`;
+
+  if (koRunning) {
+    if (hint) hint.style.display = 'none';
+    if (editor) editor.style.display = '';
+    koBgStartFrame();
+  } else {
+    if (editor) editor.style.display = 'none';
+    if (hint) hint.style.display = '';
+    koBgStopFrame();
+  }
 }
+
+// Empuja el estado actual a los overlays sin persistir (fluidez en el arrastre)
+function koBgPreviewPush() {
+  if (koBgPushRaf) return;
+  koBgPushRaf = requestAnimationFrame(() => {
+    koBgPushRaf = null;
+    if (typeof api.keyOverlayPreviewConfig === 'function') api.keyOverlayPreviewConfig(koConfig);
+    else api.keyOverlaySetConfig(koConfig);
+  });
+}
+
+function koBgPersist() {
+  api.keyOverlaySetConfig(koConfig);
+}
+
+function koBgWheelPersistDebounced() {
+  if (koBgWheelTimer) clearTimeout(koBgWheelTimer);
+  koBgWheelTimer = setTimeout(() => { koBgWheelTimer = null; koBgPersist(); }, 400);
+}
+
+function koBgOnScaleInput(val) {
+  if (!koConfig.background) return;
+  koConfig.background.scale = koClampNum(val, 0.2, 4, 1);
+  const scaleVal = document.getElementById('koBgScaleVal');
+  if (scaleVal) scaleVal.textContent = `${Math.round(koConfig.background.scale * 100)}%`;
+  koBgPreviewPush();
+}
+
+function koBgCenter() {
+  if (!koConfig.background) return;
+  koConfig.background.offsetX = 0;
+  koConfig.background.offsetY = 0;
+  koBgPreviewPush();
+  koBgPersist();
+}
+
+function koBgReset() {
+  if (!koConfig.background) return;
+  koConfig.background.scale = 1;
+  koConfig.background.offsetX = 0;
+  koConfig.background.offsetY = 0;
+  koApplyBackgroundUI();
+  koBgPreviewPush();
+  koBgPersist();
+}
+
+function koInitBgEditor() {
+  const stage = document.getElementById('koBgStage');
+  const drag = document.getElementById('koBgDrag');
+  if (!stage || !drag) return;
+
+  drag.addEventListener('pointerdown', (e) => {
+    if (!koNormalizeBackground(koConfig.background).value) return;
+    koBgDragging = true;
+    try { drag.setPointerCapture(e.pointerId); } catch {}
+    const stageRect = stage.getBoundingClientRect();
+    // Referencia 1:1 = ancho/alto del teclado tal como se ve en pantalla
+    // (tamaño interno reportado por el overlay × factor de encaje del stage).
+    const refW = (koFrameLayout && koFrameLayout.w) ? koFrameLayout.w * koFrameFit.scale : stageRect.width;
+    const refH = (koFrameLayout && koFrameLayout.h) ? koFrameLayout.h * koFrameFit.scale : stageRect.height;
+    koBgDragStart = {
+      x: e.clientX,
+      y: e.clientY,
+      offsetX: koConfig.background.offsetX || 0,
+      offsetY: koConfig.background.offsetY || 0,
+      refW: Math.max(1, refW),
+      refH: Math.max(1, refH),
+    };
+    drag.style.cursor = 'grabbing';
+  });
+
+  drag.addEventListener('pointermove', (e) => {
+    if (!koBgDragging || !koBgDragStart) return;
+    const dx = (e.clientX - koBgDragStart.x) / koBgDragStart.refW;
+    const dy = (e.clientY - koBgDragStart.y) / koBgDragStart.refH;
+    koConfig.background.offsetX = koClampNum(koBgDragStart.offsetX + dx, -3, 3, 0);
+    koConfig.background.offsetY = koClampNum(koBgDragStart.offsetY + dy, -3, 3, 0);
+    koBgPreviewPush();
+  });
+
+  const endDrag = (e) => {
+    if (!koBgDragging) return;
+    koBgDragging = false;
+    koBgDragStart = null;
+    drag.style.cursor = 'grab';
+    try { drag.releasePointerCapture(e.pointerId); } catch {}
+    koBgPersist();
+  };
+  drag.addEventListener('pointerup', endDrag);
+  drag.addEventListener('pointercancel', endDrag);
+
+  stage.addEventListener('wheel', (e) => {
+    if (!koNormalizeBackground(koConfig.background).value) return;
+    e.preventDefault();
+    const cur = koConfig.background.scale || 1;
+    const next = koClampNum(cur * (e.deltaY < 0 ? 1.08 : 0.92), 0.2, 4, 1);
+    koConfig.background.scale = next;
+    const scaleEl = document.getElementById('koBgScale');
+    const scaleVal = document.getElementById('koBgScaleVal');
+    if (scaleEl) scaleEl.value = next;
+    if (scaleVal) scaleVal.textContent = `${Math.round(next * 100)}%`;
+    koBgPreviewPush();
+    koBgWheelPersistDebounced();
+  }, { passive: false });
+
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (!d || d.source !== 'ko-overlay' || d.type !== 'layout' || !d.rect) return;
+    const r = d.rect;
+    koFrameLayout = r;
+    const frame = document.getElementById('koBgFrame');
+    const outline = document.getElementById('koBgFrameOutline');
+    if (!frame) return;
+
+    // Encaja el teclado completo dentro del stage (escala ≤ 1) y lo centra.
+    const sw = stage.clientWidth;
+    const sh = stage.clientHeight;
+    const pad = 28;
+    const fit = Math.min((sw - pad) / Math.max(1, r.w), (sh - pad) / Math.max(1, r.h), 1);
+    const tx = ((sw - r.w * fit) / 2) - (r.x * fit);
+    const ty = ((sh - r.h * fit) / 2) - (r.y * fit);
+    koFrameFit = { scale: fit, tx, ty };
+    frame.style.transformOrigin = 'top left';
+    frame.style.transform = `translate(${tx}px, ${ty}px) scale(${fit})`;
+
+    if (outline) {
+      outline.style.left = `${(r.x * fit) + tx}px`;
+      outline.style.top = `${(r.y * fit) + ty}px`;
+      outline.style.width = `${r.w * fit}px`;
+      outline.style.height = `${r.h * fit}px`;
+      outline.style.display = '';
+    }
+  });
+}
+
+koInitBgEditor();
 
 function koApplyConfigToUI(cfg) {
   koConfig = koNormalizeConfig(cfg || koConfig);
@@ -128,6 +324,8 @@ document.getElementById('ko-keyboard').addEventListener('click', (e) => {
 
 async function loadKeyOverlay() {
   const r = await api.keyOverlayGetStatus();
+  koRunning = !!r.running;
+  koOverlayUrl = r.url || koOverlayUrl;
   document.getElementById('koToggle').checked = r.running;
   document.getElementById('koUrlRow').classList.toggle('hidden', !r.running);
   document.getElementById('koStatusText').textContent = r.running ? `Activo en ${r.url}` : 'Desactivado';
@@ -138,12 +336,17 @@ async function loadKeyOverlay() {
 
 async function koToggle(enabled) {
   if (enabled) {
-    await api.keyOverlayStart();
+    const r = await api.keyOverlayStart();
+    koRunning = true;
+    if (r?.url) koOverlayUrl = r.url;
+    koApplyBackgroundUI();
   } else {
     await api.keyOverlayStop();
+    koRunning = false;
     document.getElementById('koStatusText').textContent = 'Desactivado';
     document.getElementById('koUrlRow').classList.add('hidden');
     koPreviewClear();
+    koApplyBackgroundUI();
   }
 }
 
@@ -211,7 +414,7 @@ async function koApplyBackgroundUrl() {
     koSetBackgroundMeta('URL inválida. Usá http:// o https://', 'err');
     return;
   }
-  koConfig.background = { type: 'url', value: raw, name: '' };
+  koConfig.background = { type: 'url', value: raw, name: '', scale: 1, offsetX: 0, offsetY: 0 };
   const res = await api.keyOverlaySetConfig(koConfig);
   if (res?.ok) {
     koApplyBackgroundUI();
@@ -358,6 +561,7 @@ api.onKeyOverlayKey((msg) => {
 if (typeof api.onKeyOverlayConfigUpdated === 'function') {
   api.onKeyOverlayConfigUpdated((payload) => {
     if (!payload?.config) return;
+    if (koBgDragging) return; // no pisar el arrastre en curso
     koApplyConfigToUI(payload.config);
     if (payload?.source === 'supabase') {
       koSetBackgroundMeta('Cambio remoto aplicado desde Supabase.', 'ok');

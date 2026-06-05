@@ -660,19 +660,13 @@ async function sbUploadSound() {
     };
 
     if (sbPendingFile) {
-      const sourcePath = sbGetFilePath(sbPendingFile);
-      if (sourcePath) {
-        payload.sourceFilePath = sourcePath;
-        payload.mimeType = String(sbPendingFile.type || '').toLowerCase();
-      } else {
-        const read = await sbReadFileAsBase64(sbPendingFile);
-        if (!read.ok) {
-          sbShowInlineMsg('sbUploadMsg', read.error || 'No se pudo leer el archivo.', 'err');
-          return;
-        }
-        payload.mimeType = read.mimeType;
-        payload.audioBase64 = read.base64;
+      const read = await sbReadFileAsBase64(sbPendingFile);
+      if (!read.ok) {
+        sbShowInlineMsg('sbUploadMsg', read.error || 'No se pudo leer el archivo.', 'err');
+        return;
       }
+      payload.mimeType = read.mimeType;
+      payload.audioBase64 = read.base64;
     }
 
     const r = await sbWithTimeout(api.soundboardUpload(payload), SB_IPC_TIMEOUT_MS, 'subida de sonido');
@@ -728,18 +722,13 @@ async function sbSaveRow(soundId) {
   if (replacement) {
     patch.mimeType = String(replacement.type || '').toLowerCase();
     patch.originalName = replacement.name;
-    const sourcePath = sbGetFilePath(replacement);
-    if (sourcePath) {
-      patch.sourceFilePath = sourcePath;
-    } else {
-      const read = await sbReadFileAsBase64(replacement);
-      if (!read.ok) {
-        toast(read.error || 'No se pudo leer el audio seleccionado.', 'err');
-        return;
-      }
-      patch.audioBase64 = read.base64;
-      patch.mimeType = read.mimeType;
+    const read = await sbReadFileAsBase64(replacement);
+    if (!read.ok) {
+      toast(read.error || 'No se pudo leer el audio seleccionado.', 'err');
+      return;
     }
+    patch.audioBase64 = read.base64;
+    patch.mimeType = read.mimeType;
   }
 
   let r = null;

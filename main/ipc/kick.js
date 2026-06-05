@@ -67,6 +67,29 @@ function registerKickIpc({
   let commandsSyncRetryBackoffMs = 0;
   let commandsSyncInFlight = false;
   let lastSyncedCommandsHash = '';
+  let lastSyncedCommandsKey = '';
+  let kickCommandsRealtimeKey = '';
+
+  function getActiveKickMode(cfg = loadConfig()) {
+    return cfg?.kickBotMode === 'dev' ? 'dev' : 'prod';
+  }
+
+  function getKickCommandsRowKey(cfg = loadConfig()) {
+    return `${KICK_COMMANDS_ROW_KEY}:${getActiveKickMode(cfg)}`;
+  }
+
+  function getKickCommandsConfigField(cfg = loadConfig()) {
+    return getActiveKickMode(cfg) === 'dev' ? 'kickCommandConfigDev' : 'kickCommandConfigProd';
+  }
+
+  function getStoredKickCommandsConfig() {
+    const cfg = loadConfig();
+    const modeField = getKickCommandsConfigField(cfg);
+    return normalizeKickCommandConfig(
+      cfg[modeField] || cfg.kickCommandConfig || state.kickCommandConfig || DEFAULT_KICK_COMMAND_CONFIG,
+      DEFAULT_KICK_COMMAND_CONFIG
+    );
+  }
 
   function broadcastKickCommandsConfig(config, source = 'local') {
     state.mainWindow?.webContents.send('kick-commands-updated', {
@@ -84,6 +107,8 @@ function registerKickIpc({
 
     if (options.persistLocal !== false) {
       const cfg = loadConfig();
+      const modeField = getKickCommandsConfigField(cfg);
+      cfg[modeField] = normalized;
       cfg.kickCommandConfig = normalized;
       saveConfig(cfg);
     }
@@ -95,9 +120,10 @@ function registerKickIpc({
 
   async function pushKickCommandsToSupabase(cfg) {
     if (!state.supabase) return { ok: false, error: 'Sin conexión a Supabase' };
+    const rowKey = getKickCommandsRowKey();
     const { error } = await state.supabase
       .from('overlay_settings')
-      .upsert({ key: KICK_COMMANDS_ROW_KEY, value: cfg }, { onConflict: 'key' });
+      .upsert({ key: rowKey, value: cfg }, { onConflict: 'key' });
     if (error) return { ok: false, error: error.message || 'No se pudo guardar comandos de Kick' };
     return { ok: true };
   }
@@ -131,7 +157,8 @@ function registerKickIpc({
     if (commandsSyncInFlight) return { ok: false, skipped: true, error: 'Sync en progreso' };
     const snapshot = normalizeKickCommandConfig(state.kickCommandConfig || DEFAULT_KICK_COMMAND_CONFIG);
     const hash = commandsConfigHash(snapshot);
-    if (trigger !== 'retry' && hash && hash === lastSyncedCommandsHash) {
+    const rowKey = getKickCommandsRowKey();
+    if (trigger !== 'retry' && hash && hash === lastSyncedCommandsHash && rowKey === lastSyncedCommandsKey) {
       return { ok: true, skipped: true };
     }
     commandsSyncInFlight = true;
@@ -139,6 +166,7 @@ function registerKickIpc({
       const res = await pushKickCommandsToSupabase(snapshot);
       if (res.ok) {
         lastSyncedCommandsHash = hash;
+        lastSyncedCommandsKey = rowKey;
         commandsSyncRetryBackoffMs = 0;
         clearCommandsSyncRetryTimer();
         return { ok: true };
@@ -153,13 +181,21 @@ function registerKickIpc({
   async function pullKickCommandsFromSupabase() {
     if (!state.supabase) return null;
     try {
+      const rowKey = getKickCommandsRowKey();
       const { data, error } = await state.supabase
+        .from('overlay_settings')
+        .select('value')
+        .eq('key', rowKey)
+        .maybeSingle();
+      if (!error && data?.value) return data.value;
+
+      const { data: legacyData, error: legacyError } = await state.supabase
         .from('overlay_settings')
         .select('value')
         .eq('key', KICK_COMMANDS_ROW_KEY)
         .maybeSingle();
-      if (error || !data?.value) return null;
-      return data.value;
+      if (legacyError || !legacyData?.value) return null;
+      return legacyData.value;
     } catch {
       return null;
     }
@@ -169,6 +205,7 @@ function registerKickIpc({
     if (!kickCommandsRealtimeChannel || !kickCommandsRealtimeSupabaseRef) {
       kickCommandsRealtimeChannel = null;
       kickCommandsRealtimeSupabaseRef = null;
+      kickCommandsRealtimeKey = '';
       kickCommandsRealtimeStatus = 'CLOSED';
       return;
     }
@@ -176,6 +213,7 @@ function registerKickIpc({
     const ch = kickCommandsRealtimeChannel;
     kickCommandsRealtimeChannel = null;
     kickCommandsRealtimeSupabaseRef = null;
+    kickCommandsRealtimeKey = '';
     kickCommandsRealtimeStatus = 'CLOSED';
     Promise.resolve(sb.removeChannel(ch)).catch(() => {});
   }
@@ -189,21 +227,24 @@ function registerKickIpc({
     const channelHealthy = (
       kickCommandsRealtimeChannel
       && kickCommandsRealtimeSupabaseRef === supabase
+      && kickCommandsRealtimeKey === getKickCommandsRowKey()
       && (kickCommandsRealtimeStatus === 'SUBSCRIBED' || kickCommandsRealtimeStatus === 'JOINING')
     );
     if (channelHealthy) return;
     stopKickCommandsRealtime();
+    const rowKey = getKickCommandsRowKey();
     kickCommandsRealtimeSupabaseRef = supabase;
+    kickCommandsRealtimeKey = rowKey;
     kickCommandsRealtimeStatus = 'JOINING';
     kickCommandsRealtimeChannel = supabase
-      .channel(`kick-commands-sync-${Date.now()}`)
+      .channel(`kick-commands-sync-${rowKey.replace(/[^a-z0-9_-]/gi, '-')}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'overlay_settings',
-          filter: `key=eq.${KICK_COMMANDS_ROW_KEY}`,
+          filter: `key=eq.${rowKey}`,
         },
         (payload) => {
           const remoteValue = payload?.new?.value ?? payload?.record?.value ?? null;
@@ -240,7 +281,7 @@ function registerKickIpc({
   }
 
   // Base local defaults (in case Supabase still has no row)
-  applyKickCommandsConfig(state.kickCommandConfig || DEFAULT_KICK_COMMAND_CONFIG, {
+  applyKickCommandsConfig(getStoredKickCommandsConfig(), {
     persistLocal: true,
     broadcast: false,
   });
@@ -1685,6 +1726,49 @@ function registerKickIpc({
         totalStored: rows.length,
         subscribers,
       };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  // Avatares (y nombre) de usuarios de Kick por user_id, en lote.
+  // Usa /public/v1/users?id=...&id=... (máx 50 por request).
+  ipcMain.handle('kick-users-get', async (_, input = {}) => {
+    try {
+      if (!state.supabase) return { ok: false, error: 'Kick requiere Supabase activo: sin conexión' };
+      const mode = pickKickMode(input);
+      const ctx = await loadKickModeContext(mode);
+      if (!ctx.ok) return { ok: false, error: `Kick requiere Supabase activo: ${ctx.error || 'sin conexión'}` };
+      const token = ctx.creds.accessToken || ctx.creds.botAccessToken;
+      if (!token) return { ok: false, error: 'Primero autorizá Kick en Config.' };
+
+      const ids = Array.from(new Set((Array.isArray(input?.userIds) ? input.userIds : [])
+        .map((x) => String(x ?? '').trim())
+        .filter(Boolean)));
+      if (!ids.length) return { ok: true, users: {} };
+
+      const users = {};
+      for (let i = 0; i < ids.length; i += 50) {
+        const batch = ids.slice(i, i + 50);
+        const qs = batch.map((id) => `id=${encodeURIComponent(id)}`).join('&');
+        const res = await kickApiRequest('GET', `/public/v1/users?${qs}`, null, token).catch(() => null);
+        const rows = res?.data?.data;
+        if (!Array.isArray(rows)) continue;
+        for (const row of rows) {
+          const uid = String(row?.user_id ?? row?.id ?? '').trim();
+          if (!uid) continue;
+          users[uid] = {
+            name: String(row?.name || row?.username || '').trim(),
+            avatarUrl: pickFirstNonEmpty(
+              normalizeKickImageUrl(row?.profile_picture),
+              normalizeKickImageUrl(row?.profile_pic),
+              normalizeKickImageUrl(row?.avatar),
+              normalizeKickImageUrl(row?.image)
+            ),
+          };
+        }
+      }
+      return { ok: true, users };
     } catch (e) {
       return { ok: false, error: e?.message || String(e) };
     }

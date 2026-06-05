@@ -7,6 +7,9 @@ let spRepeatState = 'off'; // 'off' | 'context' | 'track'
 let spLastTrackName = null;
 let spVolume      = 50;
 let spVolumeTimer = null;
+let _spVolumeCommitting = false;
+let _spVolumeCommitSeq = 0;
+let _spLastVolumeTouchAt = 0;
 let spProgressMs  = 0;
 let spDurationMs  = 0;
 let spProgressInterval = null;
@@ -26,6 +29,24 @@ const _SP_QUEUE_SYNC_MS = 5000;
 let _spTransportInFlight = false;
 let _spTransportLastAt = 0;
 const _SP_TRANSPORT_COOLDOWN_MS = 900;
+
+function _spClampVolume(value) {
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(100, n));
+}
+
+function _spApplyVolumeUi(value) {
+  spVolume = _spClampVolume(value);
+  const slider = document.getElementById('spVolumeSlider');
+  const lbl = document.getElementById('spVolumeLabel');
+  if (slider) slider.value = spVolume;
+  if (lbl) lbl.textContent = spVolume + '%';
+}
+
+function _spCanAcceptRemoteVolume() {
+  return !spVolumeTimer && !_spVolumeCommitting && (Date.now() - _spLastVolumeTouchAt) > 900;
+}
 
 function _spotifyUiReady() {
   return !!(
@@ -106,12 +127,20 @@ async function _syncSongRequestKickState() {
   finally { _syncSrKickInFlight = null; }
 }
 
-// ── Spotify sub-tab navigation ─────────────────────────────────────
+// ── Spotify sub-tab navigation (se controla desde el aside) ─────────
+function _spUpdateSubnav(connected) {
+  const subnav = document.getElementById('subnav-spotify');
+  if (subnav) subnav.classList.toggle('is-locked', !connected);
+}
+
 function goSpTab(name) {
+  if (!spConnected) return; // subcategorías deshabilitadas sin conexión
   ['player','explorar','cola'].forEach(n => {
     const view = document.getElementById('spview-' + n);
     if (view) view.classList.toggle('on', n === name);
-    const tab = document.getElementById('sptab-' + n);
+    const nav = document.getElementById('spnav-' + n);
+    if (nav) nav.classList.toggle('on', n === name);
+    const tab = document.getElementById('sptab-' + n); // legacy (ya no existe)
     if (tab) tab.classList.toggle('on', n === name);
   });
   if (name === 'player'   && spConnected) { _syncSpotifyQueueAuto({ force: true }).catch(() => {}); }
@@ -157,8 +186,13 @@ async function _loadSpotifyImpl() {
     document.getElementById('spConnected').classList.toggle('hidden',    !spConnected);
     document.getElementById('spBadgeTab').classList.toggle('hidden',     !spConnected);
     document.getElementById('spConnectedWrap').classList.toggle('hidden', !spConnected);
+    _spUpdateSubnav(spConnected);
 
     if (spConnected) {
+      // Si ninguna sub-vista está activa, entrar a Player por defecto
+      if (!_spIsTabActive('player') && !_spIsTabActive('explorar') && !_spIsTabActive('cola')) {
+        goSpTab('player');
+      }
       await loadNowPlaying();
       _syncSpotifyQueueAuto({ force: true }).catch(() => {});
       const srKick = document.getElementById('srKickToggle');
@@ -189,12 +223,8 @@ async function pollNowPlaying() {
     }
     if (_spPollFailCount > 0) { _spPollFailCount = 0; _rescheduleSpPoll(); }
     // Always sync volume (skip if user is actively changing it)
-    if (r.volume !== null && r.volume !== undefined && !spVolumeTimer && !_spVolumeCommitting) {
-      spVolume = r.volume;
-      const slider = document.getElementById('spVolumeSlider');
-      const lbl    = document.getElementById('spVolumeLabel');
-      if (slider) slider.value = spVolume;
-      if (lbl)    lbl.textContent = spVolume + '%';
+    if (r.volume !== null && r.volume !== undefined && _spCanAcceptRemoteVolume()) {
+      _spApplyVolumeUi(r.volume);
     }
     if (r.progress_ms !== undefined) {
       spProgressMs = r.progress_ms;
@@ -315,12 +345,8 @@ function _applyNowPlaying(r) {
   }
 
   // Volumen
-  if (r.volume !== null && r.volume !== undefined) {
-    spVolume = r.volume;
-    const slider = document.getElementById('spVolumeSlider');
-    const lbl    = document.getElementById('spVolumeLabel');
-    if (slider) slider.value = spVolume;
-    if (lbl)    lbl.textContent = spVolume + '%';
+  if (r.volume !== null && r.volume !== undefined && _spCanAcceptRemoteVolume()) {
+    _spApplyVolumeUi(r.volume);
   }
   _updateSpControls();
 }
@@ -394,18 +420,56 @@ async function startSpotifyConnect() {
   statusEl.style.display = 'none';
 
   if (!r.ok) { showSpotifyError(r.error || 'Error al conectar'); return; }
+  spCloseConnect();
   await loadSpotify();
 }
 
+// ── Modal de conexión ─────────────────────────────────────────────
+function spOpenConnect() {
+  const m = document.getElementById('spConnectModal');
+  if (!m) return;
+  const status = document.getElementById('spOAuthStatus');
+  if (status) status.style.display = 'none';
+  m.classList.remove('hidden');
+  document.addEventListener('keydown', _spConnectEsc);
+  setTimeout(() => document.getElementById('spClientId')?.focus(), 40);
+}
+function spCloseConnect() {
+  const m = document.getElementById('spConnectModal');
+  if (!m) return;
+  m.classList.add('hidden');
+  document.removeEventListener('keydown', _spConnectEsc);
+}
+function _spConnectEsc(e) {
+  if (e.key === 'Escape') spCloseConnect();
+}
+
+// Reconectar = reabrir el modal de credenciales
 function showSpReconnect() {
-  document.getElementById('spConnected').classList.add('hidden');
-  document.getElementById('spNotConnected').classList.remove('hidden');
+  spOpenConnect();
 }
 
 async function spotifyDisconnect() {
   const r = await api.spotifyDisconnect();
   if (!r.ok) { toast('Error al desconectar', 'err'); return; }
   await loadSpotify();
+}
+
+// ── Modal de comandos del chat ────────────────────────────────────
+function spShowCommands() {
+  const m = document.getElementById('spCommandsModal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  document.addEventListener('keydown', _spCommandsEsc);
+}
+function spCloseCommands() {
+  const m = document.getElementById('spCommandsModal');
+  if (!m) return;
+  m.classList.add('hidden');
+  document.removeEventListener('keydown', _spCommandsEsc);
+}
+function _spCommandsEsc(e) {
+  if (e.key === 'Escape') spCloseCommands();
 }
 
 api.onSpotifyOAuthStatus(({ step }) => {
@@ -525,43 +589,50 @@ async function spToggleShuffle() {
   _updateSpControls();
 }
 
-let _spVolumeCommitting = false;
-
 function spVolumeInput(val) {
-  spVolume = Math.max(0, Math.min(100, parseInt(val, 10) || 0));
-  const lbl = document.getElementById('spVolumeLabel');
-  if (lbl) lbl.textContent = spVolume + '%';
+  _spLastVolumeTouchAt = Date.now();
+  _spApplyVolumeUi(val);
   clearTimeout(spVolumeTimer);
   spVolumeTimer = setTimeout(() => spVolumeCommit(spVolume), 400);
 }
 
 async function spVolumeCommit(val) {
   clearTimeout(spVolumeTimer);
-  spVolume = Math.max(0, Math.min(100, parseInt(val, 10) || 0));
+  spVolumeTimer = null;
+  const requested = _spClampVolume(val);
+  const seq = ++_spVolumeCommitSeq;
+  _spLastVolumeTouchAt = Date.now();
+  _spApplyVolumeUi(requested);
   _spVolumeCommitting = true;
-  const r = await api.spotifySetVolume(spVolume);
-  _spVolumeCommitting = false;
-  if (r && r.ok === false) {
-    // API failed — re-sync from Spotify's real state
-    const state = await api.spotifyNowPlaying();
-    if (state?.ok && state.volume !== null && state.volume !== undefined) {
-      spVolume = state.volume;
-      const slider = document.getElementById('spVolumeSlider');
-      const lbl    = document.getElementById('spVolumeLabel');
-      if (slider) slider.value = spVolume;
-      if (lbl)    lbl.textContent = spVolume + '%';
+  try {
+    const r = await api.spotifySetVolume(requested);
+    if (seq !== _spVolumeCommitSeq) return;
+
+    if (r?.ok && r.volume !== null && r.volume !== undefined) {
+      _spApplyVolumeUi(r.volume);
+      if (r.verified === false && Math.abs(_spClampVolume(r.volume) - requested) > 1) {
+        showSpotifyError(r.warning || `Spotify reporta ${r.volume}% después de pedir ${requested}%`);
+      }
+      return;
     }
-  } else {
-    setTimeout(() => {
-      api.spotifyNowPlaying().then((state) => {
-        if (!state?.ok || state.volume === null || state.volume === undefined) return;
-        spVolume = state.volume;
-        const slider = document.getElementById('spVolumeSlider');
-        const lbl = document.getElementById('spVolumeLabel');
-        if (slider) slider.value = spVolume;
-        if (lbl) lbl.textContent = spVolume + '%';
-      }).catch(() => {});
-    }, 350);
+
+    if (r && r.ok === false) {
+      showSpotifyError(r.error || 'No se pudo cambiar el volumen');
+    }
+
+    const state = await api.spotifyNowPlaying().catch(() => null);
+    if (seq !== _spVolumeCommitSeq) return;
+    if (state?.ok && state.volume !== null && state.volume !== undefined) {
+      _spApplyVolumeUi(state.volume);
+    }
+  } finally {
+    if (seq === _spVolumeCommitSeq) {
+      _spVolumeCommitting = false;
+      _spLastVolumeTouchAt = Date.now();
+      setTimeout(() => {
+        if (seq === _spVolumeCommitSeq) pollNowPlaying().catch(() => {});
+      }, 900);
+    }
   }
 }
 

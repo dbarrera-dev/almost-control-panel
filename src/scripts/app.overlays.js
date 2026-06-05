@@ -160,6 +160,121 @@ function renderBracket() {
   renderRound('qf',[0,1,2,3],'PARTIDO');
   renderRound('sf',[4,5],'SEMIFINAL');
   renderGF();
+  renderTorneoBracket();
+}
+
+// ── Bracket visual (read-only) dentro de la pantalla de Torneos ───
+function _brGet(idx) {
+  return bracketData.find(x => x.match_index === idx)
+    || { id:null, team_a:'', team_b:'', score_a:0, score_b:0, winner:null, match_index:idx };
+}
+
+function _brTeamRow(name, score, side, winner, placeholder) {
+  const isWin = winner === side;
+  const isLose = winner && winner !== side;
+  const cls = 't-mteam' + (isWin ? ' win' : isLose ? ' lose' : '');
+  const label = name
+    ? '<span class="t-mteam-name">' + _h(name) + '</span>'
+    : '<span class="t-mteam-name t-mteam-tbd">' + placeholder + '</span>';
+  const sc = name ? (parseInt(score) || 0) : '·';
+  return '<div class="' + cls + '">' + label + '<span class="t-mteam-score">' + sc + '</span></div>';
+}
+
+function _brMatchCard(m, label, isGF) {
+  const decided = !!m.winner;
+  return '<div class="t-match' + (isGF ? ' gf' : '') + (decided ? ' decided' : '') +
+    '" onclick="goEditBracket(' + m.match_index + ')" title="Editar este partido en Overlays">' +
+    '<div class="t-match-lbl">' + label + (decided ? '<span class="t-match-tick">✓</span>' : '') + '</div>' +
+    _brTeamRow(m.team_a, m.score_a, 'a', m.winner, isGF ? 'Finalista A' : 'Por definir') +
+    _brTeamRow(m.team_b, m.score_b, 'b', m.winner, isGF ? 'Finalista B' : 'Por definir') +
+    '</div>';
+}
+
+function renderTorneoBracket() {
+  const tree = document.getElementById('tBracketTree');
+  if (!tree) return;
+
+  const qf = [0,1,2,3].map(_brGet);
+  const sf = [4,5].map(_brGet);
+  const gf = _brGet(6);
+
+  tree.innerHTML =
+    '<div class="t-br-col">' +
+      '<div class="t-br-col-head">Cuartos</div>' +
+      '<div class="t-br-col-body">' + qf.map((m,i)=>_brMatchCard(m,'Partido '+(i+1),false)).join('') + '</div>' +
+    '</div>' +
+    '<div class="t-br-col">' +
+      '<div class="t-br-col-head">Semifinales</div>' +
+      '<div class="t-br-col-body">' + sf.map((m,i)=>_brMatchCard(m,'Semifinal '+(i+1),false)).join('') + '</div>' +
+    '</div>' +
+    '<div class="t-br-col">' +
+      '<div class="t-br-col-head">Gran Final</div>' +
+      '<div class="t-br-col-body">' + _brMatchCard(gf,'Final',true) + '</div>' +
+    '</div>';
+
+  // ── Estadísticas de progreso ──
+  const all = [...qf, ...sf, gf];
+  const decided = all.filter(m => m.winner).length;
+  const teams = new Set();
+  all.forEach(m => {
+    if (m.team_a) teams.add(m.team_a.trim().toLowerCase());
+    if (m.team_b) teams.add(m.team_b.trim().toLowerCase());
+  });
+  const phase = gf.winner ? 'Finalizado'
+    : (gf.team_a || gf.team_b) ? 'Gran Final'
+    : (sf.some(m => m.team_a || m.team_b)) ? 'Semifinales'
+    : 'Cuartos';
+
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setTxt('brStMatches', decided + '/7');
+  setTxt('brStTeams', teams.size);
+  setTxt('brStPhase', phase);
+
+  // ── Banner del campeón ──
+  const champ = gf.winner === 'a' ? gf.team_a : gf.winner === 'b' ? gf.team_b : '';
+  const banner = document.getElementById('tChampion');
+  if (banner) {
+    banner.classList.toggle('hidden', !champ);
+    if (champ) setTxt('tChampionName', champ);
+  }
+}
+
+function goEditBracket(idx) {
+  openBracketModal();
+  if (typeof idx === 'number') {
+    const round = idx <= 3 ? 'qf' : idx <= 5 ? 'sf' : 'gf';
+    if (typeof goBracketRound === 'function') goBracketRound(round);
+  }
+}
+
+function openBracketModal() {
+  const m = document.getElementById('tBracketModal');
+  if (!m) return;
+  loadOverlayUrl('rl');
+  // Aseguramos que los formularios de partidos estén poblados.
+  if (!bracketData.length) loadOverlays();
+  else renderBracket();
+  m.classList.remove('hidden');
+  document.addEventListener('keydown', _bracketModalEsc);
+}
+
+function closeBracketModal() {
+  const m = document.getElementById('tBracketModal');
+  if (m) m.classList.add('hidden');
+  document.removeEventListener('keydown', _bracketModalEsc);
+}
+
+function _bracketModalEsc(e) {
+  if (e.key === 'Escape') closeBracketModal();
+}
+
+function openTorneoBracketOverlay() {
+  const url = localStorage.getItem('ovUrl_rl') || '';
+  if (!url) {
+    toast('Configurá la URL del overlay en Overlays › Bracket RL', 'err');
+    return;
+  }
+  api.openUrl(url);
 }
 
 function renderRound(round, indices, prefix) {
@@ -239,7 +354,7 @@ async function saveMatch(idx) {
   };
   Object.assign(m, data);
   const r=await api.bracketUpdate(m.id, data);
-  if(r.ok) toast('Partido guardado','ok');
+  if(r.ok) { toast('Partido guardado','ok'); renderTorneoBracket(); }
   else toast('Error al guardar','err');
 }
 

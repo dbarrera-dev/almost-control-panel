@@ -1,90 +1,87 @@
 <div class="view" id="view-sorteos">
 
-  <!-- ── Header premium ──────────────────────────────────────── -->
-  <header class="s-header">
-    <div class="s-header-eyebrow">
-      <span class="s-header-dot"></span>
-      <span>Sorteos</span>
-      <span class="s-header-sep">·</span>
-      <span class="s-header-eyebrow-sub">ruleta en vivo</span>
+  <!-- ── Cabecera de página ───────────────────────────────────── -->
+  <header class="page-head">
+    <div class="page-head-main">
+      <div class="page-eyebrow">// Módulo 02</div>
+      <h1 class="page-title">Sorteos</h1>
+      <p class="page-sub">La gente entra con <b id="sorteoCmdLabel">!sorteo</b> y cada giro elige un ganador.</p>
     </div>
-    <div class="s-header-row">
-      <h1 class="s-header-title">Sorteos en vivo</h1>
-      <div class="s-header-tip">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>Clickeá el centro de la ruleta para girar</span>
-      </div>
-    </div>
-    <p class="s-header-lede">La gente entra escribiendo el comando configurado · cada giro elige un ganador con animación y confetti.</p>
-  </header>
-
-  <!-- Toolbar compacto -->
-  <div class="s-bar" id="sorteoStatusBar">
-    <div class="s-bar-state">
-      <span class="s-bar-dot"></span>
-      <span class="s-bar-statetxt" id="sorteoStatusTxt">SORTEO CERRADO</span>
-      <span class="s-bar-cmd">por <code id="sorteoCmdLabel">!sorteo</code></span>
-    </div>
-    <div class="s-bar-actions">
-      <button class="btn btn-orange" id="sorteoToggleBtn" onclick="toggleSorteo()">Abrir sorteo</button>
-      <button class="s-icon-btn" onclick="sorteoOpenWinners()" title="Ganadores de esta ronda">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-        <span>Ganadores</span>
+    <div class="page-actions">
+      <button class="btn btn-ghost btn-ico" onclick="sorteoOpenWinners()" title="Ganadores de esta ronda">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        Ganadores
         <span class="s-bar-badge" id="sorteoWinnersBadge">0</span>
       </button>
-      <button class="s-icon-btn" onclick="sorteoOpenHistorial()" title="Historial">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.74 9.74 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
-        <span>Historial</span>
+      <button class="btn btn-ghost btn-ico" onclick="sorteoOpenHistorial()" title="Historial">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.74 9.74 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+        Historial
       </button>
-      <button class="s-icon-btn s-icon-btn-square" onclick="sorteoOpenOptions()" title="Opciones de ruleta">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <button class="btn btn-ghost btn-ico" onclick="sorteoOpenOptions()" title="Opciones de ruleta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Opciones
       </button>
+      <button class="btn btn-orange" id="sorteoToggleBtn" onclick="toggleSorteo()">Abrir sorteo</button>
     </div>
+  </header>
+
+  <!-- Estado del sorteo -->
+  <div class="s-bar" id="sorteoStatusBar">
+    <span class="s-bar-dot"></span>
+    <span class="s-bar-statetxt" id="sorteoStatusTxt">SORTEO CERRADO</span>
   </div>
 
   <!-- Grid principal -->
   <div class="s-grid">
-    <section class="s-panel-wheel">
-      <div class="s-wheel-stage" id="sorteoWheelStage">
-        <div class="s-wheel-pointer" aria-hidden="true"></div>
-        <canvas id="sorteoWheelCanvas" width="640" height="640"></canvas>
-        <button class="s-wheel-hub" id="sorteoWheelSpinBtn" onclick="sorteoWheelSpin()" disabled aria-label="Girar ruleta">
-          <span class="s-wheel-hub-n" id="sorteoCountBig">0</span>
-          <span class="s-wheel-hub-l">GIRAR</span>
-        </button>
-        <div class="s-wheel-empty hidden" id="sorteoWheelEmpty"></div>
+    <section class="ops-panel">
+      <div class="ops-panel-head">
+        <span class="ops-panel-title"><span class="tick"></span>Ruleta</span>
+        <span class="ops-panel-meta">Click al centro para girar</span>
       </div>
-      <div class="s-wheel-last" id="sorteoWheelLastWinner">Último ganador: —</div>
-
-      <div class="s-quickadd">
-        <div class="s-quickadd-head">
-          <span class="s-quickadd-label">Agregar manualmente</span>
-          <span class="s-quickadd-hint">separá con coma o salto de línea</span>
+      <div class="ops-panel-body s-wheel-body">
+        <div class="s-wheel-stage" id="sorteoWheelStage">
+          <div class="s-wheel-pointer" aria-hidden="true"></div>
+          <canvas id="sorteoWheelCanvas" width="640" height="640"></canvas>
+          <button class="s-wheel-hub" id="sorteoWheelSpinBtn" onclick="sorteoWheelSpin()" disabled aria-label="Girar ruleta">
+            <span class="s-wheel-hub-n" id="sorteoCountBig">0</span>
+            <span class="s-wheel-hub-l">GIRAR</span>
+          </button>
+          <div class="s-wheel-empty hidden" id="sorteoWheelEmpty"></div>
         </div>
-        <div class="s-quickadd-row">
-          <textarea
-            id="sorteoManualInput"
-            class="s-quickadd-input"
-            rows="1"
-            placeholder="@nick1, @nick2, @nick3..."
-            onkeydown="sorteoHandleManualKeydown(event)"
-          ></textarea>
-          <button class="btn btn-orange s-quickadd-btn" id="sorteoManualAddBtn" onclick="sorteoAddManualFromInput()">Agregar</button>
+        <div class="s-wheel-last" id="sorteoWheelLastWinner">Último ganador: —</div>
+
+        <div class="s-quickadd">
+          <div class="s-quickadd-head">
+            <span class="s-quickadd-label">Agregar manualmente</span>
+            <span class="s-quickadd-hint">coma o salto de línea</span>
+          </div>
+          <div class="s-quickadd-row">
+            <textarea
+              id="sorteoManualInput"
+              class="s-quickadd-input"
+              rows="1"
+              placeholder="@nick1, @nick2, @nick3..."
+              onkeydown="sorteoHandleManualKeydown(event)"
+            ></textarea>
+            <button class="btn btn-orange s-quickadd-btn" id="sorteoManualAddBtn" onclick="sorteoAddManualFromInput()">Agregar</button>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="s-panel s-panel-part">
-      <header class="s-panel-head">
-        <div class="s-panel-title">Participantes <b id="sorteoPartCount">0</b></div>
-      </header>
-      <input id="sorteoSearch" class="s-search" type="text" placeholder="Buscar participante..." oninput="filterSorteoList(this.value)" />
-      <div id="sorteoPartList" class="s-part-list">
-        <div class="sorteo-empty">
-          <div class="empty-ico">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
+    <section class="ops-panel">
+      <div class="ops-panel-head">
+        <span class="ops-panel-title"><span class="tick"></span>Participantes <b id="sorteoPartCount">0</b></span>
+      </div>
+      <div class="ops-panel-body">
+        <input id="sorteoSearch" class="s-search" type="text" placeholder="Buscar participante..." oninput="filterSorteoList(this.value)" />
+        <div id="sorteoPartList" class="s-part-list">
+          <div class="sorteo-empty">
+            <div class="empty-ico">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
+            </div>
+            <p>Abrí el sorteo · la gente escribe el comando para entrar.</p>
           </div>
-          <p>Abrí el sorteo · la gente escribe el comando para entrar.</p>
         </div>
       </div>
     </section>
@@ -154,7 +151,7 @@
           <div id="sorteoWinnersList" class="s-winners-list"></div>
         </div>
         <div id="sorteoResultsEmpty" class="s-results-empty">
-          <p>Todavía no hay ganadores en esta ronda. Girá la ruleta para sortear.</p>
+          <p>Todavía no hay ganadores. Girá la ruleta para sortear.</p>
         </div>
         <div class="s-modal-actions s-modal-actions-end">
           <button class="btn btn-danger" id="limpiarBtn" onclick="limpiarSorteo()">Limpiar participantes</button>
@@ -189,6 +186,9 @@
     </div>
   </div>
 
+  <!-- Backdrop del modo foco (mientras gira la ruleta) -->
+  <div class="sorteo-focus-backdrop" aria-hidden="true"></div>
+
   <!-- Overlay del ganador (canvas confetti) -->
   <div id="sorteoWheelWinnerOverlay" class="sorteo-wheel-overlay hidden">
     <canvas id="sorteoWheelConfettiCanvas"></canvas>
@@ -203,9 +203,8 @@
           <circle cx="12" cy="4" r="1.6" fill="currentColor"/>
         </svg>
       </div>
-      <div class="sorteo-wheel-overlay-label">¡TENEMOS GANADOR!</div>
+      <div class="sorteo-wheel-overlay-label">¡Tenemos ganador!</div>
       <div class="sorteo-wheel-overlay-name" id="sorteoWheelOverlayName">—</div>
-      <div class="sorteo-wheel-overlay-sub">Felicitaciones</div>
       <div class="sorteo-wheel-overlay-actions">
         <button class="btn btn-gold" onclick="sorteoWheelSpinAgain()">Girar otra vez</button>
         <button class="btn btn-ghost" onclick="sorteoWheelCloseWinner()">Cerrar</button>

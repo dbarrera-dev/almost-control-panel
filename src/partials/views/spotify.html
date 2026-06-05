@@ -1,317 +1,199 @@
 <div class="view" id="view-spotify">
 
-    <!-- ── Header premium ──────────────────────────────────────── -->
-    <header class="sp-header">
-      <div class="sp-header-eyebrow">
-        <span class="sp-header-dot"></span>
-        <span>Música</span>
-        <span class="sp-header-sep">·</span>
-        <span class="sp-header-eyebrow-sub">Spotify Connect</span>
-      </div>
-      <div class="sp-header-row">
-        <h1 class="sp-header-title">Spotify</h1>
-        <div class="sp-header-status" id="spHeaderStatus">
-          <div id="spStatusDot" class="sp-dot"></div>
-          <span class="sp-header-status-l">Estado</span>
-          <span id="spStatusBadge" class="badge badge-off">Sin conectar</span>
+    <!-- ── Cabecera de página ───────────────────────────────────── -->
+    <header class="page-head">
+      <div class="page-head-main">
+        <div class="page-eyebrow">// Módulo 05</div>
+        <div class="sp-title-row">
+          <h1 class="page-title">Música</h1>
+          <span class="sp-conn-status"><span id="spStatusBadge" class="badge badge-off">Sin conectar</span></span>
         </div>
+        <p class="page-sub">Controlá la reproducción y los <b>song requests</b> del chat sin salir del panel.</p>
       </div>
-      <p class="sp-header-lede">Controlá la música del stream, gestioná los <b>song requests</b> del chat y explorá tracks sin salir del panel.</p>
+      <div class="page-actions">
+        <button class="btn btn-ghost btn-ico" onclick="spShowCommands()" title="Comandos del chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          Comandos
+        </button>
+        <span id="spConnected" class="hidden sp-conn-actions">
+          <button class="btn btn-ghost" onclick="spOpenConnect()" title="Cambiar credenciales">Reconectar</button>
+          <button class="btn btn-danger" onclick="spotifyDisconnect()">Desconectar</button>
+        </span>
+      </div>
     </header>
 
-    <!-- ── Conexión ── -->
-    <div class="card sp-conn-card" id="spConnectionCard">
-      <div id="spNotConnected">
-        <div class="sp-conn-hero">
-          <div class="sp-conn-hero-ico">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 11.5c2.5-1 5.5-1 8 0"/><path d="M8.5 14.5c2-.8 4-.8 6 0"/><path d="M9 17.5c1.3-.5 2.7-.5 4 0"/></svg>
-          </div>
-          <div class="sp-conn-hero-info">
-            <div class="sp-conn-hero-eyebrow">Cuenta no conectada</div>
-            <div class="sp-conn-hero-title">Conectá tu cuenta de Spotify</div>
-            <p class="sp-conn-hero-desc">Necesitás un Client ID y Secret de la <a href="#" style="color:var(--sp)" onclick="event.preventDefault()">consola de Spotify Developers</a>. La autorización se abre en tu navegador.</p>
-          </div>
-        </div>
-
-        <div class="sp-conn-form">
-          <div class="ig">
-            <label>Client ID</label>
-            <input id="spClientId" type="text" placeholder="4a2d8b8fd044..." style="font-family:monospace;font-size:12px" />
-          </div>
-          <div class="ig">
-            <label>Client Secret</label>
-            <input id="spClientSecret" type="password" placeholder="••••••••••••••••" style="font-family:monospace;font-size:12px" />
-          </div>
-        </div>
-        <div id="spOAuthStatus" style="display:none;font-size:11px;color:var(--text3);margin:6px 0 10px;font-family:'Inter',sans-serif;text-align:center"></div>
-        <button id="spConnectBtn" class="btn sp-conn-cta" style="width:100%" onclick="startSpotifyConnect()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><polyline points="12 5 19 12 12 19"/></svg>
-          Conectar con Spotify
-        </button>
+    <!-- ── Estado vacío: sin conexión ──────────────────────────── -->
+    <div id="spNotConnected" class="sp-idle-hint">
+      <div class="sp-idle-ico">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 11.5c2.5-1 5.5-1 8 0"/><path d="M8.5 14.5c2-.8 4-.8 6 0"/><path d="M9 17.5c1.3-.5 2.7-.5 4 0"/></svg>
       </div>
-
-      <div id="spConnected" class="hidden">
-        <div class="sp-conn-ok">
-          <div class="sp-conn-ok-ico">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
-          <div class="sp-conn-ok-info">
-            <div class="sp-conn-ok-title">Cuenta conectada</div>
-            <p class="sp-conn-ok-desc">Los comandos de música y song request están activos en Kick.</p>
-          </div>
-          <div class="sp-conn-ok-actions">
-            <button class="btn btn-ghost" onclick="showSpReconnect()">Reconectar</button>
-            <button class="btn btn-danger" onclick="spotifyDisconnect()">Desconectar</button>
-          </div>
-        </div>
-      </div>
+      <div class="sp-idle-title">Conectá tu cuenta de Spotify</div>
+      <p class="sp-idle-desc">Controlá la reproducción y los song requests del chat sin salir del panel.</p>
+      <button class="btn sp-conn-cta btn-ico" onclick="spOpenConnect()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><polyline points="12 5 19 12 12 19"/></svg>
+        Conectar con Spotify
+      </button>
     </div>
 
-    <!-- ── Sub-tabs (solo visible cuando conectado) ── -->
+    <!-- ── Subcategorías (se navegan desde el aside) ── -->
     <div id="spConnectedWrap" class="hidden">
-      <div class="sp-tabbar">
-        <button class="sp-tab on" id="sptab-player" onclick="goSpTab('player')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          Player
-        </button>
-        <button class="sp-tab" id="sptab-explorar" onclick="goSpTab('explorar')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Explorar
-        </button>
-        <button class="sp-tab" id="sptab-cola" onclick="goSpTab('cola')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          Cola
-          <span class="tab-badge hidden" id="spSongreqBadge" style="background:var(--sp)">0</span>
-        </button>
-      </div>
 
       <!-- ─────────── PLAYER ─────────── -->
       <div id="spview-player" class="sp-stab on">
-        <div class="sp-player-grid">
-          <!-- Now Playing + Controls card -->
-          <div class="card sp-np-card" id="spNowPlayingCard">
-            <div class="sp-player-meta-line">
-              <span class="sp-player-meta-chip">Reproducción</span>
-              <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="loadNowPlaying()">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        <div class="sp-player-layout">
+
+          <!-- Izquierda: reproductor -->
+          <section class="ops-panel sp-np-card" id="spNowPlayingCard">
+            <div class="ops-panel-head">
+              <span class="ops-panel-title"><span class="tick"></span>Reproducción</span>
+              <button class="btn btn-ghost btn-ico" style="padding:5px 11px;font-size:10px" onclick="loadNowPlaying()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                 Actualizar
               </button>
             </div>
-
-            <!-- Track info row -->
-            <div id="spTrackRow" class="sp-track-row">
-              <img id="spAlbumArt" class="sp-art" src="" alt="" style="width:108px;height:108px;border-radius:12px;flex-shrink:0" />
-              <div class="sp-track-meta">
-                <div id="spTrackName" class="sp-track-name">—</div>
-                <div id="spArtist" class="sp-artist">—</div>
-                <div id="spAlbum" class="sp-album">—</div>
-                <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
-                  <div id="spPlayingRow" class="sp-playing-row hidden">
-                    <div class="sp-eq"><span></span><span></span><span></span></div>
-                    <span class="sp-playing-lbl">PLAYING</span>
+            <div class="ops-panel-body">
+              <!-- Track info row -->
+              <div id="spTrackRow" class="sp-track-row">
+                <img id="spAlbumArt" class="sp-art" src="" alt="" style="width:84px;height:84px;border-radius:10px;flex-shrink:0" />
+                <div class="sp-track-meta">
+                  <div id="spTrackName" class="sp-track-name">—</div>
+                  <div id="spArtist" class="sp-artist">—</div>
+                  <div id="spAlbum" class="sp-album">—</div>
+                  <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+                    <div id="spPlayingRow" class="sp-playing-row hidden">
+                      <div class="sp-eq"><span></span><span></span><span></span></div>
+                      <span class="sp-playing-lbl">PLAYING</span>
+                    </div>
+                    <div id="spPausedMsg" class="hidden" style="font-size:10px;color:var(--text3);letter-spacing:2px;font-weight:700">PAUSADO</div>
                   </div>
-                  <div id="spPausedMsg" class="hidden" style="font-size:10px;color:var(--text3);letter-spacing:2px;font-weight:700">PAUSADO</div>
+                  <div id="spDeviceRow" style="margin-top:7px;display:flex;align-items:center;gap:6px">
+                    <span id="spDeviceIcon" style="font-size:12px"></span>
+                    <span id="spDeviceName" style="font-size:10px;color:var(--text3);font-family:'Inter',sans-serif"></span>
+                  </div>
                 </div>
-                <div id="spDeviceRow" style="margin-top:8px;display:flex;align-items:center;gap:6px">
-                  <span id="spDeviceIcon" style="font-size:12px"></span>
-                  <span id="spDeviceName" style="font-size:10px;color:var(--text3);font-family:'Inter',sans-serif"></span>
+              </div>
+
+              <!-- Nothing playing -->
+              <div id="spNothingMsg" class="hidden" style="text-align:center;padding:18px 16px">
+                <div style="margin-bottom:8px;opacity:.4"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+                <p id="spNothingText" style="font-size:12px;color:var(--text3);margin:0;font-family:'Inter',sans-serif">No hay nada reproduciéndose.</p>
+              </div>
+
+              <!-- Progress bar -->
+              <div id="spProgressWrap" class="hidden sp-progress-wrap">
+                <div class="sp-progress-track" onclick="spSeek(event)" title="Click para ir a esa posición">
+                  <div class="sp-progress-fill" id="spProgressFill" style="width:0%"></div>
+                </div>
+                <div class="sp-time-row">
+                  <span id="spProgressTime">0:00</span>
+                  <span id="spDurationTime">0:00</span>
                 </div>
               </div>
-            </div>
 
-            <!-- Nothing playing -->
-            <div id="spNothingMsg" class="hidden" style="text-align:center;padding:24px 16px">
-              <div style="margin-bottom:10px;opacity:.4"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
-              <p id="spNothingText" style="font-size:12px;color:var(--text3);margin:0;font-family:'Inter',sans-serif">No hay nada reproduciéndose.</p>
-            </div>
-
-            <!-- Progress bar -->
-            <div id="spProgressWrap" class="hidden sp-progress-wrap">
-              <div class="sp-progress-track" onclick="spSeek(event)" title="Click para ir a esa posición">
-                <div class="sp-progress-fill" id="spProgressFill" style="width:0%"></div>
+              <!-- Main controls -->
+              <div class="sp-ctrl-row">
+                <button id="spPrevBtn" class="sp-ctrl-btn" onclick="spAction('prev')" title="Anterior"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+                <button class="sp-ctrl-btn sp-main" id="spPlayPauseBtn" onclick="spTogglePlayPause()" title="Play/Pausa"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
+                <button id="spNextBtn" class="sp-ctrl-btn" onclick="spAction('next')" title="Siguiente"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zm-2.5 6L5 6v12z"/></svg></button>
               </div>
-              <div class="sp-time-row">
-                <span id="spProgressTime">0:00</span>
-                <span id="spDurationTime">0:00</span>
+
+              <!-- Secondary: shuffle + repeat -->
+              <div class="sp-sec-row">
+                <button class="sp-sec-btn" id="spShuffleBtn" onclick="spToggleShuffle()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H20"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M20 18h-3.9c-1.3 0-2.5-.6-3.3-1.7l-.5-.8"/><path d="m18 14 4 4-4 4"/></svg> SHUFFLE</button>
+                <button class="sp-sec-btn" id="spRepeatBtn"  onclick="spCycleRepeat()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg> REPETIR</button>
+              </div>
+
+              <!-- Volume -->
+              <div class="sp-volume-row">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+                <input id="spVolumeSlider" type="range" min="0" max="100" value="50"
+                  style="flex:1;accent-color:var(--sp);cursor:pointer;height:4px"
+                  oninput="spVolumeInput(this.value)" onchange="spVolumeCommit(this.value)">
+                <span id="spVolumeLabel" style="font-family:'Bebas Neue',cursive;font-size:18px;color:var(--text2);min-width:36px;text-align:right">50%</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
               </div>
             </div>
+          </section>
 
-            <!-- Main controls -->
-            <div class="sp-ctrl-row">
-              <button id="spPrevBtn" class="sp-ctrl-btn" onclick="spAction('prev')" title="Anterior"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
-              <button class="sp-ctrl-btn sp-main" id="spPlayPauseBtn" onclick="spTogglePlayPause()" title="Play/Pausa"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg></button>
-              <button id="spNextBtn" class="sp-ctrl-btn" onclick="spAction('next')" title="Siguiente"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zm-2.5 6L5 6v12z"/></svg></button>
+          <!-- Derecha: cola (siempre visible) -->
+          <section class="ops-panel sp-queue-panel">
+            <div class="ops-panel-head">
+              <span class="ops-panel-title"><span class="tick"></span>Próximas en cola</span>
+              <button class="btn btn-ghost" style="padding:4px 9px;font-size:10px" onclick="loadSpotifyQueue({ renderMain: false })">↻ Vista previa</button>
             </div>
-
-            <!-- Secondary: shuffle + repeat -->
-            <div class="sp-sec-row">
-              <button class="sp-sec-btn" id="spShuffleBtn" onclick="spToggleShuffle()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H20"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M20 18h-3.9c-1.3 0-2.5-.6-3.3-1.7l-.5-.8"/><path d="m18 14 4 4-4 4"/></svg> SHUFFLE</button>
-              <button class="sp-sec-btn" id="spRepeatBtn"  onclick="spCycleRepeat()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg> REPETIR</button>
-            </div>
-
-            <!-- Volume -->
-            <div class="sp-volume-row">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
-              <input id="spVolumeSlider" type="range" min="0" max="100" value="50"
-                style="flex:1;accent-color:var(--sp);cursor:pointer;height:4px"
-                oninput="spVolumeInput(this.value)" onchange="spVolumeCommit(this.value)">
-              <span id="spVolumeLabel" style="font-family:'Bebas Neue',cursive;font-size:18px;color:var(--text2);min-width:36px;text-align:right">50%</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-            </div>
-
-            <div class="sp-player-divider"></div>
-
-            <div class="sp-player-queue-header">
-              <span class="section-label" style="margin-bottom:0">Añadir rápido a la cola</span>
-              <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px" onclick="loadSpotifyQueue({ renderMain: false })">↻ Vista previa</button>
-            </div>
-            <div class="sp-player-queue-row">
-              <input id="spQueueInputPlayer" type="text" placeholder="Link de Spotify (track o playlist) o URI..."
-                style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')spAddToQueue('player')">
-              <button class="btn sp-add-btn" onclick="spAddToQueue('player')">+ Cola</button>
-            </div>
-            <div id="spQueueMsgPlayer" class="sp-queue-inline-msg"></div>
-
-            <div class="sp-player-queue-preview">
-              <div class="sp-player-queue-preview-title">Próximas en cola</div>
+            <div class="ops-panel-body">
+              <div class="sp-player-queue-row">
+                <input id="spQueueInputPlayer" type="text" placeholder="Link de Spotify o URI..."
+                  style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')spAddToQueue('player')">
+                <button class="btn sp-add-btn" onclick="spAddToQueue('player')">+ Cola</button>
+              </div>
+              <div id="spQueueMsgPlayer" class="sp-queue-inline-msg"></div>
               <div id="spQueuePreviewList" class="sp-queue-preview-list">
                 <div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">Sin datos todavía</div>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div class="sp-player-side">
-            <!-- Chat commands reference -->
-            <div class="card sp-player-side-card">
-              <div class="card-title">Comandos en el chat</div>
-              <div class="sp-cmd-list">
-                <div class="sp-cmd-row">
-                  <span class="cmd-pill">!song</span>
-                  <span class="sp-cmd-desc">Nombre de la canción actual</span>
-                </div>
-                <div class="sp-cmd-row">
-                  <span class="cmd-pill">!cancion</span>
-                  <span class="sp-cmd-desc">Alias de <code>!song</code></span>
-                </div>
-                <div class="sp-cmd-row">
-                  <span class="cmd-pill">!lista</span>
-                  <span class="sp-cmd-desc">Próximas canciones en cola</span>
-                </div>
-                <div class="sp-cmd-row">
-                  <span class="cmd-pill">!playlist</span>
-                  <span class="sp-cmd-desc">Playlist que está sonando</span>
-                </div>
-              </div>
-              <div class="sp-side-hint">
-                <span class="sp-side-hint-dot"></span>
-                <span>Para <b>Song Request</b>, configuralo desde la pestaña <em style="color:var(--text2)">Cola</em>.</span>
-              </div>
-            </div>
-
-            <div class="card sp-player-side-card">
-              <div class="card-title">Accesos rápidos</div>
-              <div class="sp-quick-actions">
-                <button class="btn btn-ghost sp-quick-btn" onclick="goSpTab('explorar')">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  Explorar música
-                </button>
-                <button class="btn btn-ghost sp-quick-btn" onclick="goSpTab('cola')">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                  Gestionar song requests
-                </button>
-                <button class="btn btn-ghost sp-quick-btn" onclick="goSpTab('overlay')">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                  Overlay para OBS
-                </button>
-              </div>
-              <p class="sp-side-foot">En modo stream, manejá casi todo desde este panel sin cambiar de tab.</p>
-            </div>
-          </div>
         </div>
       </div>
 
       <!-- ─────────── EXPLORAR ─────────── -->
       <div id="spview-explorar" class="sp-stab">
-        <div class="card sp-explore-card">
-          <header class="sp-explore-head">
-            <div class="sp-explore-ico">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            </div>
-            <div class="sp-explore-head-text">
-              <div class="sp-explore-eyebrow">Búsqueda avanzada</div>
-              <div class="sp-explore-title">Explorá la biblioteca de Spotify</div>
-              <p class="sp-explore-desc">Buscá tracks, artistas, álbumes y playlists. Filtrá por tipo y agregá al instante a la cola.</p>
-            </div>
-          </header>
-
-          <div class="sp-search-row">
-            <svg class="sp-search-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input id="spSearchInput" type="text" placeholder="Ej: Linkin Park numb, Dua Lipa, random access memories..."
-              class="sp-search-input" onkeydown="if(event.key==='Enter')spSearch()">
-            <button class="btn sp-search-btn" onclick="spSearch()">Buscar</button>
+        <section class="ops-panel">
+          <div class="ops-panel-head">
+            <span class="ops-panel-title"><span class="tick"></span>Explorar</span>
+            <span class="ops-panel-meta">Tracks · artistas · álbumes · playlists</span>
           </div>
+          <div class="ops-panel-body">
+            <div class="sp-search-row">
+              <svg class="sp-search-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input id="spSearchInput" type="text" placeholder="Ej: Linkin Park numb, Dua Lipa, random access memories..."
+                class="sp-search-input" onkeydown="if(event.key==='Enter')spSearch()">
+              <button class="btn sp-search-btn" onclick="spSearch()">Buscar</button>
+            </div>
 
-          <div class="sp-filter-row">
-            <span class="sp-filter-label">Tipo</span>
-            <label class="sp-chip-toggle">
-              <input id="spTypeTrack" type="checkbox" checked>
-              <span>Tracks</span>
-            </label>
-            <label class="sp-chip-toggle">
-              <input id="spTypeArtist" type="checkbox" checked>
-              <span>Artistas</span>
-            </label>
-            <label class="sp-chip-toggle">
-              <input id="spTypeAlbum" type="checkbox" checked>
-              <span>Álbumes</span>
-            </label>
-            <label class="sp-chip-toggle">
-              <input id="spTypePlaylist" type="checkbox" checked>
-              <span>Playlists</span>
-            </label>
+            <div class="sp-filter-row">
+              <span class="sp-filter-label">Tipo</span>
+              <label class="sp-chip-toggle"><input id="spTypeTrack" type="checkbox" checked><span>Tracks</span></label>
+              <label class="sp-chip-toggle"><input id="spTypeArtist" type="checkbox" checked><span>Artistas</span></label>
+              <label class="sp-chip-toggle"><input id="spTypeAlbum" type="checkbox" checked><span>Álbumes</span></label>
+              <label class="sp-chip-toggle"><input id="spTypePlaylist" type="checkbox" checked><span>Playlists</span></label>
 
-            <div class="sp-filter-divider"></div>
+              <div class="sp-filter-divider"></div>
 
-            <span class="sp-filter-label">Orden</span>
-            <select id="spSearchSort" class="sp-filter-select">
-              <option value="relevance">Relevancia</option>
-              <option value="popularity">Popularidad</option>
-            </select>
+              <span class="sp-filter-label">Orden</span>
+              <select id="spSearchSort" class="sp-filter-select" data-uisel="inline">
+                <option value="relevance">Relevancia</option>
+                <option value="popularity">Popularidad</option>
+              </select>
 
-            <span class="sp-filter-label">Cantidad</span>
-            <select id="spSearchLimit" class="sp-filter-select">
-              <option value="5">5</option>
-              <option value="8">8</option>
-              <option value="10" selected>10</option>
-            </select>
+              <span class="sp-filter-label">Cantidad</span>
+              <select id="spSearchLimit" class="sp-filter-select" data-uisel="inline">
+                <option value="5">5</option>
+                <option value="8">8</option>
+                <option value="10" selected>10</option>
+              </select>
+            </div>
+
+            <div id="spSearchMeta" class="sp-search-meta"></div>
+            <div id="spSearchResults" class="sp-search-results"></div>
           </div>
-
-          <div id="spSearchMeta" class="sp-search-meta"></div>
-          <div id="spSearchResults" class="sp-search-results"></div>
-        </div>
+        </section>
       </div>
 
       <!-- ─────────── COLA ─────────── -->
       <div id="spview-cola" class="sp-stab">
 
-        <!-- Song Request — cola pendiente + activa -->
-        <div class="card sp-cola-card">
-          <header class="sp-cola-head">
-            <div class="sp-cola-ico">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-            </div>
-            <div class="sp-cola-head-text">
-              <div class="sp-cola-eyebrow">Pedidos del chat</div>
-              <div class="sp-cola-title">Song Request</div>
-              <p class="sp-cola-desc">Los viewers piden canciones con puntos. La configuración del módulo y reward vive en <strong>Kick</strong>.</p>
-            </div>
-            <button class="btn btn-ghost sp-cola-link" onclick="goTab('kick')">
+        <!-- Song Request — pedidos del chat -->
+        <section class="ops-panel sp-cola-card">
+          <div class="ops-panel-head">
+            <span class="ops-panel-title"><span class="tick"></span>Song Request</span>
+            <button class="btn btn-ghost btn-ico" style="padding:5px 11px;font-size:10px" onclick="goTab('kick')">
               Ir a Kick
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </button>
-          </header>
-
-          <div id="songRequestConfig" class="sp-cola-body">
+          </div>
+          <div id="songRequestConfig" class="ops-panel-body">
 
             <!-- Canción activa -->
             <div id="srActiveWrap" class="hidden">
@@ -339,33 +221,80 @@
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         <!-- Cola técnica de Spotify -->
-        <div class="card sp-cola-card">
-          <header class="sp-cola-head sp-cola-head-compact">
-            <div class="sp-cola-ico sp-cola-ico-muted">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            </div>
-            <div class="sp-cola-head-text">
-              <div class="sp-cola-title sp-cola-title-sm">Cola de Spotify</div>
-              <p class="sp-cola-desc">Cola técnica del player. Manejada directo por la API de Spotify.</p>
-            </div>
-            <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px" onclick="loadSpotifyQueue()">↻ Actualizar</button>
-          </header>
+        <section class="ops-panel sp-cola-card">
+          <div class="ops-panel-head">
+            <span class="ops-panel-title"><span class="tick"></span>Cola de Spotify</span>
+            <button class="btn btn-ghost btn-ico" style="padding:5px 11px;font-size:10px" onclick="loadSpotifyQueue()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Actualizar
+            </button>
+          </div>
+          <div class="ops-panel-body">
+            <div id="spQueueList" class="sp-queue-list"></div>
 
-          <div id="spQueueList" class="sp-queue-list"></div>
-
-          <div class="sp-cola-add">
-            <span class="section-label" style="margin-bottom:8px">Añadir manualmente</span>
-            <div class="sp-cola-add-row">
-              <input id="spQueueInput" type="text" placeholder="Link de Spotify (track o playlist)..." class="sp-cola-add-input" onkeydown="if(event.key==='Enter')spAddToQueue()">
-              <button class="btn sp-add-btn" onclick="spAddToQueue()">+ Cola</button>
+            <div class="sp-cola-add">
+              <span class="section-label" style="margin-bottom:8px">Añadir manualmente</span>
+              <div class="sp-cola-add-row">
+                <input id="spQueueInput" type="text" placeholder="Link de Spotify (track o playlist)..." class="sp-cola-add-input" onkeydown="if(event.key==='Enter')spAddToQueue()">
+                <button class="btn sp-add-btn" onclick="spAddToQueue()">+ Cola</button>
+              </div>
+              <div id="spQueueMsg" class="sp-cola-add-msg"></div>
             </div>
-            <div id="spQueueMsg" class="sp-cola-add-msg"></div>
+          </div>
+        </section>
+      </div>
+
+    </div>
+
+    <!-- ─── Modal: Conectar Spotify ──────────────────────────────── -->
+    <div class="s-modal hidden" id="spConnectModal" onclick="if(event.target===this)spCloseConnect()">
+      <div class="s-modal-card">
+        <header class="s-modal-head">
+          <div class="s-modal-title">Conectar Spotify</div>
+          <button class="s-modal-close" onclick="spCloseConnect()" aria-label="Cerrar">✕</button>
+        </header>
+        <div class="s-modal-body">
+          <p class="sp-conn-note">Pegá tu <b>Client ID</b> y <b>Secret</b> de Spotify Developers. La autorización se abre en tu navegador.</p>
+          <div class="sp-conn-form">
+            <div class="ig">
+              <label>Client ID</label>
+              <input id="spClientId" type="text" placeholder="4a2d8b8fd044..." style="font-family:monospace;font-size:12px" />
+            </div>
+            <div class="ig">
+              <label>Client Secret</label>
+              <input id="spClientSecret" type="password" placeholder="••••••••••••••••" style="font-family:monospace;font-size:12px" />
+            </div>
+          </div>
+          <div id="spOAuthStatus" style="display:none;font-size:11px;color:var(--text3);margin:8px 0 2px;font-family:'Inter',sans-serif;text-align:center"></div>
+          <div class="s-modal-actions s-modal-actions-end">
+            <button class="btn btn-ghost" onclick="spCloseConnect()">Cancelar</button>
+            <button id="spConnectBtn" class="btn sp-conn-cta" onclick="startSpotifyConnect()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><polyline points="12 5 19 12 12 19"/></svg>
+              Conectar
+            </button>
           </div>
         </div>
       </div>
+    </div>
 
+    <!-- ─── Modal: Comandos del chat ─────────────────────────────── -->
+    <div class="s-modal hidden" id="spCommandsModal" onclick="if(event.target===this)spCloseCommands()">
+      <div class="s-modal-card">
+        <header class="s-modal-head">
+          <div class="s-modal-title">Comandos del chat</div>
+          <button class="s-modal-close" onclick="spCloseCommands()" aria-label="Cerrar">✕</button>
+        </header>
+        <div class="s-modal-body">
+          <div class="sp-cmd-list">
+            <div class="sp-cmd-row"><span class="cmd-pill">!song</span><span class="sp-cmd-desc">Nombre de la canción actual</span></div>
+            <div class="sp-cmd-row"><span class="cmd-pill">!cancion</span><span class="sp-cmd-desc">Alias de <code>!song</code></span></div>
+            <div class="sp-cmd-row"><span class="cmd-pill">!lista</span><span class="sp-cmd-desc">Próximas canciones en cola</span></div>
+            <div class="sp-cmd-row"><span class="cmd-pill">!playlist</span><span class="sp-cmd-desc">Playlist que está sonando</span></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>

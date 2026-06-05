@@ -110,6 +110,7 @@ const api = {
   kickRewardSetPrimary:(rewardId) => ipcRenderer.invoke('kick-reward-set-primary', rewardId),
   kickSubsList:        (opts)     => ipcRenderer.invoke('kick-subs-list', opts),
   kickSubsClear:       (opts)     => ipcRenderer.invoke('kick-subs-clear', opts),
+  kickUsersGet:        (opts)     => ipcRenderer.invoke('kick-users-get', opts),
   kickResetTokens:     (opts)     => ipcRenderer.invoke('kick-reset-tokens', opts),
   kickCommandsGetConfig: ()       => ipcRenderer.invoke('kick-commands-get-config'),
   kickCommandsSetConfig: (cfg)    => ipcRenderer.invoke('kick-commands-set-config', cfg),
@@ -188,6 +189,8 @@ const api = {
   rlOverlaySetConfig:   (cfg) => ipcRenderer.invoke('rl-overlay-set-config', cfg),
   rlOverlayRefresh:     ()    => ipcRenderer.invoke('rl-overlay-refresh'),
   rlOverlayResetSession: ()   => ipcRenderer.invoke('rl-overlay-reset-session'),
+  rlOverlaySeriesAction: (action) => ipcRenderer.invoke('rl-overlay-series-action', action),
+  rlOverlayClearLive:   ()    => ipcRenderer.invoke('rl-overlay-clear-live'),
   onRLStatsUpdate:      (cb)  => ipcRenderer.on('rl-stats-update', (_, d) => cb(d)),
 
   // Key Overlay
@@ -196,6 +199,7 @@ const api = {
   keyOverlayGetStatus:  ()    => ipcRenderer.invoke('keyoverlay-status'),
   keyOverlayGetConfig:  ()    => ipcRenderer.invoke('keyoverlay-get-config'),
   keyOverlaySetConfig:  (cfg) => ipcRenderer.invoke('keyoverlay-set-config', cfg),
+  keyOverlayPreviewConfig: (cfg) => ipcRenderer.invoke('keyoverlay-preview-config', cfg),
   keyOverlayUploadBackground: (payload) => ipcRenderer.invoke('keyoverlay-upload-background', payload),
   keyOverlayDetectNext: ()    => ipcRenderer.invoke('keyoverlay-detect-next'),
   keyOverlayDetectStop: ()    => ipcRenderer.invoke('keyoverlay-detect-stop'),

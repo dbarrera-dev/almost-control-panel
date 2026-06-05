@@ -61,6 +61,7 @@ function createKickService({ loadConfig, saveConfig, httpsRequest, saveLog, stat
   let kickNextBotRefreshAt = 0;
   let kickLastScopeWarnAt = 0;
   let kickEventsLiveSinceMs = 0;
+  let kickCommandsAcceptSinceMs = 0;
   const kickRefreshInFlight = new Map();
   let kickSubsStorageDisabled = false;
   let kickSubsStorageWarned = false;
@@ -569,6 +570,17 @@ function createKickService({ loadConfig, saveConfig, httpsRequest, saveLog, stat
     }
   }
 
+  function clearPendingKickCommandQueue(reason = 'offline') {
+    if (!Array.isArray(state.queue) || !state.queue.length) return 0;
+    const before = state.queue.length;
+    state.queue = state.queue.filter((item) => String(item?.channel || '') !== '__kick__');
+    const dropped = before - state.queue.length;
+    if (dropped > 0) {
+      saveLog('warn', `Kick queue: descarté ${dropped} comandos pendientes (${reason})`);
+    }
+    return dropped;
+  }
+
   function startKickPolling(modeOverride = null) {
     stopKickPolling();
     if (modeOverride === 'dev' || modeOverride === 'prod') {
@@ -576,6 +588,8 @@ function createKickService({ loadConfig, saveConfig, httpsRequest, saveLog, stat
     }
     kickLastTokenRefreshAt = 0;
     kickLastSubsReconcileAt = 0;
+    clearPendingKickCommandQueue('reconexión');
+    kickCommandsAcceptSinceMs = Date.now();
     kickEventsLiveSinceMs = Date.now() - KICK_EVENT_LIVE_SKEW_MS;
     startKickRealtime().catch(() => {});
     state.kickPollTimer = setInterval(pollKickEvents, KICK_POLL_INTERVAL_MS);
@@ -602,6 +616,8 @@ function createKickService({ loadConfig, saveConfig, httpsRequest, saveLog, stat
     kickNextBroadcasterRefreshAt = 0;
     kickNextBotRefreshAt = 0;
     kickEventsLiveSinceMs = 0;
+    kickCommandsAcceptSinceMs = 0;
+    clearPendingKickCommandQueue('bot desconectado');
   }
 
   function scheduleKickSubsReconcileSoon(delayMs = 20000, reason = 'rate-limit') {
@@ -638,6 +654,13 @@ function createKickService({ loadConfig, saveConfig, httpsRequest, saveLog, stat
     const createdMs = parseKickEventCreatedAtMs(row, payloadData);
     if (!createdMs) return false;
     return createdMs < kickEventsLiveSinceMs;
+  }
+
+  function isKickCommandEventBeforeConnection(row, payloadData) {
+    if (!kickCommandsAcceptSinceMs) return true;
+    const createdMs = parseKickEventCreatedAtMs(row, payloadData);
+    if (!createdMs) return false;
+    return createdMs < kickCommandsAcceptSinceMs;
   }
 
   function cleanupRecentKickRedemptions(nowTs = Date.now()) {
@@ -1215,6 +1238,9 @@ function createKickService({ loadConfig, saveConfig, httpsRequest, saveLog, stat
       if (isKickEventStaleForLiveWindow(row, d)) {
         return true;
       }
+      if (isKickCommandEventBeforeConnection(row, d)) {
+        return true;
+      }
       const nick = extractKickNick(d);
       const text = extractKickChatText(d);
       const cfg = cfgForMode();
@@ -1274,6 +1300,9 @@ function createKickService({ loadConfig, saveConfig, httpsRequest, saveLog, stat
     if (isKickRewardRedemptionEventType(eventType)) {
       const d = payload.data || payload;
       if (isKickEventStaleForLiveWindow(row, d)) {
+        return true;
+      }
+      if (isKickCommandEventBeforeConnection(row, d)) {
         return true;
       }
       const nick = extractKickNick(d);

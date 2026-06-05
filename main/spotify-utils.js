@@ -410,8 +410,8 @@ function getIntentMappings(intent) {
   }
   if (intent.type === 'split_ambiguous') {
     return [
-      { title: intent.partA, artist: intent.partB, bias: 0 },   // prioridad: título - artista
-      { title: intent.partB, artist: intent.partA, bias: -15 }, // fallback: artista - título
+      { title: intent.partB, artist: intent.partA, bias: 12 },  // prioridad: artista - título
+      { title: intent.partA, artist: intent.partB, bias: -18 }, // fallback: título - artista
     ];
   }
   return [{ title: intent.title || intent.clean, artist: '', bias: 0 }];

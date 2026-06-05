@@ -1,172 +1,151 @@
 <div class="view" id="view-kick">
-  <div class="sh">
-    <div class="sh-badge" style="background:rgba(83,208,103,.14);color:#53d067;border:1px solid rgba(83,208,103,.28)">KICK</div>
-    <h2>Rewards</h2>
-    <p>Gestioná recompensas, módulo Song Request y cache de subs desde una sola pantalla.</p>
-  </div>
 
-  <div class="toolbar-row kick-toolbar">
-    <div class="chip-tabs">
-      <button class="chip-tab on" id="kick-tab-summary" onclick="kickSetSection('summary')">Resumen</button>
-      <button class="chip-tab" id="kick-tab-rewards" onclick="kickSetSection('rewards')">Rewards</button>
-      <button class="chip-tab" id="kick-tab-subs" onclick="kickSetSection('subs')">Subs Cache</button>
+  <!-- ── Cabecera de página ───────────────────────────────────── -->
+  <header class="page-head">
+    <div class="page-head-main">
+      <div class="page-eyebrow">// Módulo 06</div>
+      <h1 class="page-title">Kick</h1>
+      <p class="page-sub">Recompensas, módulo <b>Song Request</b> y cache de subs en una sola pantalla.</p>
     </div>
-    <button class="btn btn-ghost kick-toolbar-btn" onclick="kickRewardsRefresh()">Recargar rewards</button>
-  </div>
+    <div class="page-actions">
+      <button class="btn btn-ghost btn-ico" onclick="kickOpenPresence()" title="Control entre PCs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Presencia
+      </button>
+      <button class="btn btn-ghost btn-ico" onclick="kickOpenHealth()" title="Salud de comandos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Salud
+      </button>
+      <button class="btn btn-ghost btn-ico" onclick="kickOpenMonitor()" title="Monitoreo preventivo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+        Monitoreo
+      </button>
+      <button class="btn btn-orange" onclick="kickRewardsRefresh()">Recargar</button>
+    </div>
+  </header>
 
+  <!-- ═══════════ RESUMEN ═══════════ -->
   <div id="kick-sec-summary" class="pane">
     <div class="page-grid sidebar">
       <div class="page-col">
-        <div class="card">
-          <div class="kick-card-head">
-            <div>
-              <div class="card-title" style="margin-bottom:4px">Estado de integración</div>
-              <div id="kickViewConnStatus" class="kick-card-sub">Cargando estado...</div>
-            </div>
-            <button class="btn btn-ghost kick-toolbar-btn" onclick="kickRewardsRefresh()">Actualizar</button>
-          </div>
-        </div>
 
-        <div class="card">
-          <div class="kick-card-head">
-            <div>
-              <div class="card-title" style="margin-bottom:4px">Control Entre PCs</div>
-              <div class="kick-card-sub">Estado online, conexión del bot y song request en cada PC conectada a Supabase.</div>
-            </div>
-            <button class="btn btn-ghost kick-toolbar-btn" onclick="kickPresenceRefresh()">Actualizar</button>
+        <section class="ops-panel">
+          <div class="ops-panel-head">
+            <span class="ops-panel-title"><span class="tick"></span>Estado de integración</span>
+            <button class="btn btn-ghost" style="padding:5px 11px;font-size:10px" onclick="kickRewardsRefresh()">Actualizar</button>
           </div>
-          <div id="kickPresenceSummary" class="kick-card-sub" style="margin-bottom:8px">Cargando presencia...</div>
-          <div id="kickPresenceList" class="kick-presence-list">
-            <div style="text-align:center;padding:12px;font-size:11px;color:var(--text3)">Esperando datos de presencia...</div>
+          <div class="ops-panel-body">
+            <div id="kickViewConnStatus" class="kick-card-sub">Cargando estado...</div>
           </div>
-        </div>
+        </section>
 
-        <div class="card">
-          <div class="kick-card-head">
-            <div>
-              <div class="card-title" style="margin-bottom:3px">Song Request</div>
-              <div class="kick-card-sub">Habilita/deshabilita el módulo y la reward en Kick al mismo tiempo.</div>
-            </div>
+        <section class="ops-panel">
+          <div class="ops-panel-head">
+            <span class="ops-panel-title"><span class="tick"></span>Song Request</span>
             <span id="srKickMasterBadge" class="kick-badge-muted">—</span>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="ops-panel-body">
+            <div class="kick-card-sub" style="margin-bottom:10px">Habilita/deshabilita el módulo y la reward en Kick al mismo tiempo.</div>
             <button id="srKickMasterBtn" class="btn btn-ghost" style="padding:7px 12px;font-size:11px" onclick="toggleSongRequestKickFromButton()">Cargando...</button>
+            <div id="srKickMasterMsg" style="font-size:10px;margin-top:8px;color:var(--text3);min-height:14px"></div>
           </div>
-          <div id="srKickMasterMsg" style="font-size:10px;margin-top:8px;color:var(--text3);min-height:14px"></div>
-        </div>
+        </section>
 
-        <div class="card">
-          <div class="kick-card-head">
-            <div>
-              <div class="card-title" style="margin-bottom:3px">Comandos de chat</div>
-              <div class="kick-card-sub">Activá o desactivá comandos en tiempo real. Se sincroniza por Supabase.</div>
-            </div>
+        <section class="ops-panel">
+          <div class="ops-panel-head">
+            <span class="ops-panel-title"><span class="tick"></span>Comandos de chat</span>
             <span id="kickCmdRealtimeBadge" class="kick-badge-muted">Realtime</span>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02)">
-              <span>!cancion / !song</span>
-              <input id="kickCmdSong" type="checkbox" onchange="kickCommandsToggle('song', this.checked)">
-            </label>
-            <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02)">
-              <span>!playlist</span>
-              <input id="kickCmdPlaylist" type="checkbox" onchange="kickCommandsToggle('playlist', this.checked)">
-            </label>
-            <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02)">
-              <span>!queue / !lista</span>
-              <input id="kickCmdQueue" type="checkbox" onchange="kickCommandsToggle('queue', this.checked)">
-            </label>
-            <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02)">
-              <span>!skip</span>
-              <input id="kickCmdSkip" type="checkbox" onchange="kickCommandsToggle('skip', this.checked)">
-            </label>
-          </div>
-          <div id="kickCommandsMsg" style="font-size:10px;margin-top:8px;color:var(--text3);min-height:14px"></div>
-        </div>
-
-        <div class="card">
-          <div class="kick-card-head">
-            <div>
-              <div class="card-title" style="margin-bottom:3px">Salud de comandos</div>
-              <div class="kick-card-sub">Timeouts, retries y alertas por comando en esta instancia.</div>
+          <div class="ops-panel-body">
+            <div class="kick-card-sub" style="margin-bottom:10px">Activá o desactivá comandos en tiempo real. Se sincroniza por Supabase.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02)">
+                <span>!cancion / !song</span>
+                <input id="kickCmdSong" type="checkbox" onchange="kickCommandsToggle('song', this.checked)">
+              </label>
+              <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02)">
+                <span>!playlist</span>
+                <input id="kickCmdPlaylist" type="checkbox" onchange="kickCommandsToggle('playlist', this.checked)">
+              </label>
+              <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02)">
+                <span>!queue / !lista</span>
+                <input id="kickCmdQueue" type="checkbox" onchange="kickCommandsToggle('queue', this.checked)">
+              </label>
+              <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02)">
+                <span>!skip</span>
+                <input id="kickCmdSkip" type="checkbox" onchange="kickCommandsToggle('skip', this.checked)">
+              </label>
             </div>
-            <div class="toolbar-group">
-              <button class="btn btn-ghost kick-toolbar-btn" onclick="kickCommandHealthRefresh()">Actualizar</button>
-              <button class="btn btn-ghost kick-toolbar-btn" style="color:#f59e0b;border-color:rgba(245,158,11,.25)" onclick="kickCommandHealthReset()">Reset</button>
-            </div>
+            <div id="kickCommandsMsg" style="font-size:10px;margin-top:8px;color:var(--text3);min-height:14px"></div>
           </div>
-          <div id="kickCommandHealthSummary" class="kick-card-sub" style="margin-bottom:8px">Cargando métricas...</div>
-          <div id="kickCommandHealthList" class="kick-presence-list">
-            <div style="text-align:center;padding:12px;font-size:11px;color:var(--text3)">Esperando métricas...</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="kick-card-head">
-            <div>
-              <div class="card-title" style="margin-bottom:3px">Monitoreo preventivo</div>
-              <div class="kick-card-sub">Webhook, scopes, subscriptions y cola de errores en tiempo real.</div>
-            </div>
-            <button class="btn btn-ghost kick-toolbar-btn" onclick="kickMonitorRefresh()">Actualizar</button>
-          </div>
-          <div id="kickMonitorSummary" class="kick-card-sub" style="margin-bottom:8px">Cargando diagnóstico...</div>
-          <div id="kickMonitorChips" class="kick-monitor-chips">
-            <span class="kick-monitor-chip">scopes: --</span>
-            <span class="kick-monitor-chip">subs: --</span>
-            <span class="kick-monitor-chip">webhook: --</span>
-            <span class="kick-monitor-chip">errores: --</span>
-          </div>
-          <div id="kickMonitorAlerts" class="kick-presence-list" style="margin-top:8px">
-            <div style="text-align:center;padding:12px;font-size:11px;color:var(--text3)">Esperando estado del monitor...</div>
-          </div>
-        </div>
+        </section>
       </div>
 
       <div class="page-col">
-        <div class="card">
-          <div class="kick-card-head">
-            <div>
-              <div class="card-title" style="margin-bottom:3px">Reward activa para Song Request</div>
-              <div class="kick-card-sub">Esta es la reward que escucha el bot para sumar canciones a la cola.</div>
-            </div>
+        <section class="ops-panel">
+          <div class="ops-panel-head">
+            <span class="ops-panel-title"><span class="tick"></span>Reward activa para Song Request</span>
             <span id="kickRewardBadge" class="kick-badge-muted">—</span>
           </div>
+          <div class="ops-panel-body">
+            <div class="kick-card-sub" style="margin-bottom:10px">Esta es la reward que escucha el bot para sumar canciones a la cola.</div>
 
-          <div class="kick-inline-code">
-            ID activo:
-            <code id="kickPrimaryRewardId">Sin asignar</code>
-          </div>
-
-          <div class="g2" style="margin-bottom:8px">
-            <div class="ig" style="margin-bottom:0">
-              <label style="margin-bottom:4px">Precio</label>
-              <input id="kickRewardCostInput" type="number" min="1" step="1" value="100" style="font-size:11px;font-family:monospace">
+            <div class="kick-inline-code">
+              ID activo:
+              <code id="kickPrimaryRewardId">Sin asignar</code>
             </div>
-            <div class="ig" style="margin-bottom:0">
-              <label style="margin-bottom:4px">Descripción</label>
-              <input id="kickRewardDescInput" type="text" maxlength="200" placeholder="Ej: Pedí una canción con artista y título" style="font-size:11px">
-            </div>
-          </div>
 
-          <div class="kick-action-row">
-            <button class="btn btn-ghost" style="padding:7px 10px;font-size:11px" onclick="kickRewardLoadDetails()">Recargar datos</button>
-            <button class="btn kick-btn-green" style="padding:7px 10px;font-size:11px" onclick="kickRewardSaveDetails()">Guardar cambios</button>
-            <button class="btn btn-ghost" style="padding:7px 10px;font-size:11px;color:#53d067;border-color:rgba(83,208,103,.3)" onclick="kickRewardSet(true)">Habilitar</button>
-            <button class="btn btn-ghost" style="padding:7px 10px;font-size:11px;color:#f87171;border-color:rgba(248,113,113,.25)" onclick="kickRewardSet(false)">Deshabilitar</button>
+            <div class="g2" style="margin:10px 0 8px">
+              <div class="ig" style="margin-bottom:0">
+                <label style="margin-bottom:4px">Precio</label>
+                <input id="kickRewardCostInput" type="number" min="1" step="1" value="100" style="font-size:11px;font-family:monospace">
+              </div>
+              <div class="ig" style="margin-bottom:0">
+                <label style="margin-bottom:4px">Descripción</label>
+                <input id="kickRewardDescInput" type="text" maxlength="200" placeholder="Ej: Pedí una canción con artista y título" style="font-size:11px">
+              </div>
+            </div>
+
+            <div class="kick-action-row">
+              <button class="btn btn-ghost" style="padding:7px 10px;font-size:11px" onclick="kickRewardLoadDetails()">Recargar datos</button>
+              <button class="btn kick-btn-green" style="padding:7px 10px;font-size:11px" onclick="kickRewardSaveDetails()">Guardar cambios</button>
+              <button class="btn btn-ghost" style="padding:7px 10px;font-size:11px;color:#53d067;border-color:rgba(83,208,103,.3)" onclick="kickRewardSet(true)">Habilitar</button>
+              <button class="btn btn-ghost" style="padding:7px 10px;font-size:11px;color:#f87171;border-color:rgba(248,113,113,.25)" onclick="kickRewardSet(false)">Deshabilitar</button>
+            </div>
+            <div id="kickRewardEditMsg" style="font-size:10px;margin-top:8px;color:var(--text3);min-height:14px"></div>
+            <div id="kickRewardMsg" style="font-size:10px;margin-top:6px;color:var(--text3);min-height:14px"></div>
           </div>
-          <div id="kickRewardEditMsg" style="font-size:10px;margin-top:8px;color:var(--text3);min-height:14px"></div>
-          <div id="kickRewardMsg" style="font-size:10px;margin-top:6px;color:var(--text3);min-height:14px"></div>
-        </div>
+        </section>
       </div>
     </div>
   </div>
 
+  <!-- ═══════════ REWARDS ═══════════ -->
   <div id="kick-sec-rewards" class="pane hidden">
-    <div class="page-grid two">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:10px">Crear Reward</div>
-        <div class="kick-create-box">
-          <div class="g2" style="margin-bottom:8px">
+    <div class="kick-rewards-bar">
+      <div class="kick-rewards-bar-info">
+        <span class="ops-panel-title"><span class="tick"></span>Rewards del canal</span>
+        <span class="kick-rewards-bar-sub">Editá precio, descripción y estado de cada recompensa.</span>
+      </div>
+      <div class="kick-rewards-actions">
+        <button class="btn kick-btn-green" onclick="kickOpenCreateReward()">+ Crear reward</button>
+        <button class="btn btn-ghost" onclick="kickRewardsRefresh()">↻ Recargar</button>
+      </div>
+    </div>
+    <div id="kickRewardsPanelList" class="kick-rewards-list">
+      <div class="kick-rewards-empty">Cargando rewards...</div>
+    </div>
+    <div id="kickRewardsPanelMsg" class="kick-rewards-msg"></div>
+
+    <!-- ─── Modal: Crear Reward ──────────────────────────────────── -->
+    <div class="s-modal hidden" id="kickRewardCreateModal" onclick="if(event.target===this)kickCloseCreateReward()">
+      <div class="s-modal-card">
+        <header class="s-modal-head">
+          <div class="s-modal-title">Crear Reward</div>
+          <button class="s-modal-close" onclick="kickCloseCreateReward()" aria-label="Cerrar">✕</button>
+        </header>
+        <div class="s-modal-body">
+          <div class="g2" style="margin-bottom:12px">
             <div class="ig" style="margin-bottom:0">
               <label style="margin-bottom:4px">Título</label>
               <input id="kickRewardCreateTitle" type="text" maxlength="50" placeholder="Ej: Song Request">
@@ -176,7 +155,7 @@
               <input id="kickRewardCreateCost" type="number" min="1" step="1" value="100" style="font-family:monospace">
             </div>
           </div>
-          <div class="ig" style="margin-bottom:8px">
+          <div class="ig" style="margin-bottom:12px">
             <label style="margin-bottom:4px">Descripción</label>
             <input id="kickRewardCreateDesc" type="text" maxlength="200" placeholder="Ej: Pedí una canción con artista y título">
           </div>
@@ -186,7 +165,7 @@
             <label><input id="kickRewardCreateSkipQueue" type="checkbox"> Saltar lista de pedidos</label>
             <label><input id="kickRewardCreateSetPrimary" type="checkbox" checked> Usarla para song request</label>
           </div>
-          <div style="margin-bottom:10px">
+          <div style="margin:14px 0 4px">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
               <label for="kickRewardCreateColor" style="margin:0;font-size:10px;color:var(--text2)">Color de fondo</label>
               <code id="kickRewardCreateColorHex" style="font-size:10px;color:var(--text2)">#53D067</code>
@@ -210,51 +189,104 @@
               <button type="button" data-kick-reward-color="#00BFA5" onclick="kickRewardPickColor('#00BFA5')" style="width:20px;height:20px;border-radius:6px;border:1px solid rgba(255,255,255,.22);background:#00BFA5;cursor:pointer"></button>
             </div>
           </div>
-          <div style="display:flex;gap:8px">
-            <button class="btn kick-btn-green" style="padding:7px 10px;font-size:11px" onclick="kickRewardCreateFromPanel()">Crear reward</button>
-          </div>
           <div id="kickRewardPanelCreateMsg" style="font-size:10px;margin-top:8px;color:var(--text3);min-height:14px"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="kick-card-head" style="margin-bottom:10px">
-          <div>
-            <div class="card-title" style="margin-bottom:3px">Listado de Rewards</div>
-            <div class="kick-card-sub">Editá, habilitá/deshabilitá, seleccioná o eliminá cualquier reward.</div>
+          <div class="s-modal-actions s-modal-actions-end">
+            <button class="btn btn-ghost" onclick="kickCloseCreateReward()">Cancelar</button>
+            <button class="btn kick-btn-green" onclick="kickRewardCreateFromPanel()">Crear reward</button>
           </div>
-          <button class="btn btn-ghost kick-toolbar-btn" onclick="kickRewardsRefresh()">↻ Recargar</button>
         </div>
-        <div id="kickRewardsPanelList" class="kick-scroll-list">
-          <div style="text-align:center;padding:16px;font-size:11px;color:var(--text3)">Cargando rewards...</div>
-        </div>
-        <div id="kickRewardsPanelMsg" style="font-size:10px;margin-top:8px;color:var(--text3);min-height:14px"></div>
       </div>
     </div>
   </div>
 
+  <!-- ═══════════ SUBS CACHE ═══════════ -->
   <div id="kick-sec-subs" class="pane hidden">
-    <div class="card">
-      <div class="kick-card-head" style="margin-bottom:10px">
-        <div>
-          <div class="card-title" style="margin-bottom:3px">Suscriptores (cache por eventos)</div>
-          <div class="kick-card-sub">Se alimenta con webhooks de Kick en tiempo real para el modo activo.</div>
+    <section class="ops-panel">
+      <div class="ops-panel-head">
+        <span class="ops-panel-title"><span class="tick"></span>Suscriptores (cache por eventos)</span>
+        <span class="ops-panel-meta" style="display:flex;gap:7px">
+          <button class="btn btn-ghost" style="padding:5px 11px;font-size:10px" onclick="kickSubsRefresh()">Recargar</button>
+          <button class="btn btn-ghost" style="padding:5px 11px;font-size:10px;color:#f59e0b;border-color:rgba(245,158,11,.25)" onclick="kickSubsClear()">Limpiar</button>
+        </span>
+      </div>
+      <div class="ops-panel-body">
+        <div class="kick-card-sub" style="margin-bottom:10px">Se alimenta con webhooks de Kick en tiempo real para el modo activo.</div>
+        <div class="kick-inline-code">
+          Total activos:
+          <code id="kickSubsSummary">0</code>
         </div>
-        <div class="toolbar-group">
-          <button class="btn btn-ghost kick-toolbar-btn" onclick="kickSubsRefresh()">Recargar</button>
-          <button class="btn btn-ghost kick-toolbar-btn" style="color:#f59e0b;border-color:rgba(245,158,11,.25)" onclick="kickSubsClear()">Limpiar</button>
+        <div id="kickSubsList" class="kick-subs-grid" style="margin-top:12px">
+          <div class="kick-rewards-empty">Cargando suscriptores...</div>
+        </div>
+        <div id="kickSubsMsg" style="font-size:10px;margin-top:8px;color:var(--text3);min-height:14px"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ─── Modal: Control entre PCs (presencia) ─────────────────── -->
+  <div class="s-modal hidden" id="kickPresenceModal" onclick="if(event.target===this)kickClosePresence()">
+    <div class="s-modal-card s-modal-card-wide">
+      <header class="s-modal-head">
+        <div class="s-modal-title">Control entre PCs</div>
+        <div class="s-modal-headactions">
+          <button class="btn btn-ghost s-mini-btn" onclick="kickPresenceRefresh()">Actualizar</button>
+          <button class="s-modal-close" onclick="kickClosePresence()" aria-label="Cerrar">✕</button>
+        </div>
+      </header>
+      <div class="s-modal-body">
+        <div class="kick-card-sub" style="margin-bottom:10px">Estado online, conexión del bot y song request en cada PC conectada a Supabase.</div>
+        <div id="kickPresenceSummary" class="kick-card-sub" style="margin-bottom:8px">Cargando presencia...</div>
+        <div id="kickPresenceList" class="kick-presence-list">
+          <div style="text-align:center;padding:12px;font-size:11px;color:var(--text3)">Esperando datos de presencia...</div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <div class="kick-inline-code">
-        Total activos:
-        <code id="kickSubsSummary">0</code>
+  <!-- ─── Modal: Salud de comandos ─────────────────────────────── -->
+  <div class="s-modal hidden" id="kickHealthModal" onclick="if(event.target===this)kickCloseHealth()">
+    <div class="s-modal-card s-modal-card-wide">
+      <header class="s-modal-head">
+        <div class="s-modal-title">Salud de comandos</div>
+        <div class="s-modal-headactions">
+          <button class="btn btn-ghost s-mini-btn" onclick="kickCommandHealthRefresh()">Actualizar</button>
+          <button class="btn btn-ghost s-mini-btn" style="color:#f59e0b;border-color:rgba(245,158,11,.25)" onclick="kickCommandHealthReset()">Reset</button>
+          <button class="s-modal-close" onclick="kickCloseHealth()" aria-label="Cerrar">✕</button>
+        </div>
+      </header>
+      <div class="s-modal-body">
+        <div class="kick-card-sub" style="margin-bottom:10px">Timeouts, retries y alertas por comando en esta instancia.</div>
+        <div id="kickCommandHealthSummary" class="kick-card-sub" style="margin-bottom:8px">Cargando métricas...</div>
+        <div id="kickCommandHealthList" class="kick-presence-list">
+          <div style="text-align:center;padding:12px;font-size:11px;color:var(--text3)">Esperando métricas...</div>
+        </div>
       </div>
+    </div>
+  </div>
 
-      <div id="kickSubsList" class="kick-scroll-list kick-scroll-subs">
-        <div style="text-align:center;padding:14px;font-size:11px;color:var(--text3)">Cargando suscriptores...</div>
+  <!-- ─── Modal: Monitoreo preventivo ──────────────────────────── -->
+  <div class="s-modal hidden" id="kickMonitorModal" onclick="if(event.target===this)kickCloseMonitor()">
+    <div class="s-modal-card s-modal-card-wide">
+      <header class="s-modal-head">
+        <div class="s-modal-title">Monitoreo preventivo</div>
+        <div class="s-modal-headactions">
+          <button class="btn btn-ghost s-mini-btn" onclick="kickMonitorRefresh()">Actualizar</button>
+          <button class="s-modal-close" onclick="kickCloseMonitor()" aria-label="Cerrar">✕</button>
+        </div>
+      </header>
+      <div class="s-modal-body">
+        <div class="kick-card-sub" style="margin-bottom:10px">Webhook, scopes, subscriptions y cola de errores en tiempo real.</div>
+        <div id="kickMonitorSummary" class="kick-card-sub" style="margin-bottom:8px">Cargando diagnóstico...</div>
+        <div id="kickMonitorChips" class="kick-monitor-chips">
+          <span class="kick-monitor-chip">scopes: --</span>
+          <span class="kick-monitor-chip">subs: --</span>
+          <span class="kick-monitor-chip">webhook: --</span>
+          <span class="kick-monitor-chip">errores: --</span>
+        </div>
+        <div id="kickMonitorAlerts" class="kick-presence-list" style="margin-top:8px">
+          <div style="text-align:center;padding:12px;font-size:11px;color:var(--text3)">Esperando estado del monitor...</div>
+        </div>
       </div>
-      <div id="kickSubsMsg" style="font-size:10px;margin-top:8px;color:var(--text3);min-height:14px"></div>
     </div>
   </div>
 </div>

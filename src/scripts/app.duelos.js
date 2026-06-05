@@ -5,8 +5,16 @@ function _renderDuelosData() {
   const pending = duelos.filter(d => !d.done);
   const done    = duelos.filter(d =>  d.done);
 
-  document.getElementById('dueloPendCount').textContent = pending.length ? `(${pending.length})` : '';
-  document.getElementById('dueloDoneCount').textContent = done.length    ? `(${done.length})`    : '';
+  document.getElementById('dueloPendCount').textContent = pending.length;
+  document.getElementById('dueloPendBadge').textContent = pending.length ? `(${pending.length})` : '';
+  document.getElementById('dueloDoneBadge').textContent = done.length    ? `(${done.length})`    : '';
+
+  const bar = document.getElementById('dueloStatusBar');
+  const txt = document.getElementById('dueloStatusTxt');
+  if (bar && txt) {
+    bar.classList.toggle('activo', pending.length > 0);
+    txt.textContent = pending.length ? `${pending.length} EN COLA` : 'COLA VACÍA';
+  }
 
   const mkItem = (d) => {
     const dateStr = new Date(d.added_at).toLocaleDateString('es',{day:'2-digit',month:'short'});

@@ -49,6 +49,18 @@ const DEFAULT_CONFIG = {
     queue: true,
     skip: true,
   },
+  kickCommandConfigProd: {
+    song: true,
+    playlist: true,
+    queue: true,
+    skip: true,
+  },
+  kickCommandConfigDev: {
+    song: true,
+    playlist: true,
+    queue: true,
+    skip: true,
+  },
   supabaseUrl:   'https://fyfqwlxogdwhhsefjuhf.supabase.co',
   supabaseKey:   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5ZnF3bHhvZ2R3aGhzZWZqdWhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwNDMyODUsImV4cCI6MjA4NjYxOTI4NX0.i7VuuB4z0TMv0J421snb4wYo2ixtApZuZxtJVmORBZI',
   kickBotMode: 'prod',     // modo activo en runtime (prod | dev)
@@ -74,6 +86,7 @@ const DEFAULT_CONFIG = {
   kickBotRefreshTokenDev: '',
   kickSongRequestRewardIdDev: '',
   autoConnectKickBot: true,
+  allowLanOverlays: false,
   logoUrl:       'https://fyfqwlxogdwhhsefjuhf.supabase.co/storage/v1/object/sign/alerts/almost_avatar_a1%20(1).png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84YmQwY2E2OS1jMGRlLTRmOGQtYjhhMi0wYmY0NjA0YmIyOTciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJhbGVydHMvYWxtb3N0X2F2YXRhcl9hMSAoMSkucG5nIiwiaWF0IjoxNzcyNTM3NDM1LCJleHAiOjU1MjUzMjE0MzV9.L1vYdRyWcvR4QOEul_d7OVwNjHglsricRUYUNM0wvF4',
 
   // ── Audio Link (VBAN) ──

@@ -10,13 +10,15 @@ let sorteoActivo=false, sorteoParticipantes=[], sorteoWinCount=1, sorteoCurrentW
 
 // ── Tabs ──────────────────────────────────────────────────────────
 const _TAB_LOADER_FN = {
-  torneo: 'loadHistorial',
+  dashboard: 'loadDashboard',
+  torneo: '__coreLoadTorneoTab',
   overlays: '__coreLoadOverlaysTab',
   config: 'loadConfigForm',
   spotify: 'loadSpotify',
   kick: 'loadKickRewardsTab',
   duelos: 'renderDuelos',
   sorteos: 'loadSorteo',
+  keys: 'loadKeyOverlay',
   rl: 'loadRLOverlay',
   todos: 'loadTodos',
   audiolink: 'loadAudiolink',
@@ -27,6 +29,14 @@ const _TAB_LOADER_FN = {
 function __coreLoadOverlaysTab() {
   loadOverlayUrl(ovPanel);
   if (!bracketData.length) loadOverlays();
+}
+
+function __coreLoadTorneoTab() {
+  loadHistorial();
+  // El bracket vive en Supabase (lo carga loadOverlays). Si ya está en memoria,
+  // solo lo re-pintamos; si no, lo traemos (loadOverlays → renderBracket → renderTorneoBracket).
+  if (!bracketData.length) loadOverlays();
+  else if (typeof renderTorneoBracket === 'function') renderTorneoBracket();
 }
 
 function _runTabLoader(name, attempt = 0) {
@@ -45,17 +55,23 @@ function _runTabLoader(name, attempt = 0) {
 }
 
 function goTab(name) {
-  ['torneo','overlays','spotify','kick','duelos','sorteos','rl','config','todos','audiolink','obs-dual','soundboard'].forEach(n => {
+  // Pestañas marcadas como "Pronto" no son navegables
+  if (document.getElementById('tab-' + name)?.classList.contains('tab-soon')) return;
+  ['dashboard','torneo','overlays','keys','spotify','kick','duelos','sorteos','rl','config','todos','audiolink','obs-dual','soundboard'].forEach(n => {
     const view = document.getElementById('view-' + n);
     const tab = document.getElementById('tab-' + n);
     if (view) view.classList.toggle('on', n === name);
     if (tab) tab.classList.toggle('on', n === name);
   });
+  // Submenús del aside (Música, RL...): visibles solo en su pestaña
+  document.querySelectorAll('.subnav').forEach((s) => {
+    s.classList.toggle('hidden', s.id !== 'subnav-' + name);
+  });
   _runTabLoader(name);
 }
 
 function goOverlay(name) {
-  ['yc','brb','fin','rl','rlstats','teclas','spotify'].forEach(n => {
+  ['yc','brb','fin','rlstats','spotify'].forEach(n => {
     const section = document.getElementById('ov-'+n);
     const tab = document.getElementById('otab-'+n);
     if (section) section.classList.toggle('hidden', n!==name);
@@ -66,7 +82,6 @@ function goOverlay(name) {
     if (typeof loadRlOverlayPanel === 'function') loadRlOverlayPanel();
     return;
   }
-  if(name==='teclas')  { loadKeyOverlay(); return; }
   if(name==='spotify') { if (typeof spovInit === 'function') spovInit(); return; }
   loadOverlayUrl(name);
 }
@@ -193,6 +208,20 @@ function cfgNavGo(sectionId, evt) {
   if (evt) evt.preventDefault();
 }
 
+// ── Modal de Ambiente (Prod/Dev) ─────────────────────────────────
+function cfgOpenEnvModal() {
+  const m = document.getElementById('cfgEnvModal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  document.addEventListener('keydown', _cfgEnvEsc);
+}
+function cfgCloseEnvModal() {
+  const m = document.getElementById('cfgEnvModal');
+  if (m) m.classList.add('hidden');
+  document.removeEventListener('keydown', _cfgEnvEsc);
+}
+function _cfgEnvEsc(e) { if (e.key === 'Escape') cfgCloseEnvModal(); }
+
 function cfgToggleSecret(btn) {
   const input = btn.parentNode?.querySelector('input');
   if (!input) return;
@@ -210,7 +239,7 @@ document.addEventListener('keydown', (e) => {
 
   // Alt+1..9 → switch tabs
   if (e.altKey && !e.ctrlKey && !e.shiftKey) {
-    const tabs = ['torneo','sorteos','duelos','todos','spotify','kick','overlays','rl','config','audiolink','obs-dual','soundboard'];
+    const tabs = ['dashboard','torneo','sorteos','duelos','todos','spotify','kick','overlays','keys','rl','config','audiolink','obs-dual','soundboard'];
     const idx = parseInt(e.key) - 1;
     if (idx >= 0 && idx < tabs.length) { e.preventDefault(); goTab(tabs[idx]); return; }
   }

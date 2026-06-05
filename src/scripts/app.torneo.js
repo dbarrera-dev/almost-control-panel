@@ -12,7 +12,7 @@ async function restaurarTorneoActivo() {
   document.getElementById('actT').classList.remove('hidden');
   document.getElementById('tNombreA').textContent = torneo.nombre;
   document.getElementById('pList').innerHTML = pEmpty
-    ? `<div class="empty" style="padding:16px"><div class="empty-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><p>Esperando !join en el chat</p></div>`
+    ? `<div class="empty" style="padding:16px"><div class="empty-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><p>Esperando !join usuario en el chat</p></div>`
     : '';
   participantes.forEach(p => addP(p.nick, p.joined_at));
   updateStats();
@@ -37,7 +37,7 @@ async function crearTorneo() {
     document.getElementById('noT').classList.add('hidden');
     document.getElementById('actT').classList.remove('hidden');
     document.getElementById('tNombreA').textContent=nombre;
-    document.getElementById('pList').innerHTML=`<div class="empty" style="padding:16px"><div class="empty-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><p>Esperando !join en el chat</p></div>`;
+    document.getElementById('pList').innerHTML=`<div class="empty" style="padding:16px"><div class="empty-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><p>Esperando !join usuario en el chat</p></div>`;
     document.getElementById('eResult').classList.add('hidden');
     updateStats();
     const maxMsg = maxVal > 0 ? ` · límite: ${maxVal} jugadores` : '';
@@ -93,7 +93,7 @@ function updateStats() {
   if(pCount>0) document.getElementById('tbadge').classList.remove('hidden');
   const sz=parseInt(document.getElementById('tSizeVal').value)||2;
   document.getElementById('sE').textContent=pCount>0?Math.ceil(pCount/sz):'—';
-  document.getElementById('tSubA').textContent=pCount===0?'Esperando participantes...':`${pCount} jugadores · !join activo`;
+  document.getElementById('tSubA').textContent=pCount===0?'Esperando participantes...':`${pCount} jugadores · !join usuario activo`;
 }
 
 const COLORS=['#D96B00','#0891b2','#059669','#d97706','#7c3aed','#0e7490','#dc2626','#047857'];
@@ -268,7 +268,8 @@ function renderEquiposGrid() {
 }
 
 // ── Modal helper ─────────────────────────────────────
-function showModal(title, content) {
+// opts: { maxWidth, cancelText, onRender(bodyEl) }
+function showModal(title, content, opts = {}) {
   let m = document.getElementById('gModal');
   if (!m) {
     m = document.createElement('div');
@@ -277,8 +278,9 @@ function showModal(title, content) {
     m.onclick = function(e) { if (e.target === m) closeModal(); };
     document.body.appendChild(m);
   }
+  const maxWidth = opts.maxWidth || '420px';
   const inner = document.createElement('div');
-  inner.style.cssText = 'background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:22px 24px;min-width:300px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.6)';
+  inner.style.cssText = 'background:var(--bg2);border:1px solid var(--border2);border-radius:3px;padding:22px 24px;min-width:300px;max-width:' + maxWidth + ';width:90%;box-shadow:0 20px 60px rgba(0,0,0,.6)';
   const titleEl = document.createElement('div');
   titleEl.style.cssText = 'font-family:Bebas Neue,cursive;font-size:18px;letter-spacing:2px;color:var(--text);margin-bottom:16px';
   titleEl.textContent = title;
@@ -286,8 +288,8 @@ function showModal(title, content) {
   bodyEl.innerHTML = content;
   const cancelBtn = document.createElement('button');
   cancelBtn.className = 'btn btn-ghost';
-  cancelBtn.style.cssText = 'width:100%;margin-top:8px';
-  cancelBtn.textContent = 'Cancelar';
+  cancelBtn.style.cssText = 'width:100%;margin-top:14px';
+  cancelBtn.textContent = opts.cancelText || 'Cancelar';
   cancelBtn.onclick = closeModal;
   inner.appendChild(titleEl);
   inner.appendChild(bodyEl);
@@ -295,6 +297,41 @@ function showModal(title, content) {
   m.innerHTML = '';
   m.appendChild(inner);
   m.style.display = 'flex';
+  if (typeof opts.onRender === 'function') { try { opts.onRender(bodyEl); } catch {} }
+}
+
+// ── Modales informativos de Torneos ──────────────────
+function tShowCommands() {
+  showModal('Comandos del chat',
+    '<div class="t-cmd-list">' +
+      '<div class="t-cmd-row"><span class="cmd-pill orange">!join usuario</span><span class="t-cmd-desc">Unirse al torneo con su usuario de juego</span></div>' +
+      '<div class="t-cmd-row"><span class="cmd-pill orange">!torneo</span><span class="t-cmd-desc">Ver información del torneo en el chat</span></div>' +
+      '<div class="t-cmd-row"><span class="cmd-pill red">!salir</span><span class="t-cmd-desc">Abandonar el torneo</span></div>' +
+    '</div>',
+    { cancelText: 'Cerrar' }
+  );
+}
+
+function tShowHelp() {
+  showModal('Cómo funciona',
+    '<p class="t-modal-intro">Tres pasos para correr un torneo desde el chat sin frenar el stream.</p>' +
+    '<div class="t-modal-steps"><ol class="t-steps">' +
+      '<li><span class="t-step-n">1</span><div><b>Creá el torneo</b><em>Solo necesitás un nombre. El límite es opcional.</em></div></li>' +
+      '<li><span class="t-step-n">2</span><div><b>La gente entra desde el chat</b><em>Escribiendo <code>!join usuario</code> se suman con su usuario de juego.</em></div></li>' +
+      '<li><span class="t-step-n">3</span><div><b>Sorteá los equipos</b><em>Elegí el tamaño y se generan al instante. Podés mover jugadores después.</em></div></li>' +
+    '</ol></div>',
+    { maxWidth: '480px', cancelText: 'Cerrar' }
+  );
+}
+
+function tShowHistorial() {
+  showModal('Historial de torneos',
+    '<div class="t-modal-table-wrap"><table class="htable">' +
+      '<thead><tr><th>Nombre</th><th>Fecha</th><th>Estado</th><th>Jugadores</th><th></th></tr></thead>' +
+      '<tbody id="hBody"><tr><td colspan="5" class="t-modal-empty">Cargando...</td></tr></tbody>' +
+    '</table></div>',
+    { maxWidth: '720px', cancelText: 'Cerrar', onRender: function() { loadHistorial(); } }
+  );
 }
 
 function closeModal() {
@@ -317,9 +354,12 @@ async function generarEquipos() {
 }
 
 async function loadHistorial() {
+  // El historial vive en un modal: si no está abierto, no hay nada que pintar.
+  if (!document.getElementById('hBody')) return;
   const ts=await api.getTorneos();
   const tbody=document.getElementById('hBody');
-  if(!ts.length){tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3);font-size:11px">Sin torneos todavía</td></tr>`;return;}
+  if(!tbody) return;
+  if(!ts.length){tbody.innerHTML=`<tr><td colspan="5" class="t-modal-empty">Sin torneos todavía</td></tr>`;return;}
   tbody.innerHTML=ts.map(t=>{
     const f=new Date(t.creado_at).toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'});
     const cnt=t.participantes?.[0]?.count??'—';

@@ -1,83 +1,108 @@
 <div class="view" id="view-todos">
-    <div class="sh">
-      <div class="sh-badge" style="background:rgba(124,58,237,.15);color:#c4b5fd;border:1px solid rgba(124,58,237,.28)">TAREAS</div>
-      <h2>Lista de Tareas</h2>
-      <p>Organizá pendientes sin perderte en listas largas.</p>
+
+  <!-- ── Cabecera de página ───────────────────────────────────── -->
+  <header class="page-head">
+    <div class="page-head-main">
+      <div class="page-eyebrow">// Módulo 04</div>
+      <h1 class="page-title">Tareas</h1>
+      <p class="page-sub">Organizá tus pendientes sin perderte en listas largas.</p>
     </div>
+    <div class="page-actions">
+      <button class="btn btn-orange btn-ico" onclick="todoOpenModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nueva tarea
+      </button>
+    </div>
+  </header>
 
-    <div class="page-grid two todos-layout">
-      <div class="page-col">
-        <!-- Agregar tarea -->
-        <div class="card" id="todoAddCard">
-          <div class="card-title" style="margin-bottom:14px">Nueva tarea</div>
-          <div class="ig" style="margin-bottom:10px">
-            <label>Título</label>
-            <input id="todoTitle" type="text" placeholder="¿Qué hay que hacer?" onkeydown="if(event.key==='Enter'&&!event.shiftKey)todoAdd()" />
-          </div>
-          <div class="ig" style="margin-bottom:10px">
-            <label>Descripción <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
-            <input id="todoDesc" type="text" placeholder="Detalles adicionales..." />
-          </div>
-          <div class="todo-create-grid">
-            <div class="ig" style="margin-bottom:0">
-              <label>Prioridad</label>
-              <select id="todoPriority">
-                <option value="high">Alta</option>
-                <option value="medium" selected>Media</option>
-                <option value="low">Baja</option>
-              </select>
-            </div>
-            <div class="ig" style="margin-bottom:0">
-              <label>Estado</label>
-              <select id="todoStatus">
-                <option value="pending" selected>Pendiente</option>
-                <option value="in_progress">En progreso</option>
-                <option value="done">Hecho</option>
-              </select>
-            </div>
-            <div class="ig" style="margin-bottom:0">
-              <label>Fecha límite <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
-              <input id="todoDueDate" type="date" style="color-scheme:dark" />
-            </div>
-            <button class="btn btn-orange todo-add-btn" onclick="todoAdd()">+ Agregar</button>
-          </div>
-          <div id="todoAddMsg" style="font-size:11px;margin-top:8px;min-height:16px;font-family:'Inter',sans-serif"></div>
-        </div>
+  <!-- ── Resumen ──────────────────────────────────────────────── -->
+  <div class="ops-stats todo-stats">
+    <div class="ops-stat">
+      <div class="ops-stat-l">Pendientes</div>
+      <div class="ops-stat-n" id="todoStatPending">0</div>
+    </div>
+    <div class="ops-stat">
+      <div class="ops-stat-l">En progreso</div>
+      <div class="ops-stat-n" id="todoStatProgress">0</div>
+    </div>
+    <div class="ops-stat">
+      <div class="ops-stat-l">Completadas</div>
+      <div class="ops-stat-n accent" id="todoStatDone">0</div>
+    </div>
+  </div>
 
-        <div class="card compact">
-          <div class="card-title">Resumen rápido</div>
-          <div class="kpi-grid">
-            <div class="kpi"><div class="n" id="todoStatPending">0</div><div class="l">Pendientes</div></div>
-            <div class="kpi"><div class="n" id="todoStatProgress">0</div><div class="l">En progreso</div></div>
-            <div class="kpi"><div class="n" id="todoStatDone">0</div><div class="l">Completadas</div></div>
-          </div>
+  <!-- ── Lista de tareas ──────────────────────────────────────── -->
+  <section class="ops-panel todo-list-card">
+    <div class="ops-panel-head">
+      <span class="ops-panel-title"><span class="tick"></span>Lista</span>
+      <span class="ops-panel-meta">
+        <span id="todoCountLabel"></span>
+        <button class="btn btn-ghost todo-mini-btn" onclick="loadTodos()" title="Recargar">↻</button>
+      </span>
+    </div>
+    <div class="ops-panel-body">
+      <div class="todo-filters">
+        <button class="todo-filter on" id="tf-all"         onclick="todoSetFilter('all')">Todas</button>
+        <button class="todo-filter"    id="tf-pending"     onclick="todoSetFilter('pending')">Pendientes</button>
+        <button class="todo-filter"    id="tf-in_progress" onclick="todoSetFilter('in_progress')">En progreso</button>
+        <button class="todo-filter"    id="tf-done"        onclick="todoSetFilter('done')">Hechas</button>
+      </div>
+      <div class="todo-search-wrap">
+        <input id="todoSearchInput" type="text" placeholder="Buscar por título o descripción..." oninput="todoSearchRefresh()" />
+      </div>
+      <div id="todoList" class="todo-list-body">
+        <div class="empty" style="padding:40px 20px">
+          <div class="empty-ico" style="font-size:32px"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg></div>
+          <p>No hay tareas todavía.<br>Tocá <b style="color:var(--orange3)">Nueva tarea</b> para empezar.</p>
         </div>
       </div>
+    </div>
+  </section>
 
-      <div class="page-col">
-        <div class="card todo-list-card">
-          <div class="toolbar-row todo-toolbar">
-            <div class="todo-filters" style="margin-bottom:0">
-              <button class="todo-filter on" id="tf-all"         onclick="todoSetFilter('all')">Todas</button>
-              <button class="todo-filter"    id="tf-pending"     onclick="todoSetFilter('pending')">Pendientes</button>
-              <button class="todo-filter"    id="tf-in_progress" onclick="todoSetFilter('in_progress')">En progreso</button>
-              <button class="todo-filter"    id="tf-done"        onclick="todoSetFilter('done')">Hechas</button>
-            </div>
-            <div class="toolbar-group">
-              <span id="todoCountLabel" class="todo-count-label"></span>
-              <button class="btn btn-ghost todo-mini-btn" onclick="loadTodos()">↻</button>
-            </div>
+  <!-- ─── Modal: Nueva tarea ──────────────────────────────────── -->
+  <div class="s-modal hidden" id="todoModal" onclick="if(event.target===this)todoCloseModal()">
+    <div class="s-modal-card">
+      <header class="s-modal-head">
+        <div class="s-modal-title">Nueva tarea</div>
+        <button class="s-modal-close" onclick="todoCloseModal()" aria-label="Cerrar">✕</button>
+      </header>
+      <div class="s-modal-body" id="todoAddCard">
+        <div class="ig">
+          <label>Título</label>
+          <input id="todoTitle" type="text" placeholder="¿Qué hay que hacer?" onkeydown="if(event.key==='Enter'&&!event.shiftKey)todoAdd()" />
+        </div>
+        <div class="ig">
+          <label>Descripción <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+          <input id="todoDesc" type="text" placeholder="Detalles adicionales..." />
+        </div>
+        <div class="s-form-grid">
+          <div class="ig">
+            <label>Prioridad</label>
+            <select id="todoPriority" data-uisel>
+              <option value="high">Alta</option>
+              <option value="medium" selected>Media</option>
+              <option value="low">Baja</option>
+            </select>
           </div>
-          <div class="todo-search-wrap">
-            <input id="todoSearchInput" type="text" placeholder="Buscar por título o descripción..." oninput="todoSearchRefresh()" />
+          <div class="ig">
+            <label>Estado</label>
+            <select id="todoStatus" data-uisel>
+              <option value="pending" selected>Pendiente</option>
+              <option value="in_progress">En progreso</option>
+              <option value="done">Hecho</option>
+            </select>
           </div>
-          <div id="todoList" class="todo-list-body">
-            <div class="empty" style="padding:40px 20px">
-              <div class="empty-ico" style="font-size:32px"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg></div>
-              <p>No hay tareas todavía.<br>Agregá una arriba para empezar.</p>
-            </div>
-          </div>
+        </div>
+        <div class="ig" style="margin-top:14px;margin-bottom:0">
+          <label>Fecha límite <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+          <input id="todoDueDate" type="date" style="color-scheme:dark" />
+        </div>
+        <div id="todoAddMsg" style="font-size:11px;margin-top:10px;min-height:16px;font-family:'Inter',sans-serif"></div>
+        <div class="s-modal-actions s-modal-actions-end">
+          <button class="btn btn-ghost" onclick="todoCloseModal()">Cancelar</button>
+          <button class="btn btn-orange" id="todoAddSubmit" onclick="todoAdd()">+ Agregar tarea</button>
         </div>
       </div>
     </div>
   </div>
+</div>

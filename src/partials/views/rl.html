@@ -1,101 +1,518 @@
 <div class="view" id="view-rl">
-    <div class="sh"><div class="sh-badge orange">ROCKET LEAGUE</div><h2>Overlay RL</h2><p>MMR · Wins · Losses · vía tracker.gg</p></div>
 
-    <!-- Status + URL -->
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span id="rlStatusBadge" class="badge badge-off">Cargando...</span>
+  <!-- ── Cabecera de página ───────────────────────────────────── -->
+  <header class="page-head">
+    <div class="page-head-main">
+      <div class="page-eyebrow">// Módulo 09</div>
+      <h1 class="page-title">Rocket League</h1>
+      <p class="page-sub">Stats API local · overlays para OBS · estadísticas y coaching por sesión.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-ghost btn-ico" onclick="rlRefresh(this)" title="Reconectar la Stats API local">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Reconectar API
+      </button>
+      <button class="btn btn-ghost btn-ico" onclick="rlOpenSetup()" title="Configuración de la conexión local">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+        Conexión
+      </button>
+      <button class="btn btn-ghost btn-ico" onclick="rlClearLive(this)" title="Borra reloj, score del feed, jugadores y boost. No toca equipos, logos ni la serie.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Limpiar partida
+      </button>
+      <button class="btn btn-orange" onclick="rlSaveConfig()">Guardar</button>
+    </div>
+  </header>
+
+  <!-- ── Estado ───────────────────────────────────────────────── -->
+  <div class="s-bar" id="rlStatusBar">
+    <span class="s-bar-dot"></span>
+    <span class="s-bar-statetxt">Rocket League Live</span>
+    <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <span id="rlStatusBadge" class="badge badge-off">Cargando...</span>
+      <span id="rlApiBadge" class="badge badge-off">Stats API</span>
+    </span>
+  </div>
+
+  <!-- ═══════════ RESUMEN ═══════════ -->
+  <section id="rl-section-summary" class="rl-section on">
+    <div class="rl-lab-grid">
+      <section class="ops-panel">
+        <div class="ops-panel-head">
+          <span class="ops-panel-title"><span class="tick"></span>Winrate de la sesión</span>
         </div>
-      </div>
-      <div id="rlUrlRow" class="info-box">
-        <div class="info-box-label">URL para Browser Source en OBS</div>
-        <div class="info-box-url">
-          <code id="rlUrlText">http://localhost:9003</code>
-          <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px;flex-shrink:0" onclick="rlCopyUrl()">Copiar</button>
+        <div class="ops-panel-body">
+          <div class="rl-winrate-ring" id="rlWinrateRing" style="--rl-winrate:0">
+            <div>
+              <strong id="rlSummaryWinrate">0%</strong>
+              <span id="rlSummaryRecord">0V · 0D</span>
+            </div>
+          </div>
+          <div class="rl-mini-bar"><span id="rlWinrateBar" style="width:0%"></span></div>
         </div>
+      </section>
+
+      <div class="rl-kpi-grid">
+        <div class="rl-kpi"><span>Partidos</span><strong id="rlSummaryMatches">0</strong></div>
+        <div class="rl-kpi"><span>Racha actual</span><strong id="rlSummaryStreak">—</strong></div>
+        <div class="rl-kpi"><span>Mejor racha</span><strong id="rlSummaryBestStreak">0V</strong></div>
+        <div class="rl-kpi"><span>Último</span><strong id="rlSummaryLastResult">—</strong></div>
       </div>
     </div>
 
-    <!-- Config -->
-    <div class="card">
-      <div class="card-title">Cuenta</div>
-      <div class="g2">
-        <div class="ig">
-          <label>Plataforma</label>
-          <select id="rlPlatform" onchange="rlSaveConfig()">
-            <option value="epic">Epic Games</option>
-            <option value="steam">Steam</option>
-            <option value="psn">PlayStation</option>
-            <option value="xbl">Xbox</option>
-          </select>
-        </div>
-        <div class="ig">
-          <label>Username</label>
-          <input type="text" id="rlUsername" placeholder="TuNick" oninput="rlSaveConfig()" />
-        </div>
+    <section class="ops-panel">
+      <div class="ops-panel-head">
+        <span class="ops-panel-title"><span class="tick"></span>Forma reciente</span>
+        <span class="ops-panel-meta" id="rlRecentCount">últimas 0 partidas</span>
       </div>
-      <button class="btn btn-orange" style="margin-top:10px;width:100%" onclick="rlRefresh(this)">↻ Actualizar stats ahora</button>
-    </div>
+      <div class="ops-panel-body">
+        <div id="rlRecentForm" class="rl-form-strip">Sin partidas registradas todavía.</div>
+      </div>
+    </section>
 
-    <!-- Live stats preview -->
-    <div class="card" id="rlStatsCard" style="display:none">
-      <div class="card-title">Stats actuales</div>
-      <div class="stats" style="margin-bottom:12px">
-        <div class="stat">
-          <div class="stat-n" id="rlSMMR">—</div>
-          <div class="stat-l">MMR</div>
-        </div>
-        <div class="stat" style="--stat-color:#22c55e">
-          <div class="stat-n" style="color:#22c55e" id="rlSWins">—</div>
-          <div class="stat-l">Wins</div>
-        </div>
-        <div class="stat">
-          <div class="stat-n" style="color:#ef4444" id="rlSLosses">—</div>
-          <div class="stat-l">Losses</div>
+    <section class="ops-panel">
+      <div class="ops-panel-head">
+        <span class="ops-panel-title"><span class="tick"></span>Promedios de la sesión</span>
+      </div>
+      <div class="ops-panel-body">
+        <div class="stats rl-stat-grid">
+          <div class="stat"><div class="stat-n" id="rlSummaryGoals">0</div><div class="stat-l">Goles</div><small id="rlGoalsAvg">0.0 / partido</small></div>
+          <div class="stat"><div class="stat-n" id="rlSummaryAssists">0</div><div class="stat-l">Asistencias</div><small id="rlAssistsAvg">0.0 / partido</small></div>
+          <div class="stat"><div class="stat-n" id="rlSummarySaves">0</div><div class="stat-l">Saves</div><small id="rlSavesAvg">0.0 / partido</small></div>
+          <div class="stat"><div class="stat-n" id="rlSummaryShots">0</div><div class="stat-l">Shots</div><small id="rlShotsAvg">0.0 / partido</small></div>
+          <div class="stat"><div class="stat-n" id="rlSummaryDemos">0</div><div class="stat-l">Demos</div><small id="rlDemosAvg">0.0 / partido</small></div>
+          <div class="stat"><div class="stat-n" id="rlSummaryScore">0</div><div class="stat-l">Score</div><small id="rlScoreAvg">0.0 / partido</small></div>
         </div>
       </div>
-      <div style="text-align:center;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:12px">
-        <span style="font-size:14px;font-weight:700;color:var(--text)" id="rlSRank">—</span>
-        <span style="font-size:12px;color:var(--text3);margin-left:4px" id="rlSDiv"></span>
-        <span style="font-size:11px;color:var(--text3);margin-left:8px" id="rlSPlaylist"></span>
-      </div>
-      <div>
-        <span class="section-label" style="margin-bottom:8px">Esta sesión</span>
-        <div style="display:flex;gap:16px;font-size:13px;font-weight:600;margin-bottom:10px">
-          <span id="rlDMmr" style="color:var(--text2)">MMR: —</span>
-          <span id="rlDRecord" style="color:var(--text2)">W/L: —</span>
-        </div>
-        <button class="btn btn-ghost" style="font-size:10px;padding:4px 12px" onclick="rlResetSession()">Reiniciar sesión</button>
-      </div>
-    </div>
+    </section>
 
-    <!-- Overlay style -->
-    <div class="card">
-      <div class="card-title">Estilo del overlay</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div class="ig">
-          <label>Color acento</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="rlAccent" value="#2563eb" onchange="rlSaveStyle()" style="width:36px;height:28px;border:none;background:none;cursor:pointer;padding:0">
-            <span style="font-size:11px;color:var(--text3)" id="rlAccentVal">#2563eb</span>
+    <section class="ops-panel">
+      <div class="ops-panel-head">
+        <span class="ops-panel-title"><span class="tick"></span>Insights del coach</span>
+      </div>
+      <div class="ops-panel-body">
+        <div id="rlCoachInsights" class="rl-insights">Esperando telemetría real de Rocket League para generar recomendaciones accionables sobre boost, tiros y posicionamiento.</div>
+      </div>
+    </section>
+
+    <div class="g2">
+      <section class="ops-panel">
+        <div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Historial por día</span></div>
+        <div class="ops-panel-body"><div id="rlHistoryDays" class="rl-history-days">Sin días guardados todavía.</div></div>
+      </section>
+      <section class="ops-panel">
+        <div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Últimos 7 / 30 días</span></div>
+        <div class="ops-panel-body"><div id="rlRangeSummary" class="rl-range-grid"></div></div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ═══════════ MARCADOR ═══════════ -->
+  <section id="rl-section-scoreboard" class="rl-section hidden">
+    <section class="ops-panel">
+      <div class="ops-panel-head">
+        <span class="ops-panel-title"><span class="tick"></span>Overlay del marcador</span>
+        <button class="btn btn-ghost btn-ico" style="padding:5px 11px;font-size:10px" onclick="rlOpenStyles()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.012 17.5 2 12 2z"/></svg>
+          Estilos
+        </button>
+      </div>
+      <div class="ops-panel-body">
+        <div class="info-box" style="margin:0">
+          <div class="info-box-label">URL para Browser Source en OBS</div>
+          <div class="info-box-url">
+            <code id="rlBroadcastUrlText">http://localhost:9003/broadcast</code>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px;flex-shrink:0" onclick="rlCopyUrl('broadcast')">Copiar</button>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px;flex-shrink:0" onclick="rlOpenUrl('broadcast')">Abrir</button>
           </div>
         </div>
-        <div class="ig">
-          <label>Color texto</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="rlTextColor" value="#ffffff" onchange="rlSaveStyle()" style="width:36px;height:28px;border:none;background:none;cursor:pointer;padding:0">
-            <span style="font-size:11px;color:var(--text3)" id="rlTextVal">#ffffff</span>
+      </div>
+    </section>
+
+    <section class="ops-panel">
+      <div class="ops-panel-head">
+        <span class="ops-panel-title"><span class="tick"></span>Equipos</span>
+        <button type="button" class="btn btn-ghost" style="padding:5px 11px;font-size:10px" onclick="rlSwapSides()">Intercambiar lados</button>
+      </div>
+      <div class="ops-panel-body">
+        <div class="g2">
+          <div class="rl-team-editor">
+            <div class="rl-team-head">
+              <strong>Equipo azul</strong>
+              <input type="color" id="rlBlueColor" value="#2f8cff" onchange="rlMarkDirty()" />
+            </div>
+            <div class="ig">
+              <label>Nombre</label>
+              <input type="text" id="rlBlueName" placeholder="BLUE" oninput="rlMarkDirty()" />
+            </div>
+            <div class="rl-logo-row">
+              <div class="rl-logo-preview" id="rlBlueLogoPreview">B</div>
+              <label class="btn btn-ghost rl-file-btn">Subir logo<input type="file" id="rlBlueLogoFile" accept="image/*" onchange="rlReadLogo('blue', this.files && this.files[0])" /></label>
+              <button class="btn btn-ghost" onclick="rlClearLogo('blue')" type="button">Quitar</button>
+            </div>
+          </div>
+
+          <div class="rl-team-editor">
+            <div class="rl-team-head">
+              <strong>Equipo naranja</strong>
+              <input type="color" id="rlOrangeColor" value="#ff7a18" onchange="rlMarkDirty()" />
+            </div>
+            <div class="ig">
+              <label>Nombre</label>
+              <input type="text" id="rlOrangeName" placeholder="ORANGE" oninput="rlMarkDirty()" />
+            </div>
+            <div class="rl-logo-row">
+              <div class="rl-logo-preview" id="rlOrangeLogoPreview">O</div>
+              <label class="btn btn-ghost rl-file-btn">Subir logo<input type="file" id="rlOrangeLogoFile" accept="image/*" onchange="rlReadLogo('orange', this.files && this.files[0])" /></label>
+              <button class="btn btn-ghost" onclick="rlClearLogo('orange')" type="button">Quitar</button>
+            </div>
           </div>
         </div>
-        <div class="ig" style="grid-column:1/-1">
-          <label style="display:flex;justify-content:space-between"><span>Radio esquinas</span><span id="rlRadiusVal" style="color:var(--text2)">12px</span></label>
-          <input type="range" id="rlRadius" min="0" max="24" value="12" oninput="rlOnRadius(this.value)" style="width:100%;accent-color:var(--orange)">
+      </div>
+    </section>
+
+    <section class="ops-panel">
+      <div class="ops-panel-head">
+        <span class="ops-panel-title"><span class="tick"></span>Serie y marcador</span>
+        <span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+          <label class="rl-toggle" style="margin:0" title="Requiere modo espectador en Rocket League">
+            <input type="checkbox" id="rlShowPlayers" onchange="rlMarkDirty()" />
+            <span>Mostrar boost de jugadores</span>
+          </label>
+          <label class="rl-toggle" style="margin:0">
+            <input type="checkbox" id="rlSeriesAutoAdd" onchange="rlSeriesAutoAddChanged(this.checked)" />
+            <span>Auto sumar al terminar</span>
+          </label>
+        </span>
+      </div>
+      <div class="ops-panel-body">
+        <div class="g2" style="margin-bottom:18px">
+          <div class="ig" style="margin:0">
+            <label>Texto de serie (opcional)</label>
+            <input type="text" id="rlSeriesLabel" placeholder="GAME 4 · BO5" oninput="rlMarkDirty()" />
+          </div>
+          <div class="ig" style="margin:0">
+            <label>Recuadro inferior / nombre (opcional)</label>
+            <input type="text" id="rlSubtitle" placeholder="Ej: CUARTOS DE FINAL — solo aparece si lo completás" oninput="rlMarkDirty()" />
+          </div>
         </div>
-        <div class="ig" style="grid-column:1/-1">
-          <label style="display:flex;justify-content:space-between"><span>Opacidad fondo</span><span id="rlBgOpVal" style="color:var(--text2)">92%</span></label>
-          <input type="range" id="rlBgOp" min="0" max="100" value="92" oninput="rlOnBgOp(this.value)" style="width:100%;accent-color:var(--orange)">
+        <div class="rl-series-layout">
+          <div class="rl-series-panel">
+            <div class="rl-series-toolbar">
+              <button type="button" class="chip-tab" data-bo="1" onclick="rlSetBestOf(1)">BO1</button>
+              <button type="button" class="chip-tab" data-bo="2" onclick="rlSetBestOf(2)">BO2</button>
+              <button type="button" class="chip-tab" data-bo="3" onclick="rlSetBestOf(3)">BO3</button>
+              <button type="button" class="chip-tab" data-bo="5" onclick="rlSetBestOf(5)">BO5</button>
+              <button type="button" class="chip-tab" data-bo="7" onclick="rlSetBestOf(7)">BO7</button>
+            </div>
+            <div class="ig rl-series-custom">
+              <label>Total de partidos</label>
+              <input type="number" min="1" max="99" id="rlSeriesBestOf" value="3" onchange="rlSetBestOf(this.value)" />
+            </div>
+            <div class="rl-series-summary">
+              <strong id="rlSeriesLabelPreview">GAME 1 · BO3 · 0-0</strong>
+              <span id="rlSeriesMode">primero a 2</span>
+            </div>
+          </div>
+
+          <div class="rl-series-panel">
+            <div class="rl-versus-control">
+              <div class="rl-side-control blue">
+                <span id="rlSeriesBlueName">BLUE</span>
+                <strong id="rlSeriesBlueGames">0</strong>
+                <div class="rl-step-row">
+                  <button type="button" class="btn btn-ghost" onclick="rlAdjustSeriesGame('blue', -1)">-</button>
+                  <button type="button" class="btn btn-ghost" onclick="rlAdjustSeriesGame('blue', 1)">+</button>
+                </div>
+              </div>
+              <div class="rl-side-control orange">
+                <span id="rlSeriesOrangeName">ORANGE</span>
+                <strong id="rlSeriesOrangeGames">0</strong>
+                <div class="rl-step-row">
+                  <button type="button" class="btn btn-ghost" onclick="rlAdjustSeriesGame('orange', -1)">-</button>
+                  <button type="button" class="btn btn-ghost" onclick="rlAdjustSeriesGame('orange', 1)">+</button>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-danger rl-wide-btn" onclick="rlResetSeries()">Reset serie</button>
+          </div>
+
+          <div class="rl-series-panel">
+            <div class="rl-versus-control">
+              <div class="rl-side-control blue">
+                <span>Goles azul</span>
+                <strong id="rlManualBlueGoals">0</strong>
+                <div class="rl-step-row">
+                  <button type="button" class="btn btn-ghost" onclick="rlAdjustGoal('blue', -1)">-</button>
+                  <button type="button" class="btn btn-ghost" onclick="rlAdjustGoal('blue', 1)">+</button>
+                </div>
+              </div>
+              <div class="rl-side-control orange">
+                <span>Goles naranja</span>
+                <strong id="rlManualOrangeGoals">0</strong>
+                <div class="rl-step-row">
+                  <button type="button" class="btn btn-ghost" onclick="rlAdjustGoal('orange', -1)">-</button>
+                  <button type="button" class="btn btn-ghost" onclick="rlAdjustGoal('orange', 1)">+</button>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-ghost rl-wide-btn" onclick="rlResetGoals()">Reset goles</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </section>
+
+  <!-- ═══════════ OVERLAY STATS ═══════════ -->
+  <section id="rl-section-session" class="rl-section hidden">
+    <section class="ops-panel">
+      <div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Overlay de stats de sesión</span></div>
+      <div class="ops-panel-body">
+        <div class="info-box" style="margin:0">
+          <div class="info-box-label">URL para Browser Source en OBS</div>
+          <div class="info-box-url">
+            <code id="rlStatsUrlText">http://localhost:9003/stats</code>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px;flex-shrink:0" onclick="rlCopyUrl('stats')">Copiar</button>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px;flex-shrink:0" onclick="rlOpenUrl('stats')">Abrir</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ops-panel">
+      <div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Sesión local para stream</span></div>
+      <div class="ops-panel-body">
+        <div class="stats">
+          <div class="stat" style="--stat-color:#22c55e"><div class="stat-n" id="rlSessionWins">0</div><div class="stat-l">Wins</div></div>
+          <div class="stat"><div class="stat-n" style="color:#ef4444" id="rlSessionLosses">0</div><div class="stat-l">Losses</div></div>
+          <div class="stat"><div class="stat-n" id="rlSessionGoals">0</div><div class="stat-l">Goles</div></div>
+          <div class="stat"><div class="stat-n" id="rlSessionStreak">—</div><div class="stat-l">Racha</div></div>
+        </div>
+        <button class="btn btn-ghost" style="margin-top:14px" onclick="rlResetSession()">Reiniciar sesión local</button>
+      </div>
+    </section>
+  </section>
+
+  <!-- ═══════════ ESTADÍSTICAS ═══════════ -->
+  <section id="rl-section-stats" class="rl-section hidden">
+    <section class="ops-panel">
+      <div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Resumen de estadísticas</span></div>
+      <div class="ops-panel-body">
+        <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+          <div class="stat"><div class="stat-n" id="rlStatMatches">0</div><div class="stat-l">Partidos</div></div>
+          <div class="stat"><div class="stat-n" id="rlStatWinrate">0%</div><div class="stat-l">Winrate</div></div>
+          <div class="stat"><div class="stat-n" id="rlStatBoostScore">100</div><div class="stat-l">Boost score</div></div>
+          <div class="stat"><div class="stat-n" id="rlStatTouches">0</div><div class="stat-l">Touches/min</div></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="g2">
+      <section class="ops-panel"><div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Boost en vivo</span></div><div class="ops-panel-body"><div id="rlBoostChart" class="rl-chart"></div></div></section>
+      <section class="ops-panel"><div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Velocidad en vivo</span></div><div class="ops-panel-body"><div id="rlSpeedChart" class="rl-chart"></div></div></section>
+    </div>
+    <div class="g3">
+      <section class="ops-panel"><div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Perfil de rendimiento</span></div><div class="ops-panel-body"><div id="rlProfileChart" class="rl-chart"></div></div></section>
+      <section class="ops-panel"><div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Dónde pasás el tiempo</span></div><div class="ops-panel-body"><div id="rlTimeChart" class="rl-chart"></div></div></section>
+      <section class="ops-panel"><div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Disciplina de boost</span></div><div class="ops-panel-body"><div id="rlDisciplineChart" class="rl-chart"></div></div></section>
+    </div>
+    <div class="g2">
+      <section class="ops-panel"><div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Tendencia por partida</span></div><div class="ops-panel-body"><div id="rlTrendChart" class="rl-chart"></div></div></section>
+      <section class="ops-panel"><div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Promedios por partida</span></div><div class="ops-panel-body"><div id="rlAverageChart" class="rl-chart"></div></div></section>
+    </div>
+    <div class="g2">
+      <section class="ops-panel"><div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Últimos 7 días</span></div><div class="ops-panel-body"><div id="rlChart7" class="rl-chart"></div></div></section>
+      <section class="ops-panel"><div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Winrate histórico</span></div><div class="ops-panel-body"><div id="rlWinrateHistoryChart" class="rl-chart"></div></div></section>
+    </div>
+
+    <section class="ops-panel">
+      <div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Historial de partidas</span></div>
+      <div class="ops-panel-body">
+        <table class="htable">
+          <thead><tr><th>Hora</th><th>Resultado</th><th>Score</th><th>Arena</th><th>Stats</th><th>Boost</th><th>Ritmo</th></tr></thead>
+          <tbody id="rlHistoryRows"><tr><td colspan="7" style="color:var(--text3)">Sin partidas registradas todavía.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+
+  <!-- ═══════════ AYUDA ═══════════ -->
+  <section id="rl-section-help" class="rl-section hidden">
+    <section class="ops-panel">
+      <div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Puesta en marcha</span></div>
+      <div class="ops-panel-body">
+        <div class="rl-help-grid">
+          <div class="rl-help-item">
+            <div class="rl-help-num">1</div>
+            <div class="rl-help-body">
+              <strong>Activá la Stats API</strong>
+              <span>Editá <code>TAGame\Config\DefaultStatsAPI.ini</code> en la instalación de Rocket League.</span>
+              <div class="rl-help-codes"><code>PacketSendRate=30</code><code>Port=49123</code></div>
+            </div>
+          </div>
+          <div class="rl-help-item">
+            <div class="rl-help-num">2</div>
+            <div class="rl-help-body">
+              <strong>Reiniciá Rocket League</strong>
+              <span>El juego lee ese archivo al iniciar. Si lo editás con el juego abierto, cerralo y abrilo otra vez.</span>
+            </div>
+          </div>
+          <div class="rl-help-item">
+            <div class="rl-help-num">3</div>
+            <div class="rl-help-body">
+              <strong>Configurá tu jugador</strong>
+              <span>Usá tu nombre exacto o PrimaryId para que Almost sepa qué jugador seguir cuando llegan los eventos.</span>
+            </div>
+          </div>
+          <div class="rl-help-item">
+            <div class="rl-help-num">4</div>
+            <div class="rl-help-body">
+              <strong>OBS marcador</strong>
+              <span>Agregá una Browser Source arriba de la pantalla.</span>
+              <div class="rl-help-codes"><code id="rlHelpBroadcastUrl">http://localhost:9003/broadcast</code></div>
+            </div>
+          </div>
+          <div class="rl-help-item">
+            <div class="rl-help-num">5</div>
+            <div class="rl-help-body">
+              <strong>OBS stats de sesión</strong>
+              <span>Para streams sin torneo, usá el overlay separado de wins, losses, racha y stats.</span>
+              <div class="rl-help-codes"><code id="rlHelpStatsUrl">http://localhost:9003/stats</code></div>
+            </div>
+          </div>
+          <div class="rl-help-item">
+            <div class="rl-help-num">6</div>
+            <div class="rl-help-body">
+              <strong>Guardado local</strong>
+              <span>No usa Supabase para Rocket League. El historial y la configuración viven en:</span>
+              <div class="rl-help-codes"><code id="rlStorePath">rocket-league-live.json</code></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="ops-panel">
+      <div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Cómo cuenta las partidas</span></div>
+      <div class="ops-panel-body">
+        <div class="rl-help-grid">
+          <div class="rl-help-item">
+            <div class="rl-help-body">
+              <strong>Durante el partido</strong>
+              <span><code>UpdateState</code> alimenta boost, velocidad, score, tiempo, touches y las métricas de performance.</span>
+            </div>
+          </div>
+          <div class="rl-help-item">
+            <div class="rl-help-body">
+              <strong>Gol</strong>
+              <span><code>GoalScored</code> actualiza el último goleador y datos visibles del marcador.</span>
+            </div>
+          </div>
+          <div class="rl-help-item">
+            <div class="rl-help-body">
+              <strong>Final</strong>
+              <span><code>MatchEnded</code> compara <code>WinnerTeamNum</code> con tu <code>TeamNum</code>, suma win/loss y usa <code>MatchGuid</code> para no duplicar.</span>
+            </div>
+          </div>
+          <div class="rl-help-item">
+            <div class="rl-help-body">
+              <strong>Reconexión</strong>
+              <span>Si Rocket League se cierra o cambia el puerto, Almost intenta reconectar. Usá “Reconectar API” después de cambiar configuración.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ═══════════ DEBUG ═══════════ -->
+  <section id="rl-section-debug" class="rl-section hidden">
+    <div class="g2">
+      <section class="ops-panel">
+        <div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Últimos eventos</span></div>
+        <div class="ops-panel-body"><div id="rlDebugEvents" class="rl-debug-list">Sin eventos todavía.</div></div>
+      </section>
+      <section class="ops-panel">
+        <div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Estado procesado</span></div>
+        <div class="ops-panel-body"><pre id="rlDebugJson" class="rl-debug-json">{}</pre></div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ─── Modal: Conexión local ────────────────────────────────── -->
+  <div class="s-modal hidden" id="rlSetupModal" onclick="if(event.target===this)rlCloseSetup()">
+    <div class="s-modal-card">
+      <header class="s-modal-head">
+        <div class="s-modal-title">Conexión local</div>
+        <button class="s-modal-close" onclick="rlCloseSetup()" aria-label="Cerrar">✕</button>
+      </header>
+      <div class="s-modal-body">
+        <div class="s-form-grid">
+          <div class="ig">
+            <label>Puerto Stats API</label>
+            <input type="number" min="1" max="65535" id="rlStatsApiPort" value="49123" oninput="rlMarkDirty()" />
+          </div>
+          <div class="ig">
+            <label>Nombre jugador</label>
+            <input type="text" id="rlPlayerName" placeholder="Nombre exacto en Rocket League" oninput="rlMarkDirty()" />
+          </div>
+          <div class="ig">
+            <label>PrimaryId</label>
+            <input type="text" id="rlPrimaryId" placeholder="Opcional" oninput="rlMarkDirty()" />
+          </div>
+          <div class="ig">
+            <label>Etiqueta del evento</label>
+            <input type="text" id="rlEventLabel" placeholder="Rocket League" oninput="rlMarkDirty()" />
+          </div>
+        </div>
+        <div class="s-modal-actions s-modal-actions-end">
+          <button class="btn btn-ghost" onclick="rlCloseSetup()">Cerrar</button>
+          <button class="btn btn-orange" onclick="rlSaveConfig();rlCloseSetup()">Guardar</button>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- ─── Modal: Equipos ───────────────────────────────────────── -->
+  <div class="s-modal hidden" id="rlStylesModal" onclick="if(event.target===this)rlCloseStyles()">
+    <div class="s-modal-card s-modal-card-wide">
+      <header class="s-modal-head">
+        <div class="s-modal-title">Estilos del overlay</div>
+        <button class="s-modal-close" onclick="rlCloseStyles()" aria-label="Cerrar">✕</button>
+      </header>
+      <div class="s-modal-body">
+        <p class="rl-muted" style="margin:0 0 14px">Elegí el estilo del overlay. Tapa el marcador por defecto del juego. El cambio se aplica al guardar.</p>
+        <div class="rl-theme-grid" id="rlThemeGrid">
+          <button type="button" class="rl-theme-card off" data-theme="broadcast" disabled>
+            <span class="rl-theme-preview rl-theme-broadcast"><i class="b"></i><i class="c">4:51</i><i class="o"></i></span>
+            <strong>Broadcast</strong><small>Inactivo</small>
+          </button>
+          <button type="button" class="rl-theme-card" data-theme="slate" onclick="rlSetTheme('slate')">
+            <span class="rl-theme-preview rl-theme-slate"><i class="b"></i><i class="c">4:51</i><i class="o"></i></span>
+            <strong>Slate</strong><small>Esports, paneles inclinados</small>
+          </button>
+          <button type="button" class="rl-theme-card off" data-theme="minimal" disabled>
+            <span class="rl-theme-preview rl-theme-minimal"><i class="b"></i><i class="c">4:51</i><i class="o"></i></span>
+            <strong>Minimal</strong><small>Inactivo</small>
+          </button>
+          <button type="button" class="rl-theme-card off" data-theme="neon" disabled>
+            <span class="rl-theme-preview rl-theme-neon"><i class="b"></i><i class="c">4:51</i><i class="o"></i></span>
+            <strong>Neon</strong><small>Inactivo</small>
+          </button>
+          <button type="button" class="rl-theme-card off" data-theme="classic" disabled>
+            <span class="rl-theme-preview rl-theme-classic"><i class="b"></i><i class="c">4:51</i><i class="o"></i></span>
+            <strong>Classic</strong><small>Inactivo</small>
+          </button>
+          <button type="button" class="rl-theme-card off" data-theme="arena" disabled>
+            <span class="rl-theme-preview rl-theme-arena"><i class="b"></i><i class="c">4:51</i><i class="o"></i></span>
+            <strong>Arena</strong><small>Inactivo</small>
+          </button>
+        </div>
+        <div class="s-modal-actions s-modal-actions-end">
+          <button class="btn btn-ghost" onclick="rlCloseStyles()">Cerrar</button>
+          <button class="btn btn-orange" onclick="rlSaveConfig();rlCloseStyles()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

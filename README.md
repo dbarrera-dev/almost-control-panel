@@ -27,6 +27,15 @@ El instalador aparece en `dist/Almost Control Setup 1.0.0.exe`
 - Bracket Rocket League (cuartos, semis, gran final)
 - Todo se guarda en Supabase → se refleja en OBS al instante
 
+### 🚗 Rocket League Live
+- Lee la Stats API local de Rocket League desde `Port=49123`
+- Sirve un marcador broadcast para OBS en `http://localhost:9003/broadcast`
+- Sirve un overlay compacto de sesión en `http://localhost:9003/stats`
+- Nombres, logos y colores de equipos se guardan en archivo local de la app
+- Incluye pestaña Rocket League con Resumen, Marcador, Overlay Stats, Estadísticas, Ayuda y Debug
+- Guarda historial diario, partidas recientes, rangos de 7/30 días, métricas de boost/performance e insights de coach en archivo local
+- No depende de Supabase para los datos de Rocket League
+
 ### ⚙️ Config
 - Credenciales de Supabase y Kick guardadas localmente
 

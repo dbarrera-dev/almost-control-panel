@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
+body {
+  color: #fff;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+:root {
+  --blue: #2f8cff;
+  --orange: #ff7a18;
+  --panel: rgba(6,11,18,0.88);
+  --text: #ffffff;
+  --radius: 8px;
+}
+.session {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 360px;
+  border: 1px solid rgba(255,255,255,0.13);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(120% 130% at 0% 0%, color-mix(in srgb, var(--blue) 22%, transparent), transparent 44%),
+    radial-gradient(120% 130% at 100% 100%, color-mix(in srgb, var(--orange) 18%, transparent), transparent 50%),
+    var(--panel);
+  box-shadow: 0 18px 46px rgba(0,0,0,0.45);
+  overflow: hidden;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.title { min-width: 0; }
+.label {
+  overflow: hidden;
+  color: rgba(255,255,255,0.42);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.name {
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.record {
+  flex-shrink: 0;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  font-size: 15px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 12px;
+}
+.metric {
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+  padding: 9px 10px;
+}
+.metric .k {
+  color: rgba(255,255,255,0.42);
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.metric .v {
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.footer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 0 12px 12px;
+}
+.goal {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(255,255,255,0.62);
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.live {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.26);
+}
+.live.on {
+  background: #38e1a4;
+  box-shadow: 0 0 10px rgba(56,225,164,0.75);
+}
+</style>
+</head>
+<body>
+  <aside class="session">
+    <header class="head">
+      <div class="title">
+        <div class="label" id="eventLabel">Rocket League</div>
+        <div class="name" id="playerName">Sesión local</div>
+      </div>
+      <div class="record" id="record">0W-0L</div>
+    </header>
+    <section class="grid">
+      <div class="metric"><div class="k">Winrate</div><div class="v" id="winrate">0%</div></div>
+      <div class="metric"><div class="k">Racha</div><div class="v" id="streak">-0</div></div>
+      <div class="metric"><div class="k">Partidos</div><div class="v" id="matches">0</div></div>
+      <div class="metric"><div class="k">Goles</div><div class="v" id="goals">0</div></div>
+      <div class="metric"><div class="k">Saves</div><div class="v" id="saves">0</div></div>
+      <div class="metric"><div class="k">Boost</div><div class="v" id="boost">100</div></div>
+    </section>
+    <footer class="footer">
+      <div class="goal" id="lastGoal">Esperando datos reales</div>
+      <div class="live" id="liveDot"></div>
+    </footer>
+  </aside>
+
+<script>
+const el = Object.fromEntries(['eventLabel','playerName','record','winrate','streak','matches','goals','saves','boost','lastGoal','liveDot'].map((id) => [id, document.getElementById(id)]));
+
+function render(state) {
+  const cfg = state?.config || {};
+  const daily = state?.dailyStats || {};
+  const perf = daily.performance || {};
+  const match = state?.currentMatch || null;
+  const player = state?.currentPlayer || null;
+  const matches = Number(daily.matchesPlayed || 0);
+  const wins = Number(daily.wins || 0);
+  const losses = Number(daily.losses || 0);
+  document.documentElement.style.setProperty('--blue', cfg.blueTeam?.color || '#2f8cff');
+  document.documentElement.style.setProperty('--orange', cfg.orangeTeam?.color || '#ff7a18');
+  document.documentElement.style.setProperty('--panel', cfg.style?.bg || 'rgba(6,11,18,0.88)');
+  document.documentElement.style.setProperty('--text', cfg.style?.text || '#fff');
+  document.documentElement.style.setProperty('--radius', `${Number(cfg.style?.radius ?? 8)}px`);
+  el.eventLabel.textContent = cfg.eventLabel || 'Rocket League';
+  el.playerName.textContent = player?.Name || cfg.playerName || 'Sesión local';
+  el.record.textContent = `${wins}W-${losses}L`;
+  el.winrate.textContent = matches ? `${Math.round((wins / matches) * 100)}%` : '0%';
+  el.streak.textContent = `${daily.currentStreakType || '-'}${Number(daily.currentStreak || 0)}`;
+  el.matches.textContent = String(matches);
+  el.goals.textContent = String(Number(daily.goals || 0));
+  el.saves.textContent = String(Number(daily.saves || 0));
+  el.boost.textContent = String(Math.round(perf.boostDisciplineScore || 100));
+  el.lastGoal.textContent = match?.lastGoal?.scorer ? `Último gol: ${match.lastGoal.scorer}` : (match ? 'Partida activa' : 'Esperando datos reales');
+  el.liveDot.classList.toggle('on', state?.connectionStatus === 'connected' || state?.connectionStatus === 'waiting-match');
+}
+
+function connect() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${protocol}//${location.host}`);
+  ws.onmessage = ({ data }) => {
+    try {
+      const msg = JSON.parse(data);
+      if (msg.type === 'state') render(msg.data);
+    } catch {}
+  };
+  ws.onclose = () => setTimeout(connect, 2000);
+}
+fetch('/state').then((res) => res.json()).then(render).catch(() => {});
+connect();
+</script>
+</body>
+</html>

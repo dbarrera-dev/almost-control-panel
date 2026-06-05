@@ -27,6 +27,11 @@
   api.duelosGet().then(r => { if (r.ok) { duelos = r.data || []; _updateDueloBadge(); } }).catch(() => {});
   loadLogHistory();
   loadHistorial();
+  // Pintamos la estructura del bracket aunque todavía no haya datos
+  // (loadOverlays lo rellena cuando llegan de Supabase).
+  if (typeof renderTorneoBracket === 'function') renderTorneoBracket();
+  // Dashboard es la vista inicial: cargamos su estado al arrancar.
+  if (typeof loadDashboard === 'function') loadDashboard();
 })();
 
 // ── Cleanup ──────────────────────────────────────────────────────

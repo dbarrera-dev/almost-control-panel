@@ -64,6 +64,8 @@ function _updateEnvPills() {
   if (dev)  dev.checked  = mode === 'dev';
   const kLbl = document.getElementById('kChannelLabel');
   if (kLbl) kLbl.textContent = mode === 'dev' ? 'Canal de Kick — DEV (sin @)' : 'Canal de Kick (sin @)';
+  const badge = document.getElementById('envBadgeLabel');
+  if (badge) badge.textContent = mode === 'dev' ? 'Dev' : 'Prod';
   const msg = document.getElementById('envModeMsg');
   if (msg) msg.textContent = mode === 'dev'
     ? 'Ambiente DEV activo — todo apunta a tus credenciales de prueba.'
@@ -559,9 +561,11 @@ function kickSetSection(section, opts = {}) {
 
   ['summary', 'rewards', 'subs'].forEach((key) => {
     const pane = document.getElementById(`kick-sec-${key}`);
-    const tab = document.getElementById(`kick-tab-${key}`);
+    const tab = document.getElementById(`kick-tab-${key}`);   // legacy (ya no existe)
+    const nav = document.getElementById(`kicknav-${key}`);     // submenú del aside
     if (pane) pane.classList.toggle('hidden', key !== next);
     if (tab) tab.classList.toggle('on', key === next);
+    if (nav) nav.classList.toggle('on', key === next);
   });
 
   if (opts.silent) return;
@@ -571,6 +575,90 @@ function kickSetSection(section, opts = {}) {
     kickSubsRefresh({ silent: true }).catch(() => {});
   }
 }
+
+// ── Modales de diagnóstico de Kick ────────────────────────────────
+function kickOpenModal(id) {
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.classList.remove('hidden');
+  document.addEventListener('keydown', _kickModalEsc);
+}
+function kickCloseModal(id) {
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.classList.add('hidden');
+  document.removeEventListener('keydown', _kickModalEsc);
+}
+function _kickModalEsc(e) {
+  if (e.key !== 'Escape') return;
+  ['kickPresenceModal', 'kickHealthModal', 'kickMonitorModal', 'kickRewardCreateModal'].forEach((id) => {
+    const m = document.getElementById(id);
+    if (m && !m.classList.contains('hidden')) m.classList.add('hidden');
+  });
+  document.removeEventListener('keydown', _kickModalEsc);
+}
+function kickOpenPresence() { kickOpenModal('kickPresenceModal'); try { kickPresenceRefresh(); } catch {} }
+function kickClosePresence() { kickCloseModal('kickPresenceModal'); }
+function kickOpenHealth() { kickOpenModal('kickHealthModal'); try { kickCommandHealthRefresh(); } catch {} }
+function kickCloseHealth() { kickCloseModal('kickHealthModal'); }
+function kickOpenMonitor() { kickOpenModal('kickMonitorModal'); try { kickMonitorRefresh(); } catch {} }
+function kickCloseMonitor() { kickCloseModal('kickMonitorModal'); }
+function kickOpenCreateReward() { kickOpenModal('kickRewardCreateModal'); setTimeout(() => document.getElementById('kickRewardCreateTitle')?.focus(), 40); }
+function kickCloseCreateReward() { kickCloseModal('kickRewardCreateModal'); }
+
+// Copia texto (ID de reward) al portapapeles con feedback visual en el botón
+function kickCopyText(text, btn) {
+  const val = String(text == null ? '' : text);
+  const done = () => {
+    if (!btn) return;
+    btn.classList.add('copied');
+    setTimeout(() => btn.classList.remove('copied'), 1200);
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(val).then(done).catch(() => { _kickFallbackCopy(val); done(); });
+      return;
+    }
+  } catch {}
+  _kickFallbackCopy(val);
+  done();
+}
+function _kickFallbackCopy(val) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = val;
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  } catch {}
+}
+
+// Kebab (⋮) del listado de rewards: posiciona el menú con position:fixed para
+// que no lo recorte el scroll-list ni el ops-panel; cierra otros al abrir.
+document.addEventListener('toggle', (e) => {
+  const det = e.target;
+  if (!(det instanceof HTMLElement) || !det.classList.contains('kick-menu') || !det.open) return;
+  document.querySelectorAll('details.kick-menu[open]').forEach((d) => { if (d !== det) d.open = false; });
+  const pop = det.querySelector('.kick-menu-pop');
+  const trig = det.querySelector('.kick-menu-trigger');
+  if (!pop || !trig) return;
+  const r = trig.getBoundingClientRect();
+  pop.style.position = 'fixed';
+  pop.style.right = 'auto';
+  const ph = pop.offsetHeight;
+  const pw = pop.offsetWidth;
+  pop.style.left = Math.max(8, r.right - pw) + 'px';
+  const below = window.innerHeight - r.bottom;
+  pop.style.top = (below < ph + 12 ? Math.max(8, r.top - ph - 5) : r.bottom + 5) + 'px';
+}, true);
+// Cierra el kebab al hacer click afuera
+document.addEventListener('click', (e) => {
+  document.querySelectorAll('details.kick-menu[open]').forEach((d) => {
+    if (!d.contains(e.target)) d.open = false;
+  });
+});
 
 function _normalizeKickRewardColor(value, fallback = KICK_REWARD_DEFAULT_COLOR) {
   const color = String(value || '').trim().toUpperCase();
@@ -815,49 +903,63 @@ function _renderKickRewardsPanelList() {
   if (!listEl) return;
   const currentId = document.getElementById('kRewardId')?.value.trim() || '';
   if (!Array.isArray(kickRewardsCache) || !kickRewardsCache.length) {
-    listEl.innerHTML = '<div style="text-align:center;padding:16px;font-size:11px;color:var(--text3)">No hay rewards en este canal.</div>';
+    listEl.innerHTML = '<div class="kick-rewards-empty">No hay rewards en este canal.</div>';
     return;
   }
 
   listEl.innerHTML = kickRewardsCache.map((reward, idx) => {
     const isPrimary = currentId && reward.id === currentId;
-    const statusColor = reward.is_enabled ? '#53d067' : '#f87171';
-    const statusText = reward.is_enabled ? 'Habilitada' : 'Deshabilitada';
+    const enabled = reward.is_enabled;
+    const statusColor = enabled ? '#53d067' : '#f87171';
+    const statusText = enabled ? 'Habilitada' : 'Deshabilitada';
     const bgColor = _normalizeKickRewardColor(reward.background_color || KICK_REWARD_DEFAULT_COLOR);
     const requiresInput = reward.is_user_input_required !== false;
     const skipsQueue = !!reward.should_redemptions_skip_request_queue;
+    const safeId = _hKick(reward.id || '');
     return `
-      <div style="border:1px solid var(--border);border-radius:8px;padding:10px;background:rgba(255,255,255,.02)">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
-          <div style="min-width:0;flex:1">
-            <div style="font-size:11px;font-weight:700;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_hKick(reward.title || 'Sin título')}</div>
-            <div style="font-size:10px;color:var(--text3);margin-top:2px;word-break:break-all">ID: ${_hKick(reward.id || '')}</div>
+      <div class="kick-reward-card${isPrimary ? ' is-primary' : ''}" style="--rw-color:${bgColor}">
+        <div class="kick-reward-card-head">
+          <span class="kick-reward-color-dot" style="background:${bgColor}" title="Color ${bgColor}"></span>
+          <div class="kick-reward-headinfo">
+            <div class="kick-reward-title">${_hKick(reward.title || 'Sin título')}</div>
+            <div class="kick-reward-idrow">
+              <code class="kick-reward-id" title="${safeId}">${safeId}</code>
+              <button type="button" class="kick-copy-btn" onclick="kickCopyText('${safeId}', this)" title="Copiar ID">
+                <svg class="ico-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="13" height="13" x="9" y="9" rx="2"/><path d="M5 15c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2"/></svg>
+                <svg class="ico-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+            </div>
           </div>
-          <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.06);color:${statusColor}">${statusText}</span>
-            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.06);color:var(--text2)">${requiresInput ? 'Texto requerido' : 'Texto opcional'}</span>
-            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.06);color:${skipsQueue ? '#53d067' : 'var(--text2)'}">${skipsQueue ? 'Salta cola' : 'Pasa por cola'}</span>
-            <span title="Color de fondo ${bgColor}" style="width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.25);background:${bgColor}"></span>
-            ${isPrimary
-              ? '<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(83,208,103,.16);color:#53d067">Song Request</span>'
-              : ''}
+          <details class="kick-menu">
+            <summary class="kick-menu-trigger" title="Acciones"><span></span><span></span><span></span></summary>
+            <div class="kick-menu-pop">
+              <button type="button" onclick="kickRewardPanelToggle(${idx}, ${enabled ? 'false' : 'true'})">${enabled ? 'Deshabilitar' : 'Habilitar'}</button>
+              <button type="button" onclick="kickRewardPanelSetPrimary(${idx})">Usar en song request</button>
+              <button type="button" class="danger" onclick="kickRewardPanelDelete(${idx})">Eliminar</button>
+            </div>
+          </details>
+        </div>
+
+        <div class="kick-reward-badges">
+          <span class="kick-rtag" style="color:${statusColor}">${statusText}</span>
+          <span class="kick-rtag">${requiresInput ? 'Texto requerido' : 'Texto opcional'}</span>
+          <span class="kick-rtag" style="color:${skipsQueue ? '#53d067' : 'var(--text2)'}">${skipsQueue ? 'Salta cola' : 'Pasa por cola'}</span>
+          ${isPrimary ? '<span class="kick-rtag is-primary">Song Request</span>' : ''}
+        </div>
+
+        <div class="kick-reward-editrow">
+          <div class="ig kick-reward-cost">
+            <label>Precio</label>
+            <input id="kr-cost-${idx}" type="number" min="1" step="1" value="${Number(reward.cost) || 1}">
+          </div>
+          <div class="ig kick-reward-desc">
+            <label>Descripción</label>
+            <textarea id="kr-desc-${idx}" maxlength="200" rows="2" placeholder="Sin descripción">${_hKick(reward.description || '')}</textarea>
           </div>
         </div>
-        <div class="g2" style="margin-bottom:6px">
-          <div class="ig" style="margin-bottom:0">
-            <label style="margin-bottom:4px">Precio</label>
-            <input id="kr-cost-${idx}" type="number" min="1" step="1" value="${Number(reward.cost) || 1}" style="font-size:11px;font-family:monospace">
-          </div>
-          <div class="ig" style="margin-bottom:0">
-            <label style="margin-bottom:4px">Descripción</label>
-            <input id="kr-desc-${idx}" type="text" maxlength="200" value="${_hKick(reward.description || '')}" style="font-size:11px">
-          </div>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-ghost" style="padding:5px 9px;font-size:10px" onclick="kickRewardPanelSave(${idx})">Guardar</button>
-          <button class="btn btn-ghost" style="padding:5px 9px;font-size:10px" onclick="kickRewardPanelToggle(${idx}, ${reward.is_enabled ? 'false' : 'true'})">${reward.is_enabled ? 'Deshabilitar' : 'Habilitar'}</button>
-          <button class="btn btn-ghost" style="padding:5px 9px;font-size:10px" onclick="kickRewardPanelSetPrimary(${idx})">Usar en song request</button>
-          <button class="btn btn-ghost" style="padding:5px 9px;font-size:10px;color:var(--red);border-color:rgba(248,113,113,.25)" onclick="kickRewardPanelDelete(${idx})">Eliminar</button>
+
+        <div class="kick-reward-foot">
+          <button type="button" class="btn kick-btn-green kick-reward-save" onclick="kickRewardPanelSave(${idx})">Guardar cambios</button>
         </div>
       </div>
     `;
@@ -964,13 +1066,13 @@ async function kickRewardsRefresh(opts = {}) {
   const silent = !!opts.silent;
   const listEl = document.getElementById('kickRewardsPanelList');
   if (!silent && listEl) {
-    listEl.innerHTML = '<div style="text-align:center;padding:16px;font-size:11px;color:var(--text3)">Cargando rewards...</div>';
+    listEl.innerHTML = '<div class="kick-rewards-empty">Cargando rewards...</div>';
   }
 
   const r = await api.kickRewardList({ mode });
   if (!r.ok) {
     if (listEl && !silent) {
-      listEl.innerHTML = `<div style="text-align:center;padding:16px;font-size:11px;color:var(--red)">${_hKick(r.error || 'No pude cargar rewards.')}</div>`;
+      listEl.innerHTML = `<div class="kick-rewards-empty" style="color:var(--red);border-color:rgba(248,113,113,.3)">${_hKick(r.error || 'No pude cargar rewards.')}</div>`;
     }
     if (!silent) _setKickRewardsPanelMsg(r.error || 'No pude cargar rewards.', 'err');
     return;
@@ -1116,6 +1218,8 @@ async function kickRewardCreateFromPanel() {
   _syncKickRewardCreateColorUI();
   _setKickRewardsCreateMsg('Reward creada correctamente.', 'ok');
   await kickRewardsRefresh({ silent: true });
+  try { kickCloseCreateReward(); } catch {}
+  try { if (typeof toast === 'function') toast('Reward creada', 'ok'); } catch {}
 }
 
 function _setKickSubsMsg(text, tone = 'muted') {
@@ -1134,6 +1238,47 @@ function _formatKickDate(iso) {
   return new Date(ts).toLocaleString();
 }
 
+// Cache de avatares de subs (user_id -> url; '' = sin avatar, ya consultado).
+let _kickAvatarCache = {};
+const _KICK_AV_COLORS = ['#D96B00', '#0891b2', '#059669', '#d97706', '#7c3aed', '#0e7490', '#dc2626', '#047857'];
+function _kickAvatarColor(name) {
+  const s = String(name || '');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h += s.charCodeAt(i);
+  return _KICK_AV_COLORS[h % _KICK_AV_COLORS.length];
+}
+
+function _applyKickSubAvatar(uid, url) {
+  if (!uid || !url) return;
+  let sel;
+  try { sel = `.kick-sub-av[data-uid="${(window.CSS && CSS.escape) ? CSS.escape(uid) : uid}"]`; }
+  catch { return; }
+  document.querySelectorAll(sel).forEach((el) => {
+    el.innerHTML = `<img src="${_hKick(url)}" alt="" referrerpolicy="no-referrer">`;
+    el.classList.add('has-img');
+    el.style.background = 'transparent';
+  });
+}
+
+async function _kickHydrateSubAvatars() {
+  if (typeof api.kickUsersGet !== 'function') return;
+  const ids = Array.from(new Set((Array.isArray(kickSubsCache) ? kickSubsCache : [])
+    .map((s) => String(s.userId || '').trim())
+    .filter(Boolean)));
+  if (!ids.length) return;
+  ids.forEach((uid) => { if (_kickAvatarCache[uid]) _applyKickSubAvatar(uid, _kickAvatarCache[uid]); });
+  const missing = ids.filter((uid) => _kickAvatarCache[uid] === undefined);
+  if (!missing.length) return;
+  const mode = window._kMode === 'dev' ? 'dev' : 'prod';
+  const r = await api.kickUsersGet({ mode, userIds: missing }).catch(() => null);
+  if (!r?.ok || !r.users) return;
+  missing.forEach((uid) => {
+    const av = (r.users[uid] && r.users[uid].avatarUrl) || '';
+    _kickAvatarCache[uid] = av; // cacheamos incluso vacío para no re-pedir
+    if (av) _applyKickSubAvatar(uid, av);
+  });
+}
+
 function _renderKickSubsList() {
   const listEl = document.getElementById('kickSubsList');
   const summaryEl = document.getElementById('kickSubsSummary');
@@ -1141,30 +1286,47 @@ function _renderKickSubsList() {
   summaryEl.textContent = String(Array.isArray(kickSubsCache) ? kickSubsCache.length : 0);
 
   if (!Array.isArray(kickSubsCache) || !kickSubsCache.length) {
-    listEl.innerHTML = '<div style="text-align:center;padding:14px;font-size:11px;color:var(--text3)">Sin suscriptores cacheados todavía.</div>';
+    listEl.innerHTML = '<div class="kick-rewards-empty">Sin suscriptores cacheados todavía.</div>';
     return;
   }
 
   listEl.innerHTML = kickSubsCache.map((sub) => {
-    const statusTone = sub.isActive ? '#53d067' : '#f87171';
+    const active = !!sub.isActive;
+    const statusTone = active ? '#53d067' : '#f87171';
+    const statusBorder = active ? 'rgba(83,208,103,.3)' : 'rgba(248,113,113,.3)';
+    const uid = String(sub.userId || '').trim();
+    const name = sub.username || '(sin username)';
+    const initial = _hKick((String(name).trim()[0] || '?').toUpperCase());
+    const cached = uid ? _kickAvatarCache[uid] : '';
+    const avInner = cached ? `<img src="${_hKick(cached)}" alt="" referrerpolicy="no-referrer">` : initial;
+    const avStyle = cached ? '' : `background:${_kickAvatarColor(name)}`;
+    const lastEvent = sub.lastEventType || '—';
+    const expires = _formatKickDate(sub.expiresAt);
     return `
-      <div style="border:1px solid var(--border);border-radius:8px;padding:8px;background:rgba(255,255,255,.02)">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-          <div style="min-width:0;flex:1">
-            <div style="font-size:11px;font-weight:700;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_hKick(sub.username || '(sin username)')}</div>
-            <div style="font-size:10px;color:var(--text3);margin-top:2px;word-break:break-all">ID: ${_hKick(sub.userId || '—')}</div>
+      <div class="kick-sub-card">
+        <div class="kick-sub-head">
+          <div class="kick-sub-av${cached ? ' has-img' : ''}" data-uid="${_hKick(uid)}" style="${avStyle}">${avInner}</div>
+          <div class="kick-sub-headinfo">
+            <div class="kick-sub-name">${_hKick(name)}</div>
+            <div class="kick-sub-uid">ID: ${_hKick(uid || '—')}</div>
           </div>
-          <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.06);color:${statusTone}">
-            ${sub.isActive ? 'Activa' : 'Vencida'}
-          </span>
+          <span class="kick-sub-badge" style="color:${statusTone};border-color:${statusBorder}">${active ? 'Activa' : 'Vencida'}</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;font-size:10px;color:var(--text3)">
-          <div>Vence: <span style="color:var(--text2)">${_hKick(_formatKickDate(sub.expiresAt))}</span></div>
-          <div>Último evento: <span style="color:var(--text2)">${_hKick(sub.lastEventType || '—')}</span></div>
+        <div class="kick-sub-meta">
+          <div class="kick-sub-metarow">
+            <span class="kick-sub-metalbl">Vence</span>
+            <span class="kick-sub-metaval" title="${_hKick(expires)}">${_hKick(expires)}</span>
+          </div>
+          <div class="kick-sub-metarow">
+            <span class="kick-sub-metalbl">Último evento</span>
+            <span class="kick-sub-metaval" title="${_hKick(lastEvent)}">${_hKick(lastEvent)}</span>
+          </div>
         </div>
       </div>
     `;
   }).join('');
+
+  _kickHydrateSubAvatars();
 }
 
 async function kickSubsRefresh(opts = {}) {
@@ -1172,7 +1334,7 @@ async function kickSubsRefresh(opts = {}) {
   const silent = !!opts.silent;
   const listEl = document.getElementById('kickSubsList');
   if (!silent && listEl) {
-    listEl.innerHTML = '<div style="text-align:center;padding:14px;font-size:11px;color:var(--text3)">Cargando suscriptores...</div>';
+    listEl.innerHTML = '<div class="kick-rewards-empty">Cargando suscriptores...</div>';
   }
   const r = await api.kickSubsList({ mode, activeOnly: true, limit: 400 });
   if (!r?.ok) {
@@ -1180,7 +1342,7 @@ async function kickSubsRefresh(opts = {}) {
       _setKickSubsMsg(r?.error || 'No pude cargar suscriptores.', 'warn');
     }
     if (listEl && !silent) {
-      listEl.innerHTML = `<div style="text-align:center;padding:14px;font-size:11px;color:var(--text3)">${_hKick(r?.error || 'No pude cargar suscriptores.')}</div>`;
+      listEl.innerHTML = `<div class="kick-rewards-empty">${_hKick(r?.error || 'No pude cargar suscriptores.')}</div>`;
     }
     return;
   }

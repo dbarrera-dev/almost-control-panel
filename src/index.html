@@ -4,8 +4,9 @@
 <meta charset="UTF-8">
 <title>Almost Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Permanent+Marker&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,600;0,700;0,800;1,700;1,800;1,900&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./styles/base.css">
+<link rel="stylesheet" href="./styles/dashboard.css">
 <link rel="stylesheet" href="./styles/torneo.css">
 <link rel="stylesheet" href="./styles/duelos.css">
 <link rel="stylesheet" href="./styles/overlays.css">
@@ -23,13 +24,16 @@
 </head>
 <body class="log-hidden">
 
-  <div data-include="./partials/titlebar.html"></div>
-  <div data-include="./partials/tabs.html"></div>
-
-  <div id="layout">
-    <div id="content">
+  <div id="shell">
+    <div data-include="./partials/tabs.html"></div>
+    <div id="main">
+      <div data-include="./partials/titlebar.html"></div>
+      <div id="layout">
+        <div id="content">
+      <div data-include="./partials/views/dashboard.html"></div>
       <div data-include="./partials/views/torneo.html"></div>
       <div data-include="./partials/views/overlays.html"></div>
+      <div data-include="./partials/views/keys.html"></div>
       <div data-include="./partials/views/spotify.html"></div>
       <div data-include="./partials/views/kick.html"></div>
       <div data-include="./partials/views/duelos.html"></div>
@@ -41,13 +45,17 @@
       <div data-include="./partials/views/obs-dual.html"></div>
       <div data-include="./partials/views/soundboard.html"></div>
     </div>
-    <div data-include="./partials/sidebar.html"></div>
+        <div data-include="./partials/sidebar.html"></div>
+      </div>
+    </div>
   </div>
 
   <div data-include="./partials/toast.html"></div>
 
   <script src="./scripts/include.js"></script>
+  <script src="./scripts/ui-select.js" defer></script>
   <script src="./scripts/app.core.js" defer></script>
+  <script src="./scripts/app.dashboard.js" defer></script>
   <script src="./scripts/app.connect.js" defer></script>
   <script src="./scripts/app.torneo.js" defer></script>
   <script src="./scripts/app.duelos.js" defer></script>

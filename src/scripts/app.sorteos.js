@@ -698,6 +698,45 @@ function _sorteoWheelStopSpin() {
   sorteoWheelState.spinning = false;
   sorteoWheelState.spinMeta = null;
   sorteoWheelState.lastTickIndex = -1;
+  _sorteoWheelExitFocus();
+}
+
+// ── Modo foco: la ruleta viaja suave hasta el centro de la pantalla ──
+function _sorteoWheelEnterFocus() {
+  const stage = document.getElementById('sorteoWheelStage');
+  if (!stage) { document.body.classList.add('sorteo-focus'); return; }
+  // First: congelar la posición/tamaño actuales para que al pasar a fixed no salte
+  const r = stage.getBoundingClientRect();
+  stage.style.setProperty('--f-top', r.top + 'px');
+  stage.style.setProperty('--f-left', r.left + 'px');
+  stage.style.setProperty('--f-w', r.width + 'px');
+  stage.style.setProperty('--f-h', r.height + 'px');
+  stage.style.setProperty('--f-dx', '0px');
+  stage.style.setProperty('--f-dy', '0px');
+  stage.style.setProperty('--f-scale', '1');
+  document.body.classList.add('sorteo-focus');
+  // Last: en el próximo frame, animar el transform hacia el centro + escala
+  requestAnimationFrame(() => {
+    if (!document.body.classList.contains('sorteo-focus')) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const canvas = document.getElementById('sorteoWheelCanvas');
+    const wheelW = (canvas ? canvas.getBoundingClientRect().width : r.width) || r.width;
+    const target = Math.min(Math.min(vw, vh) * 0.8, 600);
+    const scale = Math.max(1, target / wheelW);
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    stage.style.setProperty('--f-dx', (vw / 2 - cx).toFixed(1) + 'px');
+    stage.style.setProperty('--f-dy', (vh / 2 - cy).toFixed(1) + 'px');
+    stage.style.setProperty('--f-scale', scale.toFixed(3));
+  });
+}
+
+function _sorteoWheelExitFocus() {
+  document.body.classList.remove('sorteo-focus');
+  const stage = document.getElementById('sorteoWheelStage');
+  if (!stage) return;
+  ['--f-top', '--f-left', '--f-w', '--f-h', '--f-dx', '--f-dy', '--f-scale']
+    .forEach(p => stage.style.removeProperty(p));
 }
 
 function _sorteoWheelResetState({ reseedFromParticipantes = false, clearExcluded = true } = {}) {
@@ -788,7 +827,7 @@ function _addWinnerFromWheel(part) {
   if (!Array.isArray(sorteoCurrentWinners)) sorteoCurrentWinners = [];
   const exists = sorteoCurrentWinners.some(w => _nickKey(w.nick) === key);
   if (exists) return false;
-  sorteoCurrentWinners.unshift(normalized);
+  sorteoCurrentWinners.push(normalized);
   _renderSorteoWinners();
   return true;
 }
@@ -1142,6 +1181,7 @@ function _sorteoWheelStartSpin(targetIndex, durationSec) {
   sorteoWheelCloseWinner(true);
   _sorteoWheelStopSpin();
   sorteoWheelState.spinning = true;
+  _sorteoWheelEnterFocus();
 
   const arc = SORTEO_TAU / count;
   const jitter = (arc * 0.44) * (_sorteoWheelRand() - 0.5);

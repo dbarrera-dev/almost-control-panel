@@ -486,13 +486,25 @@
     return luminance >= 170;
   }
 
+  function clampNum(value, min, max, fallback) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
+  }
+
   function normalizeBackground(raw) {
     const bg = raw && typeof raw === 'object' ? raw : {};
     const type = String(bg.type || '').toLowerCase();
     const value = String(bg.value || '').trim();
-    if (!value || type === 'default') return { type: 'default', value: '' };
-    if (type !== 'url' && type !== 'upload') return { type: 'default', value: '' };
-    return { type, value };
+    if (!value || type === 'default') return { type: 'default', value: '', scale: 1, offsetX: 0, offsetY: 0 };
+    if (type !== 'url' && type !== 'upload') return { type: 'default', value: '', scale: 1, offsetX: 0, offsetY: 0 };
+    return {
+      type,
+      value,
+      scale: clampNum(bg.scale, 0.1, 5, 1),
+      offsetX: clampNum(bg.offsetX, -3, 3, 0),
+      offsetY: clampNum(bg.offsetY, -3, 3, 0),
+    };
   }
 
   function applyBackgroundImage() {
@@ -564,15 +576,40 @@
     const cRect = container.getBoundingClientRect();
     const cw = Math.max(1, Math.round(cRect.width));
     const ch = Math.max(1, Math.round(cRect.height));
-    document.documentElement.style.setProperty('--cw', cw + 'px');
-    document.documentElement.style.setProperty('--ch', ch + 'px');
+
+    // Escala + desplazamiento del fondo (configurable desde el panel).
+    // La imagen base cubre el cluster (cw x ch); al escalar centramos el zoom
+    // y aplicamos el pan como fracción del ancho/alto base.
+    const bg = normalizeBackground(cfg.background);
+    const scale = bg.scale || 1;
+    const offX = bg.offsetX || 0;
+    const offY = bg.offsetY || 0;
+    const bgW = Math.max(1, Math.round(cw * scale));
+    const bgH = Math.max(1, Math.round(ch * scale));
+    const anchorX = ((cw - bgW) / 2) + (offX * cw);
+    const anchorY = ((ch - bgH) / 2) + (offY * ch);
+
+    document.documentElement.style.setProperty('--cw', bgW + 'px');
+    document.documentElement.style.setProperty('--ch', bgH + 'px');
 
     const targets = container.querySelectorAll('.key, #mouse, #kb-brand');
     targets.forEach((el) => {
       const r = el.getBoundingClientRect();
-      el.style.setProperty('--bg-x', (-(r.left - cRect.left)) + 'px');
-      el.style.setProperty('--bg-y', (-(r.top  - cRect.top))  + 'px');
+      el.style.setProperty('--bg-x', (anchorX - (r.left - cRect.left)) + 'px');
+      el.style.setProperty('--bg-y', (anchorY - (r.top  - cRect.top))  + 'px');
     });
+
+    // Informa al panel de configuración (si estamos embebidos en un iframe)
+    // la posición y tamaño en pantalla del cluster, para mapear el arrastre 1:1.
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          source: 'ko-overlay',
+          type: 'layout',
+          rect: { x: cRect.left, y: cRect.top, w: cRect.width, h: cRect.height },
+        }, '*');
+      }
+    } catch {}
   }
 
   window.addEventListener('resize', () => requestAnimationFrame(positionBackgrounds));

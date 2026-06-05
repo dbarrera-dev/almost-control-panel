@@ -429,28 +429,36 @@
   position:absolute; opacity:0; pointer-events:none;
 }
 .sp-chip-toggle span {
-  display:inline-flex; align-items:center; gap:6px;
-  padding:5px 12px;
+  display:inline-flex; align-items:center; gap:7px;
+  padding:5px 12px 5px 9px;
   border-radius:999px;
   border:1px solid var(--border2);
-  background:transparent;
+  background:rgba(255,255,255,.015);
   color:var(--text3);
   font-family:'Inter',sans-serif;
   font-size:10.5px; font-weight:700;
   letter-spacing:.6px; text-transform:uppercase;
   transition:all .15s;
 }
+/* Anillo indicador: siempre visible (vacío = off), se llena al activar */
+.sp-chip-toggle span::before {
+  content:''; width:12px; height:12px; border-radius:50%; flex-shrink:0;
+  border:1.5px solid var(--border2); background:transparent;
+  transition:all .15s;
+}
 .sp-chip-toggle:hover span { color:var(--text2); border-color:var(--text3); }
+.sp-chip-toggle:hover span::before { border-color:var(--text3); }
 .sp-chip-toggle input:checked + span {
   background:var(--sp-green-soft);
   color:var(--sp);
   border-color:var(--sp-green-line);
 }
 .sp-chip-toggle input:checked + span::before {
-  content:''; width:5px; height:5px; border-radius:50%;
-  background:var(--sp);
-  box-shadow:0 0 6px var(--sp);
+  border-color:var(--sp);
+  background:radial-gradient(circle, var(--sp) 0 45%, transparent 48%);
+  box-shadow:0 0 7px rgba(29,185,84,.45);
 }
+.sp-chip-toggle input:focus-visible + span { outline:2px solid var(--sp-green-line); outline-offset:2px; }
 
 .sp-search-meta {
   font-family:'Inter',sans-serif;
@@ -613,3 +621,40 @@
 .toggle-wrap input:checked + .toggle-slider { background:#1DB954; border-color:#1DB954; box-shadow:0 0 10px rgba(29,185,84,.2); }
 .toggle-wrap input:checked + .toggle-slider:before { transform:translateX(18px); background:white; }
 
+
+/* ── Rediseño Módulo 05: page-head + ops-panel + player a una columna ── */
+#view-spotify .ops-panel { margin-bottom:14px; }
+
+/* Player en dos columnas: reproductor (izq) + cola siempre visible (der) */
+.sp-player-layout { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr); gap:14px; align-items:start; }
+.sp-player-layout .ops-panel { margin-bottom:0; }
+.sp-player-layout .sp-track-row { margin-bottom:12px; gap:14px; }
+.sp-player-layout .sp-progress-wrap { margin-bottom:12px; }
+.sp-player-layout .sp-volume-row { margin-top:12px; padding-top:12px; }
+.sp-queue-panel .sp-queue-preview-list { max-height:360px; }
+@media (max-width:900px) { .sp-player-layout { grid-template-columns:1fr; } }
+.sp-conn-note { font-size:12px; color:var(--text2); line-height:1.6; margin:0 0 14px; font-family:'Inter',sans-serif; }
+.sp-conn-note b { color:var(--text1); font-weight:600; }
+
+/* ── Conexión en el header + estado vacío (Módulo 05) ── */
+.sp-title-row { display:flex; align-items:center; gap:13px; flex-wrap:wrap; }
+.sp-conn-status { display:inline-flex; align-items:center; }
+.sp-conn-actions { display:inline-flex; align-items:center; gap:8px; }
+.sp-conn-actions.hidden, .sp-idle-hint.hidden { display:none; }
+
+.sp-idle-hint {
+  display:flex; flex-direction:column; align-items:center; text-align:center; gap:9px;
+  padding:56px 24px; margin-bottom:14px;
+  background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+  box-shadow:var(--card-shadow);
+}
+.sp-idle-ico {
+  width:56px; height:56px; border-radius:15px; margin-bottom:4px;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--sp); background:rgba(29,185,84,.1); border:1px solid var(--sp-green-line);
+}
+.sp-idle-title {
+  font-family:var(--display); font-style:italic; font-weight:800;
+  font-size:22px; letter-spacing:-.3px; text-transform:uppercase; color:var(--text);
+}
+.sp-idle-desc { max-width:380px; margin:0 0 6px; font-family:'Inter',sans-serif; font-size:12px; line-height:1.6; color:var(--text2); }

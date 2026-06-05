@@ -1,17 +1,44 @@
 <div class="view" id="view-duelos">
-    <div class="sh"><div class="sh-badge" style="background:#7c3aed;color:#e9d5ff">1v1</div><h2>Cola de 1v1</h2><p>Suscriptores que quieren jugar contra vos · tachá los completados</p></div>
-    <div class="card">
-      <div class="card-title" style="margin-bottom:12px">Agregar suscriptor</div>
+
+  <!-- ── Cabecera de página ───────────────────────────────────── -->
+  <header class="page-head">
+    <div class="page-head-main">
+      <div class="page-eyebrow">// Módulo 03</div>
+      <h1 class="page-title">1v1</h1>
+      <p class="page-sub">Suscriptores que quieren jugar contra vos. Agregalos a la cola y <b>tachá</b> los que ya completaste.</p>
+    </div>
+  </header>
+
+  <!-- ── Estado de la cola ────────────────────────────────────── -->
+  <div class="s-bar" id="dueloStatusBar">
+    <span class="s-bar-dot"></span>
+    <span class="s-bar-statetxt" id="dueloStatusTxt">COLA VACÍA</span>
+  </div>
+
+  <!-- ── Agregar suscriptor ───────────────────────────────────── -->
+  <section class="ops-panel">
+    <div class="ops-panel-head">
+      <span class="ops-panel-title"><span class="tick"></span>Agregar suscriptor</span>
+    </div>
+    <div class="ops-panel-body">
       <div class="duelo-add-row">
         <input id="dueloInput" type="text" placeholder="Nombre del suscriptor..." onkeydown="if(event.key==='Enter')addDuelo()" />
         <button class="btn btn-orange" onclick="addDuelo()">+ Agregar</button>
       </div>
     </div>
-    <div class="card">
-      <div class="card-title" style="margin-bottom:16px">Cola de duelos</div>
-      <div class="duelo-section-label">Pendientes <span id="dueloPendCount" style="color:var(--orange2)"></span></div>
+  </section>
+
+  <!-- ── Cola de duelos ───────────────────────────────────────── -->
+  <section class="ops-panel">
+    <div class="ops-panel-head">
+      <span class="ops-panel-title"><span class="tick"></span>Cola de duelos</span>
+      <span class="ops-panel-meta"><span id="dueloPendCount">0</span> pendientes</span>
+    </div>
+    <div class="ops-panel-body">
+      <div class="duelo-section-label">Pendientes <span id="dueloPendBadge" class="duelo-count"></span></div>
       <div id="dueloPendList"></div>
-      <div class="duelo-section-label" style="margin-top:24px">Completados <span id="dueloDoneCount" style="color:var(--text3)"></span></div>
+      <div class="duelo-section-label duelo-section-done">Completados <span id="dueloDoneBadge" class="duelo-count"></span></div>
       <div id="dueloDoneList"></div>
     </div>
-  </div>
+  </section>
+</div>

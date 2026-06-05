@@ -1,4 +1,11 @@
 function registerSoundboardIpc({ ipcMain, soundboardService }) {
+  function stripRendererFilePaths(payload) {
+    if (!payload || typeof payload !== 'object') return payload;
+    const clean = { ...payload };
+    delete clean.sourceFilePath;
+    return clean;
+  }
+
   ipcMain.handle('soundboard-get-state', async () => {
     const ready = await soundboardService.ensureReady();
     if (!ready.ok) return ready;
@@ -33,13 +40,13 @@ function registerSoundboardIpc({ ipcMain, soundboardService }) {
   });
 
   ipcMain.handle('soundboard-upload', async (_, payload) => {
-    const result = await soundboardService.insertSound(payload);
+    const result = await soundboardService.insertSound(stripRendererFilePaths(payload));
     if (!result.ok) return result;
     return { ...result, state: soundboardService.getState() };
   });
 
   ipcMain.handle('soundboard-update', async (_, id, patch) => {
-    const result = await soundboardService.updateSound(id, patch);
+    const result = await soundboardService.updateSound(id, stripRendererFilePaths(patch));
     if (!result.ok) return result;
     return { ...result, state: soundboardService.getState() };
   });

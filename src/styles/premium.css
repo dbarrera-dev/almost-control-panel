@@ -80,7 +80,7 @@ body {
   -webkit-backdrop-filter:blur(8px);
   transition:all .22s var(--ease-out-spring);
 }
-.tb-btn { border-radius:7px; transition:background .15s ease, color .15s ease, transform .15s ease; }
+.tb-btn { border-radius:var(--radius-sharp); transition:background .15s ease, color .15s ease, transform .15s ease; }
 .tb-btn:active { transform:scale(.94); }
 
 /* ── Tabs: indicador animado + hover refinado ── */
@@ -91,22 +91,8 @@ body {
     var(--bg1);
   border-bottom-color:var(--hairline-strong);
 }
-.tab { transition:color .2s ease, background .2s ease, border-color .35s var(--ease-out-spring); }
-.tab.on {
-  background:linear-gradient(to bottom, transparent 0%, rgba(224,112,0,.06) 75%, rgba(224,112,0,.12) 100%);
-  text-shadow:0 0 18px rgba(255,140,0,.25);
-}
-.tab.on::after {
-  content:'';
-  position:absolute;
-  left:14px; right:14px; bottom:-1px;
-  height:2px;
-  background:linear-gradient(90deg, transparent, var(--orange2), transparent);
-  border-radius:2px;
-  box-shadow:0 0 12px rgba(255,140,0,.55);
-}
-.tab.on { border-bottom-color:transparent; }
-.tab-badge { box-shadow:0 2px 8px rgba(224,112,0,.45), 0 0 0 1px rgba(255,255,255,.08) inset; }
+.tab { transition:color .2s ease, background .2s ease; }
+/* El estilo del nav (aside) vive en base.css; aquí no se sobreescribe. */
 
 /* ── Layout: separador con halo ── */
 #sidebar { border-left-color:var(--hairline-strong); box-shadow:inset 1px 0 0 rgba(255,255,255,.015); }
@@ -284,7 +270,7 @@ select:focus {
 
 /* ── Toast: más sutil ── */
 #toast {
-  border-radius:14px;
+  border-radius:var(--radius);
   backdrop-filter:saturate(160%) blur(20px);
   -webkit-backdrop-filter:saturate(160%) blur(20px);
   box-shadow:
@@ -328,7 +314,7 @@ select:focus {
 }
 button:focus-visible, .btn:focus-visible, .chip-tab:focus-visible, .tab:focus-visible, .tb-pill-btn:focus-visible {
   box-shadow:0 0 0 2px var(--bg0), 0 0 0 4px rgba(224,112,0,.6);
-  border-radius:8px;
+  border-radius:var(--radius-sharp);
 }
 
 /* ── Animación de entrada de vistas más cinematográfica ── */
@@ -374,7 +360,7 @@ code, kbd, .kick-inline-code code {
   letter-spacing:.1px;
   background:linear-gradient(180deg, rgba(0,0,0,.25), rgba(255,255,255,.018));
   border:1px solid var(--hairline-strong);
-  border-radius:6px;
+  border-radius:var(--radius-sharp);
   padding:1.5px 6px;
   color:var(--text1);
   box-shadow:0 1px 0 rgba(255,255,255,.02) inset, 0 1px 1px rgba(0,0,0,.2);
@@ -401,7 +387,7 @@ input:disabled, select:disabled, textarea:disabled {
 
 /* ── Alerts: relieve sutil + icono mejor balanceado ── */
 .alert {
-  border-radius:10px;
+  border-radius:var(--radius);
   padding:11px 14px;
   box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 1px 2px rgba(0,0,0,.2);
   backdrop-filter:blur(8px);
@@ -447,16 +433,6 @@ input:disabled, select:disabled, textarea:disabled {
   background-clip:text;
   color:transparent;
   text-shadow:0 1px 0 rgba(0,0,0,.4);
-}
-
-/* ── Tabs: hover menos invasivo ── */
-.tab:hover { background:transparent; color:var(--text1); }
-.tab.on { background:transparent; }
-.tab.on::after {
-  left:50%; right:auto;
-  width:32px;
-  transform:translateX(-50%);
-  transition:width .35s var(--ease-out-spring), opacity .25s ease;
 }
 
 /* ── Sidebar log: jerarquía más calmada ── */
@@ -595,7 +571,7 @@ input::placeholder, textarea::placeholder { letter-spacing:.2px; opacity:.7; }
   height:20px;
   padding:0 9px !important;
   margin-left:6px !important;
-  border-radius:999px;
+  border-radius:var(--radius-sharp);
   background:rgba(255,255,255,.025);
   border:1px solid var(--border2);
   font-family:'Inter',sans-serif !important;
@@ -637,7 +613,7 @@ input::placeholder, textarea::placeholder { letter-spacing:.2px; opacity:.7; }
   height:28px;
   padding:0 12px 0 10px;
   gap:7px;
-  border-radius:999px;
+  border-radius:var(--radius-sharp);
   background:
     linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015) 50%, rgba(0,0,0,.18)),
     var(--bg3);
@@ -726,14 +702,6 @@ input::placeholder, textarea::placeholder { letter-spacing:.2px; opacity:.7; }
   margin-left:10px;
   padding-left:10px;
   border-left:1px solid var(--hairline-strong);
-}
-
-/* ── Tabs: refinar hover + icon glow en activa ── */
-.tab { padding:0 18px; }
-.tab:hover { background:linear-gradient(180deg, transparent 0%, rgba(255,255,255,.025) 100%); }
-.tab.on .tab-icon {
-  filter:drop-shadow(0 0 6px rgba(255,140,0,.55));
-  opacity:1;
 }
 
 /* ── Reduce motion ── */

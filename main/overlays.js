@@ -1,4 +1,4 @@
-function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingData }) {
+function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingData, loadConfig }) {
   function pickLanIPv4() {
     try {
       const ifaces = os.networkInterfaces?.() || {};
@@ -13,6 +13,19 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
       }
     } catch {}
     return null;
+  }
+
+  function allowLanOverlays() {
+    try {
+      const cfg = loadConfig?.() || {};
+      return cfg.allowLanOverlays === true;
+    } catch {
+      return false;
+    }
+  }
+
+  function overlayBindHost() {
+    return allowLanOverlays() ? '0.0.0.0' : '127.0.0.1';
   }
 
   // ── Key Overlay ────────────────────────────────────────────────
@@ -181,14 +194,16 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
 
       uIOhook.start();
 
-      keyOverlayHttpServer.listen(9001, '0.0.0.0', () => {
-        const lanIp = pickLanIPv4();
+      const bindHost = overlayBindHost();
+      keyOverlayHttpServer.listen(9001, bindHost, () => {
+        const exposeLan = bindHost === '0.0.0.0';
+        const lanIp = exposeLan ? pickLanIPv4() : null;
         state.keyOverlayRunning = true;
         emitKeyOverlayStatus({
           running: true,
           url: 'http://localhost:9001',
           lanUrl: lanIp ? `http://${lanIp}:9001` : null,
-          bindHost: '0.0.0.0',
+          bindHost,
           error: null,
         });
       });
@@ -445,8 +460,10 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
         spotifyOverlayPoll().catch(() => {});
       });
 
-      spotifyOverlayHttpServer.listen(9002, '0.0.0.0', () => {
-        const lanIp = pickLanIPv4();
+      const bindHost = overlayBindHost();
+      spotifyOverlayHttpServer.listen(9002, bindHost, () => {
+        const exposeLan = bindHost === '0.0.0.0';
+        const lanIp = exposeLan ? pickLanIPv4() : null;
         state.spotifyOverlayRunning = true;
         if (spotifyOverlayPollTimer) clearInterval(spotifyOverlayPollTimer);
         spotifyOverlayPollTimer = setInterval(spotifyOverlayPoll, 3000);
@@ -458,7 +475,7 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
           lanRequesterUrl: lanIp ? `http://${lanIp}:9002/requester` : null,
           wsClients: 0,
           error: null,
-          bindHost: '0.0.0.0',
+          bindHost,
         });
       });
 

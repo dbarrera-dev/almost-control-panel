@@ -5,6 +5,41 @@ const http = require('http');
 const os = require('os');
 let autoUpdater = null;
 
+function isSafeExternalUrl(rawUrl) {
+  try {
+    const url = new URL(String(rawUrl || ''));
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+function openSafeExternalUrl(rawUrl) {
+  try {
+    const url = new URL(String(rawUrl || ''));
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
+    shell.openExternal(url.toString());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function lockWindowNavigation(win) {
+  if (!win?.webContents) return;
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    openSafeExternalUrl(url);
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (event, url) => {
+    try {
+      if (new URL(String(url || '')).protocol === 'file:') return;
+    } catch {}
+    event.preventDefault();
+    openSafeExternalUrl(url);
+  });
+}
+
 function resolveAppPath(relPath) {
   const appRoot = app.getAppPath();
   const candidates = [
@@ -48,7 +83,11 @@ function setupDiagnostics(win) {
     if (prefs?.nodeIntegration != null) log(`nodeIntegration: ${prefs.nodeIntegration}`);
   } catch {}
 
-  win.webContents.on('console-message', (_, level, message, line, sourceId) => {
+  win.webContents.on('console-message', (event) => {
+    const level = event?.level ?? 'info';
+    const message = event?.message ?? '';
+    const line = event?.lineNumber ?? 0;
+    const sourceId = event?.sourceId ?? '';
     log(`console[${level}] ${message} (${sourceId}:${line})`);
   });
   win.webContents.on('did-fail-load', (_, code, desc, url) => {
@@ -103,6 +142,7 @@ const { createSoundboardService } = require('./main/soundboard-service');
 const { registerSoundboardIpc } = require('./main/ipc/soundboard');
 const { createKickService } = require('./main/kick-service');
 const { createRuntimePresenceService } = require('./main/runtime-presence');
+const { createRocketLeagueLiveService } = require('./main/rocket-league-live-service');
 const {
   getSpotifyAccessToken,
   parseSpotifyResource,
@@ -435,6 +475,22 @@ function spotifyItemDisplayLabel(item) {
   return secondary ? `${name} — ${secondary}` : name;
 }
 
+function spotifyContextOpenUrl(context) {
+  const direct = String(context?.external_urls?.spotify || '').trim();
+  if (/^https:\/\/open\.spotify\.com\//i.test(direct)) return direct;
+
+  const type = String(context?.type || '').trim().toLowerCase();
+  const uri = String(context?.uri || '').trim();
+  const match = uri.match(/^spotify:([a-z]+):([a-zA-Z0-9]+)$/i);
+  if (!match) return '';
+
+  const uriType = String(match[1] || '').toLowerCase();
+  const id = String(match[2] || '').trim();
+  const finalType = type || uriType;
+  if (!id || !/^(playlist|album|artist)$/.test(finalType)) return '';
+  return `https://open.spotify.com/${finalType}/${id}`;
+}
+
 function cleanSongRequestTrackName(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -657,11 +713,15 @@ const {
   getSpotifyOverlayStatus,
   broadcastSpotify,
   startTeamsOverlay,
-  startRLOverlay,
-  refreshRLStats,
-  resetRLSessionTracking,
-  broadcastRL,
-} = createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingData });
+} = createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingData, loadConfig });
+
+const rocketLeagueLiveService = createRocketLeagueLiveService({
+  app,
+  saveLog,
+  getMainWindow: () => mainWindow,
+  overlayPath: resolveAppPath(path.join('src', 'overlay-rl.html')),
+  statsOverlayPath: resolveAppPath(path.join('src', 'overlay-rl-stats.html'))
+});
 
 const {
   kickApiRequest,
@@ -746,7 +806,7 @@ function registerIpcHandlers() {
   registerKeyOverlayIpc({ ipcMain, loadConfig, saveConfig, startKeyOverlay, stopKeyOverlay, getKeyOverlayStatus, broadcastOverlay, configMsg, configRefreshMsg, state });
   registerSpotifyOverlayIpc({ ipcMain, loadConfig, saveConfig, startSpotifyOverlay, getSpotifyOverlayStatus, broadcastSpotify, state });
   registerTeamsOverlayIpc({ ipcMain, state });
-  registerRlOverlayIpc({ ipcMain, loadConfig, saveConfig, startRLOverlay, refreshRLStats, resetRLSessionTracking, broadcastRL, state });
+  registerRlOverlayIpc({ ipcMain, rlLiveService: rocketLeagueLiveService });
   registerAudiolinkIpc({ ipcMain, loadConfig, saveConfig, saveLog, audiolinkService, obsService, state });
   registerObsDualIpc({ ipcMain, loadConfig, saveConfig, saveLog, obsDualService, state });
   registerObsDualRemoteIpc({ ipcMain, loadConfig, saveConfig, saveLog, obsDualRemoteService, state });
@@ -784,6 +844,7 @@ function createWindow() {
     }
   });
   setupDiagnostics(mainWindow);
+  lockWindowNavigation(mainWindow);
   mainWindow.loadFile(indexPath);
 
   mainWindow.on('close', (e) => {
@@ -795,6 +856,13 @@ function createWindow() {
 }
 
 function createSplash() {
+  const preloadCandidates = [
+    path.join(process.cwd(), 'splash-preload.js'),
+    path.join(app.getAppPath(), 'splash-preload.js'),
+    path.join(__dirname, 'splash-preload.js'),
+    path.join(process.resourcesPath || '', 'app.asar', 'splash-preload.js'),
+    path.join(process.resourcesPath || '', 'app', 'splash-preload.js'),
+  ];
   const splashPath = resolveAppPath(path.join('src', 'splash.html'));
   splashWindow = new BrowserWindow({
     width: 480, height: 320,
@@ -804,8 +872,14 @@ function createSplash() {
     transparent: true,
     backgroundColor: '#00000000',
     hasShadow: true,
-    webPreferences: { nodeIntegration: true, contextIsolation: false }
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,
+      preload: resolvePreloadPath(preloadCandidates),
+    }
   });
+  lockWindowNavigation(splashWindow);
   splashWindow.loadFile(splashPath);
 }
 
@@ -888,12 +962,19 @@ function createTray() {
   const iconPath = path.join(__dirname, 'assets', 'icon.ico');
   tray = new Tray(iconPath);
   tray.setToolTip('Almost Control');
+  const showMainWindowFromTray = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  };
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Mostrar', click: () => mainWindow?.show() },
+    { label: 'Mostrar', click: showMainWindowFromTray },
     { type: 'separator' },
     { label: 'Salir', click: () => { isQuitting = true; app.quit(); } },
   ]));
-  tray.on('double-click', () => mainWindow?.show());
+  tray.on('click', showMainWindowFromTray);
+  tray.on('double-click', showMainWindowFromTray);
 }
 
 app.whenReady().then(async () => {
@@ -955,7 +1036,8 @@ app.whenReady().then(async () => {
     saveLog('warn', `[Soundboard] No se pudo iniciar: ${err?.message || err}`);
   });
   startSpotifyOverlay();
-  startRLOverlay();
+  rocketLeagueLiveService.start();
+  state.rlOverlayRunning = true;
   startKeyOverlay();
   startTeamsOverlay();
   runtimePresenceService.start();
@@ -995,6 +1077,8 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => { /* no quit on close — tray keeps app alive */ });
 app.on('before-quit', () => {
   stopKeyOverlay();
+  state.rlOverlayRunning = false;
+  rocketLeagueLiveService.destroy();
   soundboardService.destroy();
   audiolinkService.destroy();
   obsService.disconnect();
@@ -1699,9 +1783,13 @@ async function processQueue() {
       try {
         _activeQueueActionForChat = actionName;
         const { nick, channel, action, link, gameNick } = item;
+        if (channel === '__kick__' && !kickPollTimer) {
+          saveLog('warn', `Descarté comando Kick !${actionName} de ${nick || 'unknown'} porque el bot está desconectado`);
+          continue;
+        }
     if (action === 'sorteo') {
       if (!sorteoActivo) {
-        await botSay(channel, `@${nick} El sorteo está cerrado en este momento.`);
+        saveLog('warn', `${nick} usó el comando de sorteo pero está cerrado`);
         continue;
       }
       if (!supabase) { continue; }
@@ -1840,19 +1928,19 @@ async function processQueue() {
         if (!nowPlayingOp.ok) throw new Error(nowPlayingOp.error || 'No se pudo obtener contexto actual');
         const track = nowPlayingOp.value;
         if (!track?.item) { await botSay(channel, '🎵 No hay nada reproduciéndose ahora.'); continue; }
-        const trackInfo = spotifyItemDisplayLabel(track.item) || String(track?.item?.name || 'contenido actual');
         const context = track.context;
-        const uri = context?.uri?.split(':').pop();
-        if (!context || !uri) {
-          await botSay(channel, `🎵 Estamos escuchando: ${trackInfo}`);
-        } else if (context.type === 'playlist') {
-          await botSay(channel, `🎵 Estamos escuchando esta playlist: https://open.spotify.com/playlist/${uri}`);
-        } else if (context.type === 'album') {
-          await botSay(channel, `💿 Estamos escuchando este álbum: https://open.spotify.com/album/${uri}`);
-        } else if (context.type === 'artist') {
-          await botSay(channel, `📻 Estamos escuchando: https://open.spotify.com/artist/${uri}`);
+        const contextType = String(context?.type || '').trim().toLowerCase();
+        const contextUrl = spotifyContextOpenUrl(context);
+        if (contextType === 'playlist' && contextUrl) {
+          await botSay(channel, `🎵 Playlist actual: ${contextUrl}`);
+        } else if (contextType === 'album' && contextUrl) {
+          await botSay(channel, `💿 Esto viene de un álbum, no de una playlist: ${contextUrl}`);
+        } else if (contextType === 'artist' && contextUrl) {
+          await botSay(channel, `📻 Esto viene de radio/artista, no de una playlist: ${contextUrl}`);
+        } else if (contextType) {
+          await botSay(channel, `🎵 Spotify no reporta una playlist activa ahora mismo (contexto: ${contextType}).`);
         } else {
-          await botSay(channel, `🎵 Estamos escuchando: ${trackInfo}`);
+          await botSay(channel, '🎵 No detecto una playlist activa. Puede estar sonando desde cola, búsqueda, radio o una canción suelta.');
         }
       } catch { await botSay(channel, '🎵 No se pudo obtener la playlist.'); }
       continue;
@@ -2034,13 +2122,16 @@ async function processQueue() {
 
     if (!currentTorneoId && (action === 'join' || action === 'leave')) {
       saveLog('warn', `${nick} usó !${action} pero no hay torneo activo`);
-      await botSay(channel, `@${nick} No hay torneo activo en este momento.`);
       continue;
     }
     if (action === 'join') {
       const requestedNick = String(gameNick || '').trim();
-      const fallbackNick = String(nick || '').trim();
-      const finalGameNick = (requestedNick || fallbackNick).replace(/\s+/g, ' ').slice(0, 40);
+      if (!requestedNick) {
+        await botSay(channel, `@${nick} Para anotarte al torneo tenés que poner tu usuario además del !join. Ejemplo: !join tu_usuario`);
+        saveLog('warn', `${nick} usó !join sin usuario`);
+        continue;
+      }
+      const finalGameNick = requestedNick.replace(/\s+/g, ' ').slice(0, 40);
       if (!finalGameNick) continue;
       const nickSet = torneoNicks;
       const nickLower = nick.toLowerCase();

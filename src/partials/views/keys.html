@@ -1,0 +1,245 @@
+<div class="view" id="view-keys">
+
+  <!-- ── Cabecera de página ───────────────────────────────────── -->
+  <header class="page-head">
+    <div class="page-head-main">
+      <div class="page-eyebrow">// Overlay</div>
+      <h1 class="page-title">Teclas</h1>
+      <p class="page-sub">Overlay de teclado y mouse para OBS. Activalo, elegí las teclas y personalizá el estilo del fondo.</p>
+    </div>
+  </header>
+
+  <!-- ── Estado + conexión OBS ────────────────────────────────── -->
+  <section class="ops-panel">
+    <div class="ops-panel-head">
+      <span class="ops-panel-title"><span class="tick"></span>Estado del overlay</span>
+      <label class="toggle-wrap" style="flex-shrink:0">
+        <input type="checkbox" id="koToggle" onchange="koToggle(this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="ops-panel-body">
+      <div id="koStatusText" style="font-size:11px;color:var(--text3)">Desactivado</div>
+      <div id="koUrlRow" class="info-box hidden" style="margin-top:12px">
+        <div class="info-box-label">URL para Browser Source en OBS</div>
+        <div class="info-box-url">
+          <code id="koUrlInput">http://localhost:9001</code>
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px;flex-shrink:0" onclick="koCopyUrl(this)">Copiar</button>
+        </div>
+        <p style="font-size:10px;color:var(--text3);margin-top:8px;line-height:1.6">En OBS: <strong style="color:var(--text2)">Fuentes → + → Browser Source</strong> · pegá la URL · activá <em>Transparency</em></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Preview en vivo ──────────────────────────────────────── -->
+  <section class="ops-panel">
+    <div class="ops-panel-head">
+      <span class="ops-panel-title"><span class="tick"></span>Preview en vivo</span>
+      <span class="ops-panel-meta">presioná teclas</span>
+    </div>
+    <div class="ops-panel-body">
+      <div id="koPreview" style="min-height:52px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;border:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--text3)">Activá el overlay y presioná teclas...</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Teclas a mostrar ─────────────────────────────────────── -->
+  <section class="ops-panel">
+    <div class="ops-panel-head">
+      <span class="ops-panel-title"><span class="tick"></span>Teclas a mostrar</span>
+      <span class="ops-panel-meta">click para activar/desactivar</span>
+    </div>
+    <div class="ops-panel-body">
+      <div id="ko-keyboard">
+        <!-- Row: Fn + F keys + right cluster top -->
+        <div class="ko-kb-row">
+          <div class="ko-key" data-kc="1">Esc</div>
+          <div class="ko-grp"></div>
+          <div class="ko-key" data-kc="59">F1</div><div class="ko-key" data-kc="60">F2</div>
+          <div class="ko-key" data-kc="61">F3</div><div class="ko-key" data-kc="62">F4</div>
+          <div class="ko-grp"></div>
+          <div class="ko-key" data-kc="63">F5</div><div class="ko-key" data-kc="64">F6</div>
+          <div class="ko-key" data-kc="65">F7</div><div class="ko-key" data-kc="66">F8</div>
+          <div class="ko-grp"></div>
+          <div class="ko-key" data-kc="67">F9</div><div class="ko-key" data-kc="68">F10</div>
+          <div class="ko-key" data-kc="87">F11</div><div class="ko-key" data-kc="88">F12</div>
+          <div class="ko-grp"></div>
+          <div class="ko-ph">Prt</div><div class="ko-ph">Scl</div><div class="ko-ph">Pse</div>
+        </div>
+        <!-- Row: numbers -->
+        <div class="ko-kb-row">
+          <div class="ko-key" data-kc="41">`</div>
+          <div class="ko-key" data-kc="2">1</div><div class="ko-key" data-kc="3">2</div>
+          <div class="ko-key" data-kc="4">3</div><div class="ko-key" data-kc="5">4</div>
+          <div class="ko-key" data-kc="6">5</div><div class="ko-key" data-kc="7">6</div>
+          <div class="ko-key" data-kc="8">7</div><div class="ko-key" data-kc="9">8</div>
+          <div class="ko-key" data-kc="10">9</div><div class="ko-key" data-kc="11">0</div>
+          <div class="ko-key" data-kc="12">-</div><div class="ko-key" data-kc="13">=</div>
+          <div class="ko-key ko-w2" data-kc="14">⌫</div>
+          <div class="ko-grp"></div>
+          <div class="ko-ph">Ins</div><div class="ko-grp" style="min-width:28px"></div><div class="ko-ph">PgU</div>
+        </div>
+        <!-- Row: Tab + QWERTY -->
+        <div class="ko-kb-row">
+          <div class="ko-key ko-w15" data-kc="15">Tab</div>
+          <div class="ko-key" data-kc="16">Q</div>
+          <div class="ko-key ko-key-hi" data-kc="17">W</div>
+          <div class="ko-key" data-kc="18">E</div><div class="ko-key" data-kc="19">R</div>
+          <div class="ko-key" data-kc="20">T</div><div class="ko-key" data-kc="21">Y</div>
+          <div class="ko-key" data-kc="22">U</div><div class="ko-key" data-kc="23">I</div>
+          <div class="ko-key" data-kc="24">O</div><div class="ko-key" data-kc="25">P</div>
+          <div class="ko-key" data-kc="26">[</div><div class="ko-key" data-kc="27">]</div>
+          <div class="ko-key ko-w15" data-kc="43">\</div>
+          <div class="ko-grp"></div>
+          <div class="ko-ph">Del</div><div class="ko-grp" style="min-width:28px"></div><div class="ko-ph">PgD</div>
+        </div>
+        <!-- Row: Caps + ASDF -->
+        <div class="ko-kb-row">
+          <div class="ko-key ko-w175" data-kc="58">Caps</div>
+          <div class="ko-key ko-key-hi" data-kc="30">A</div>
+          <div class="ko-key ko-key-hi" data-kc="31">S</div>
+          <div class="ko-key ko-key-hi" data-kc="32">D</div>
+          <div class="ko-key" data-kc="33">F</div>
+          <div class="ko-key" data-kc="34">G</div><div class="ko-key" data-kc="35">H</div>
+          <div class="ko-key" data-kc="36">J</div><div class="ko-key" data-kc="37">K</div>
+          <div class="ko-key" data-kc="38">L</div>
+          <div class="ko-key" data-kc="39">Ñ</div>
+          <div class="ko-key" data-kc="40">'</div>
+          <div class="ko-key ko-w225" data-kc="28">↵</div>
+          <div class="ko-grp"></div>
+          <div class="ko-ph">Hom</div><div class="ko-grp" style="min-width:28px"></div><div class="ko-ph">End</div>
+        </div>
+        <!-- Row: LShift + ZXCV + RShift + ↑ -->
+        <div class="ko-kb-row">
+          <div class="ko-key ko-w225" data-kc="42">L-Shift</div>
+          <div class="ko-key" data-kc="44">Z</div><div class="ko-key" data-kc="45">X</div>
+          <div class="ko-key" data-kc="46">C</div><div class="ko-key" data-kc="47">V</div>
+          <div class="ko-key" data-kc="48">B</div><div class="ko-key" data-kc="49">N</div>
+          <div class="ko-key" data-kc="50">M</div>
+          <div class="ko-key" data-kc="51">,</div><div class="ko-key" data-kc="52">.</div>
+          <div class="ko-key" data-kc="53">/</div>
+          <div class="ko-key ko-w275" data-kc="54">R-Shift</div>
+          <div class="ko-grp"></div>
+          <div class="ko-key" data-kc="57416">↑</div>
+        </div>
+        <!-- Row: modifiers + space + arrows -->
+        <div class="ko-kb-row">
+          <div class="ko-key ko-w125" data-kc="29">Ctrl</div>
+          <div class="ko-ph ko-w125">Win</div>
+          <div class="ko-key ko-w125" data-kc="56">Alt</div>
+          <div class="ko-key ko-wsp" data-kc="57">Space</div>
+          <div class="ko-ph ko-w125">R-Alt</div>
+          <div class="ko-ph">Fn</div>
+          <div class="ko-grp"></div>
+          <div class="ko-key" data-kc="57419">←</div>
+          <div class="ko-key" data-kc="57424">↓</div>
+          <div class="ko-key" data-kc="57421">→</div>
+        </div>
+        <!-- Mouse -->
+        <div class="ko-kb-row" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.05)">
+          <div class="ko-key" data-kc="m1">LMB</div>
+          <div class="ko-key" data-kc="m2">RMB</div>
+          <div class="ko-key" data-kc="m3">MMB</div>
+        </div>
+      </div>
+
+      <!-- Detectar tecla -->
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <span class="section-label" style="margin-bottom:8px">¿No aparece tu tecla? Detectala directamente</span>
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-ghost" id="koDetectBtn" onclick="koDetectStart()" style="font-size:11px;padding:5px 13px">Detectar tecla</button>
+          <span id="koDetectStatus" style="font-size:11px;color:var(--text3)"></span>
+          <input id="koDetectLabel" type="text" placeholder="Etiqueta (ej: Ñ)" style="width:90px;font-size:11px;display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:5px;padding:4px 8px;color:var(--text);outline:none">
+          <button id="koDetectAdd" class="btn btn-ghost" onclick="koDetectAdd()" style="font-size:11px;padding:5px 12px;display:none;border-color:rgba(74,222,128,.35);color:#4ade80">Agregar</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Estilo ───────────────────────────────────────────────── -->
+  <section class="ops-panel">
+    <div class="ops-panel-head">
+      <span class="ops-panel-title"><span class="tick"></span>Estilo</span>
+    </div>
+    <div class="ops-panel-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="ig" style="margin-bottom:0">
+          <label>Tamaño</label>
+          <div style="display:flex;gap:5px">
+            <button class="btn btn-ghost ko-size" id="ksz-sm"  onclick="koSetSize('sm')"  style="padding:4px 10px;font-size:11px">S</button>
+            <button class="btn btn-ghost ko-size" id="ksz-md"  onclick="koSetSize('md')"  style="padding:4px 10px;font-size:11px">M</button>
+            <button class="btn btn-ghost ko-size" id="ksz-lg"  onclick="koSetSize('lg')"  style="padding:4px 10px;font-size:11px">L</button>
+            <button class="btn btn-ghost ko-size" id="ksz-xl"  onclick="koSetSize('xl')"  style="padding:4px 10px;font-size:11px">XL</button>
+          </div>
+        </div>
+        <div class="ig" style="margin-bottom:0">
+          <label>Opacidad teclas inactivas <span id="koOpacityVal" style="color:var(--text2);font-weight:600;float:right"></span></label>
+          <input type="range" id="koInactiveOpacity" min="0" max="1" step="0.05" oninput="koOnOpacity(this.value)" style="width:100%;accent-color:var(--orange);margin-top:8px">
+        </div>
+        <div class="ig" style="margin-bottom:0">
+          <label>Color texto</label>
+          <input type="color" id="koKeyColor" value="#ffffff" oninput="koSaveConfig()" style="width:48px;height:32px;border:none;background:none;cursor:pointer">
+        </div>
+        <div class="ig" style="margin-bottom:0">
+          <label>Color al presionar</label>
+          <input type="color" id="koAccentColor" value="#f97316" oninput="koSaveConfig()" style="width:48px;height:32px;border:none;background:none;cursor:pointer">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Fondo del overlay ────────────────────────────────────── -->
+  <section class="ops-panel">
+    <div class="ops-panel-head">
+      <span class="ops-panel-title"><span class="tick"></span>Fondo del overlay</span>
+    </div>
+    <div class="ops-panel-body">
+      <div style="font-size:10px;color:var(--text3);line-height:1.5;margin-bottom:10px">Usá una URL externa o subí una imagen local. Después arrastrá y ajustá el zoom para encuadrarla. Se sincroniza en tiempo real por Supabase.</div>
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+        <input id="koBgUrl" type="text" placeholder="https://mi-imagen.com/fondo.jpg" style="min-width:260px;flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 9px;color:var(--text);font-size:11px;outline:none">
+        <button class="btn btn-ghost" onclick="koApplyBackgroundUrl()" style="padding:5px 10px;font-size:10px">Usar URL</button>
+        <button class="btn btn-ghost" onclick="koOpenBackgroundFilePicker()" style="padding:5px 10px;font-size:10px">Subir imagen</button>
+        <button class="btn btn-ghost" onclick="koClearBackground()" style="padding:5px 10px;font-size:10px">Quitar fondo</button>
+        <input type="file" id="koBgFile" accept="image/*" onchange="koUploadBackground(this)" style="display:none">
+      </div>
+      <div id="koBgMeta" style="margin-top:8px;font-size:10px;color:var(--text3);line-height:1.5">Usando fondo por defecto.</div>
+
+      <!-- Editor interactivo: preview en vivo del overlay (localhost:9001) -->
+      <div id="koBgEditor" class="ko-bg-editor" style="display:none">
+        <div id="koBgStage" class="ko-bg-stage">
+          <iframe id="koBgFrame" class="ko-bg-frame" title="Preview overlay teclas" scrolling="no"></iframe>
+          <div id="koBgFrameOutline" class="ko-bg-outline" style="display:none"></div>
+          <div id="koBgDrag" class="ko-bg-drag" title="Arrastrá para mover el fondo"></div>
+        </div>
+        <div class="ko-bg-controls">
+          <div class="ko-bg-zoom">
+            <span style="font-size:10px;color:var(--text3);min-width:30px">Zoom</span>
+            <input id="koBgScale" type="range" min="0.2" max="4" step="0.01" value="1"
+                   oninput="koBgOnScaleInput(this.value)" onchange="koBgPersist()"
+                   style="flex:1;accent-color:var(--orange)">
+            <span id="koBgScaleVal" style="font-size:10px;color:var(--text2);font-weight:600;min-width:36px;text-align:right">100%</span>
+          </div>
+          <button class="btn btn-ghost" onclick="koBgCenter()" style="padding:5px 10px;font-size:10px">Centrar</button>
+          <button class="btn btn-ghost" onclick="koBgReset()" style="padding:5px 10px;font-size:10px">Restablecer</button>
+        </div>
+        <div style="font-size:10px;color:var(--text3);line-height:1.5;margin-top:6px">Arrastrá la imagen para reposicionarla · rueda del mouse para zoom. El recuadro punteado marca el área real del teclado.</div>
+      </div>
+      <div id="koBgEditorHint" style="display:none;margin-top:10px;font-size:10px;color:var(--text3);line-height:1.5;background:rgba(0,0,0,.25);border:1px dashed var(--border2);border-radius:8px;padding:12px">Activá el overlay con el toggle de arriba para previsualizar y ajustar la posición del fondo en vivo.</div>
+    </div>
+  </section>
+
+  <!-- ── Modo Wooting ─────────────────────────────────────────── -->
+  <section class="ops-panel">
+    <div class="ops-panel-head">
+      <span class="ops-panel-title"><span class="tick"></span>Modo Wooting</span>
+      <label class="toggle-wrap" style="flex-shrink:0">
+        <input type="checkbox" id="koGamepadToggle" onchange="koSaveConfig()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="ops-panel-body">
+      <div style="font-size:11px;color:var(--text3);line-height:1.6">Wooting analógico · detecta el stick → <strong style="color:var(--text2)">W A S D</strong> en el overlay.</div>
+    </div>
+  </section>
+</div>

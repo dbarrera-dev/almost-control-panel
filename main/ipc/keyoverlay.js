@@ -26,6 +26,12 @@ function clampOpacity(value, fallback) {
   return Math.max(0, Math.min(1, n));
 }
 
+function clampNum(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
 function normalizeBackground(raw) {
   const bg = raw && typeof raw === 'object' ? raw : {};
   const type = BG_TYPE_SET.has(String(bg.type || '').toLowerCase())
@@ -33,12 +39,21 @@ function normalizeBackground(raw) {
     : 'default';
   const value = String(bg.value || '').trim();
   if (!value || type === 'default') {
-    return { type: 'default', value: '', name: '' };
+    return { type: 'default', value: '', name: '', scale: 1, offsetX: 0, offsetY: 0 };
   }
   const name = String(bg.name || '').trim().slice(0, 255);
   const bucket = String(bg.bucket || '').trim();
   const storagePath = String(bg.storagePath || '').trim().replace(/\\/g, '/');
-  return { type, value, name, bucket, storagePath };
+  return {
+    type,
+    value,
+    name,
+    bucket,
+    storagePath,
+    scale: clampNum(bg.scale, 0.1, 5, 1),
+    offsetX: clampNum(bg.offsetX, -3, 3, 0),
+    offsetY: clampNum(bg.offsetY, -3, 3, 0),
+  };
 }
 
 function normalizeKeyOverlayConfig(incoming, previous) {
@@ -462,6 +477,21 @@ function registerKeyOverlayIpc({ ipcMain, loadConfig, saveConfig, startKeyOverla
     const syncRes = await syncConfigToSupabase('set-config');
     if (!syncRes.ok) return { ok: true, synced: false, error: syncRes.error || 'No se pudo sincronizar en Supabase' };
     return { ok: true, synced: true };
+  });
+
+  // Preview en vivo (drag/zoom del fondo): difunde a los overlays conectados
+  // sin escribir en disco ni sincronizar con Supabase. El estado definitivo se
+  // persiste con keyoverlay-set-config al soltar.
+  ipcMain.handle('keyoverlay-preview-config', (_, cfg) => {
+    ensureRealtimeSync();
+    applyConfig(cfg, {
+      persistLocal: false,
+      broadcast: true,
+      notifyRenderer: false,
+      source: 'local',
+      markLocalChange: true,
+    });
+    return { ok: true };
   });
 
   ipcMain.handle('keyoverlay-upload-background', async (_, payload) => {

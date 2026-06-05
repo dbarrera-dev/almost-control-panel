@@ -1,0 +1,185 @@
+<div class="view on" id="view-dashboard">
+
+  <!-- ── Cabecera ──────────────────────────────────────────────── -->
+  <header class="page-head">
+    <div class="page-head-main">
+      <div class="page-eyebrow">// Panel</div>
+      <h1 class="page-title">Dashboard</h1>
+      <p class="page-sub">Estado del stream y accesos rápidos.</p>
+    </div>
+    <div class="page-actions">
+      <span class="dash-version" id="dashVersion">v—</span>
+      <button class="btn btn-ghost btn-ico" onclick="loadDashboard()" title="Refrescar estado">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        Refrescar
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Tarjetas de estado ────────────────────────────────────── -->
+  <div class="dash-status-grid">
+
+    <!-- Kick -->
+    <div class="dash-stat-card" id="dashKickCard">
+      <div class="dash-stat-top">
+        <span class="dash-stat-ico kick">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1.333 0h8v5.333H12V2.667h2.667V0h8v8H20v2.667h-2.667v2.666H20V16h2.667v8h-8v-2.667H12v-2.666H9.333V24h-8Z"/></svg>
+        </span>
+        <span class="dash-stat-label">Kick</span>
+        <span class="dash-dot" id="dashKickDot"></span>
+      </div>
+      <div class="dash-stat-value" id="dashKickStatus">Cargando...</div>
+      <div class="dash-stat-meta" id="dashKickChannel">—</div>
+      <button class="dash-stat-cta" id="dashKickBtn" onclick="toggleKickBot()">Conectar</button>
+    </div>
+
+    <!-- Spotify -->
+    <div class="dash-stat-card" id="dashSpotifyCard">
+      <div class="dash-stat-top">
+        <span class="dash-stat-ico spotify">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+        </span>
+        <span class="dash-stat-label">Spotify</span>
+        <span class="dash-dot" id="dashSpotifyDot"></span>
+      </div>
+      <div class="dash-stat-value" id="dashSpotifyStatus">Cargando...</div>
+      <div class="dash-stat-meta" id="dashSpotifyTrack">—</div>
+      <button class="dash-stat-cta" onclick="goTab('spotify')">Abrir música</button>
+    </div>
+
+    <!-- Torneo activo -->
+    <div class="dash-stat-card" id="dashTorneoCard">
+      <div class="dash-stat-top">
+        <span class="dash-stat-ico torneo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        </span>
+        <span class="dash-stat-label">Torneo</span>
+        <span class="dash-dot" id="dashTorneoDot"></span>
+      </div>
+      <div class="dash-stat-value" id="dashTorneoStatus">Sin torneo activo</div>
+      <div class="dash-stat-meta" id="dashTorneoSub">—</div>
+      <button class="dash-stat-cta" onclick="goTab('torneo')">Ir a torneos</button>
+    </div>
+
+    <!-- Song Request -->
+    <div class="dash-stat-card" id="dashSrCard">
+      <div class="dash-stat-top">
+        <span class="dash-stat-ico sr">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </span>
+        <span class="dash-stat-label">Song Request</span>
+        <span class="dash-dot" id="dashSrDot"></span>
+      </div>
+      <div class="dash-stat-value" id="dashSrStatus">—</div>
+      <div class="dash-stat-meta" id="dashSrSub">Pedidos de canciones</div>
+      <button class="dash-stat-cta" onclick="goTab('spotify')">Gestionar</button>
+    </div>
+
+  </div>
+
+  <!-- ── Columnas ──────────────────────────────────────────────── -->
+  <div class="dash-cols">
+
+    <!-- Acciones rápidas -->
+    <section class="ops-panel">
+      <div class="ops-panel-head">
+        <span class="ops-panel-title"><span class="tick"></span>Acciones rápidas</span>
+      </div>
+      <div class="ops-panel-body">
+        <div class="dash-actions">
+          <button class="dash-action" onclick="goTab('torneo')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+            <span>Torneos</span>
+          </button>
+          <button class="dash-action" onclick="goTab('sorteos')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
+            <span>Sorteos</span>
+          </button>
+          <button class="dash-action" onclick="goTab('duelos')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="m16 16 3.5 3.5"/><path d="M14.5 6.5 18 3h3v3l-3.5 3.5"/><path d="m5 14 4 4"/></svg>
+            <span>1v1</span>
+          </button>
+          <button class="dash-action" onclick="goTab('todos')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            <span>Tareas</span>
+          </button>
+          <button class="dash-action" onclick="goTab('spotify')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            <span>Música</span>
+          </button>
+          <button class="dash-action" onclick="goTab('overlays')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/></svg>
+            <span>Overlays</span>
+          </button>
+          <button class="dash-action" onclick="goTab('keys')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="M6 8h.01"/><path d="M10 8h.01"/><path d="M14 8h.01"/><path d="M18 8h.01"/><path d="M7 16h10"/></svg>
+            <span>Teclas</span>
+          </button>
+          <button class="dash-action" onclick="goTab('rl')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 12 2.1 13.4"/><path d="m5 4.9 3.2 6.8"/><path d="m18 2 .6 6.4"/><path d="m22 12-6.4.6"/></svg>
+            <span>Rocket League</span>
+          </button>
+          <button class="dash-action" onclick="goTab('config')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Config</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Columna derecha -->
+    <div class="dash-side">
+
+      <!-- Overlays -->
+      <section class="ops-panel">
+        <div class="ops-panel-head">
+          <span class="ops-panel-title"><span class="tick"></span>Overlays</span>
+        </div>
+        <div class="ops-panel-body dash-ov-body">
+          <div class="dash-ov-row">
+            <span class="dash-dot" id="dashOv-keys-dot"></span>
+            <span class="dash-ov-name">Teclas</span>
+            <span class="dash-ov-status" id="dashOv-keys-status">—</span>
+            <button class="dash-ov-btn" id="dashOv-keys-btn" disabled>Abrir</button>
+          </div>
+          <div class="dash-ov-row">
+            <span class="dash-dot" id="dashOv-spotify-dot"></span>
+            <span class="dash-ov-name">Spotify</span>
+            <span class="dash-ov-status" id="dashOv-spotify-status">—</span>
+            <button class="dash-ov-btn" id="dashOv-spotify-btn" disabled>Abrir</button>
+          </div>
+          <div class="dash-ov-row">
+            <span class="dash-dot" id="dashOv-rl-dot"></span>
+            <span class="dash-ov-name">Rocket League</span>
+            <span class="dash-ov-status" id="dashOv-rl-status">—</span>
+            <button class="dash-ov-btn" id="dashOv-rl-btn" disabled>Abrir</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Resumen -->
+      <section class="ops-panel">
+        <div class="ops-panel-head">
+          <span class="ops-panel-title"><span class="tick"></span>Resumen</span>
+        </div>
+        <div class="ops-panel-body">
+          <div class="dash-mini-stats">
+            <div class="dash-mini">
+              <div class="dash-mini-n" id="dashTodos">0</div>
+              <div class="dash-mini-l">Tareas pendientes</div>
+            </div>
+            <div class="dash-mini">
+              <div class="dash-mini-n" id="dashDuelos">0</div>
+              <div class="dash-mini-l">1v1 pendientes</div>
+            </div>
+            <div class="dash-mini">
+              <div class="dash-mini-n accent" id="dashPart">0</div>
+              <div class="dash-mini-l">Participantes</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>

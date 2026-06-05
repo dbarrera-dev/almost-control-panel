@@ -1,14 +1,23 @@
 function registerUtilsIpc({ ipcMain, shell }) {
-  ipcMain.handle('open-url', (_, url) => {
-    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-      shell.openExternal(url);
+  function openSafeExternal(url) {
+    try {
+      const parsed = new URL(String(url || ''));
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return { ok: false, error: 'URL inválida' };
+      }
+      shell.openExternal(parsed.toString());
       return { ok: true };
+    } catch {
+      return { ok: false, error: 'URL inválida' };
     }
-    return { ok: false, error: 'URL inválida' };
+  }
+
+  ipcMain.handle('open-url', (_, url) => {
+    return openSafeExternal(url);
   });
 
   ipcMain.handle('open-external', (_, url) => {
-    shell.openExternal(url);
+    return openSafeExternal(url);
   });
 }
 
