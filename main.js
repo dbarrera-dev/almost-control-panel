@@ -593,8 +593,9 @@ let koDetecting = false;
 let keyOverlayConfig = {
   selectedKeys: [42,16,17,18,30,31,32,23,24,37,38,57],
   customKeys: [], // [{keycode, label, row}] - teclas detectadas manualmente
-  style: { fontSize: 'md', keyColor: '#ffffff', bgColor: 'rgba(15,15,20,0.9)', accentColor: '#f97316', fadeDelay: 0, inactiveOpacity: 0.3 },
-  background: { type: 'default', value: '', name: '' },
+  style: { fontSize: 'md', fontFamily: 'russo', keyColor: '#ffffff', bgColor: 'rgba(15,15,20,0.9)', accentColor: '#f97316', fadeDelay: 0, inactiveOpacity: 0.3, showBrand: true, brandText: 'WOOTING 80HE' },
+  background: { type: 'default', enabled: true, value: '', name: '', scale: 1, rotation: 0, offsetX: 0, offsetY: 0 },
+  keyStyles: {},
   gamepadEnabled: false,
   gamepadButtons: {} // e.g. { "0": 57 } = button 0 -> Space
 };
@@ -1008,6 +1009,7 @@ app.whenReady().then(async () => {
       ...cfg.keyOverlayConfig,
       style: { ...keyOverlayConfig.style, ...(cfg.keyOverlayConfig.style || {}) },
       background: { ...keyOverlayConfig.background, ...(cfg.keyOverlayConfig.background || {}) },
+      keyStyles: { ...(keyOverlayConfig.keyStyles || {}), ...(cfg.keyOverlayConfig.keyStyles || {}) },
     };
   }
   if (cfg.spotifyOverlayConfig)  spotifyOverlayConfig  = cfg.spotifyOverlayConfig;

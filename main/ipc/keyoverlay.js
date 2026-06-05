@@ -2,6 +2,7 @@ const KEY_OVERLAY_ROW_KEY = 'key_overlay';
 const REMOTE_POLL_MS = 2500;
 const LOCAL_REMOTE_GRACE_MS = 1800;
 const BG_TYPE_SET = new Set(['default', 'url', 'upload']);
+const KO_FONT_SET = new Set(['russo', 'bangers', 'inter', 'system', 'mono', 'serif']);
 const KO_BG_MAX_BYTES = 3 * 1024 * 1024;
 const KO_BG_ALLOWED_MIME = new Set([
   'image/jpeg',
@@ -19,6 +20,10 @@ const KO_BG_EXT_BY_MIME = {
   'image/gif': '.gif',
   'image/svg+xml': '.svg',
 };
+const KO_BG_SIGNED_URL_SECONDS = 60 * 60 * 24 * 365 * 10;
+const KO_BG_FOLDER = 'key-overlay/background';
+const KO_KEY_IMAGE_FOLDER = 'key-overlay/keys';
+const KO_KEY_IMAGE_PAN_LIMIT = 50;
 
 function clampOpacity(value, fallback) {
   const n = Number(value);
@@ -37,23 +42,67 @@ function normalizeBackground(raw) {
   const type = BG_TYPE_SET.has(String(bg.type || '').toLowerCase())
     ? String(bg.type || '').toLowerCase()
     : 'default';
+  const enabled = bg.enabled !== false;
   const value = String(bg.value || '').trim();
   if (!value || type === 'default') {
-    return { type: 'default', value: '', name: '', scale: 1, offsetX: 0, offsetY: 0 };
+    return { type: 'default', enabled, value: '', name: '', scale: 1, rotation: 0, offsetX: 0, offsetY: 0 };
   }
   const name = String(bg.name || '').trim().slice(0, 255);
   const bucket = String(bg.bucket || '').trim();
   const storagePath = String(bg.storagePath || '').trim().replace(/\\/g, '/');
   return {
     type,
+    enabled,
     value,
     name,
     bucket,
     storagePath,
     scale: clampNum(bg.scale, 0.1, 5, 1),
+    rotation: clampNum(bg.rotation, -180, 180, 0),
     offsetX: clampNum(bg.offsetX, -3, 3, 0),
     offsetY: clampNum(bg.offsetY, -3, 3, 0),
   };
+}
+
+function normalizeKeyStyles(raw, previous) {
+  const src = raw && typeof raw === 'object' ? raw : (previous && typeof previous === 'object' ? previous : {});
+  const out = {};
+  for (const key of Object.keys(src)) {
+    const item = src[key] && typeof src[key] === 'object' ? src[key] : {};
+    const clean = {};
+    const label = String(item.label ?? '').trim().slice(0, 30);
+    const sub = String(item.sub ?? '').trim().slice(0, 30);
+    const keyColor = String(item.keyColor ?? '').trim();
+    const bgColor = String(item.bgColor ?? '').trim();
+    const accentColor = String(item.accentColor ?? '').trim();
+    const image = item.image && typeof item.image === 'object' ? item.image : null;
+    if (label) clean.label = label;
+    if (sub) clean.sub = sub;
+    if (keyColor) clean.keyColor = keyColor;
+    if (bgColor) clean.bgColor = bgColor;
+    if (accentColor) clean.accentColor = accentColor;
+    if (image) {
+      const type = BG_TYPE_SET.has(String(image.type || '').toLowerCase()) ? String(image.type || '').toLowerCase() : 'url';
+      const value = String(image.value || '').trim();
+      if (value && type !== 'default') {
+        clean.image = {
+          type,
+          value,
+          name: String(image.name || '').trim().slice(0, 255),
+          bucket: String(image.bucket || '').trim(),
+          storagePath: String(image.storagePath || '').trim().replace(/\\/g, '/'),
+          fit: ['cover', 'contain'].includes(String(image.fit || '').toLowerCase()) ? String(image.fit || '').toLowerCase() : 'cover',
+          opacity: clampOpacity(image.opacity, 1),
+          scale: clampNum(image.scale, 0.2, 4, 1),
+          rotation: clampNum(image.rotation, -180, 180, 0),
+          offsetX: clampNum(image.offsetX, -KO_KEY_IMAGE_PAN_LIMIT, KO_KEY_IMAGE_PAN_LIMIT, 0),
+          offsetY: clampNum(image.offsetY, -KO_KEY_IMAGE_PAN_LIMIT, KO_KEY_IMAGE_PAN_LIMIT, 0),
+        };
+      }
+    }
+    if (Object.keys(clean).length) out[String(key)] = clean;
+  }
+  return out;
 }
 
 function normalizeKeyOverlayConfig(incoming, previous) {
@@ -106,17 +155,23 @@ function normalizeKeyOverlayConfig(incoming, previous) {
     customKeys,
     style: {
       fontSize,
+      fontFamily: KO_FONT_SET.has(String(styleIn.fontFamily || '').toLowerCase())
+        ? String(styleIn.fontFamily || '').toLowerCase()
+        : (KO_FONT_SET.has(String(prevStyle.fontFamily || '').toLowerCase()) ? String(prevStyle.fontFamily || '').toLowerCase() : 'russo'),
       keyColor: String(styleIn.keyColor || prevStyle.keyColor || '#ffffff'),
       bgColor: String(styleIn.bgColor || prevStyle.bgColor || 'rgba(15,15,20,0.9)'),
       accentColor: String(styleIn.accentColor || prevStyle.accentColor || '#f97316'),
       fadeDelay: Number.isFinite(Number(styleIn.fadeDelay)) ? Number(styleIn.fadeDelay) : (Number.isFinite(Number(prevStyle.fadeDelay)) ? Number(prevStyle.fadeDelay) : 0),
       inactiveOpacity: clampOpacity(styleIn.inactiveOpacity, clampOpacity(prevStyle.inactiveOpacity, 0.3)),
+      showBrand: styleIn.showBrand !== undefined ? !!styleIn.showBrand : (prevStyle.showBrand !== undefined ? !!prevStyle.showBrand : true),
+      brandText: String(styleIn.brandText ?? prevStyle.brandText ?? 'WOOTING 80HE').trim().slice(0, 40) || 'WOOTING 80HE',
     },
     gamepadEnabled: cfg.gamepadEnabled !== undefined ? !!cfg.gamepadEnabled : !!prev.gamepadEnabled,
     gamepadButtons: (cfg.gamepadButtons && typeof cfg.gamepadButtons === 'object')
       ? { ...cfg.gamepadButtons }
       : ((prev.gamepadButtons && typeof prev.gamepadButtons === 'object') ? { ...prev.gamepadButtons } : {}),
     background: nextBg,
+    keyStyles: normalizeKeyStyles(cfg.keyStyles, prev.keyStyles),
   };
 }
 
@@ -164,7 +219,27 @@ function registerKeyOverlayIpc({ ipcMain, loadConfig, saveConfig, startKeyOverla
   function getBackgroundBucket() {
     const cfg = loadConfig();
     const bucket = String(cfg?.keyOverlayStorageBucket || '').trim();
-    return bucket || 'overlays';
+    if (!bucket || bucket === 'overlays') return 'soundboard';
+    return bucket;
+  }
+
+  function safeStorageName(name, fallback = 'image') {
+    const base = String(name || fallback)
+      .normalize('NFKD')
+      .replace(/[^\w.\-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 80);
+    return base || fallback;
+  }
+
+  async function signedUrlFor(bucket, storagePath) {
+    const supabase = state.supabase;
+    if (!supabase || !bucket || !storagePath) return '';
+    const signed = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(storagePath, KO_BG_SIGNED_URL_SECONDS);
+    return String(signed?.data?.signedUrl || '').trim();
   }
 
   function normalizeStoragePath(value, bucketName = '') {
@@ -211,8 +286,9 @@ function registerKeyOverlayIpc({ ipcMain, loadConfig, saveConfig, startKeyOverla
     const mimeType = parsed.mimeType;
     const ext = KO_BG_EXT_BY_MIME[mimeType] || '.bin';
     const bucket = getBackgroundBucket();
+    const baseName = safeStorageName(fileName.replace(/\.[^.]+$/, '') || 'background', 'background');
     const storagePath = normalizeStoragePath(
-      payload?.storagePath || `key-overlay/background/current${ext}`,
+      payload?.storagePath || `${KO_BG_FOLDER}/${Date.now()}-${baseName}${ext}`,
       bucket
     );
     if (!storagePath) {
@@ -231,23 +307,187 @@ function registerKeyOverlayIpc({ ipcMain, loadConfig, saveConfig, startKeyOverla
       return { ok: false, error: msg || 'No se pudo subir la imagen al bucket.' };
     }
 
-    const pub = supabase.storage.from(bucket).getPublicUrl(storagePath);
-    const publicUrl = String(pub?.data?.publicUrl || '').trim();
-    if (!publicUrl) {
-      return { ok: false, error: 'No se pudo obtener la URL pública del archivo.' };
+    const signedUrl = await signedUrlFor(bucket, storagePath);
+    if (!signedUrl) {
+      return { ok: false, error: 'No se pudo crear la URL firmada del archivo.' };
     }
-    const versionedUrl = `${publicUrl}${publicUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
 
     return {
       ok: true,
       background: {
         type: 'upload',
-        value: versionedUrl,
+        enabled: true,
+        value: signedUrl,
         name: fileName.slice(0, 255),
         bucket,
         storagePath,
+        scale: 1,
+        rotation: 0,
+        offsetX: 0,
+        offsetY: 0,
       },
     };
+  }
+
+  async function uploadKeyImageToBucket(payload) {
+    const supabase = state.supabase;
+    if (!supabase) return { ok: false, error: 'Sin conexión a Supabase' };
+
+    const parsed = parseDataUrl(payload?.dataUrl);
+    if (!parsed.ok) return parsed;
+
+    const keycode = String(payload?.keycode || '').trim().replace(/[^\w-]/g, '_');
+    if (!keycode) return { ok: false, error: 'Seleccioná una tecla primero.' };
+    const fileName = String(payload?.fileName || '').trim();
+    const mimeType = parsed.mimeType;
+    const ext = KO_BG_EXT_BY_MIME[mimeType] || '.bin';
+    const bucket = getBackgroundBucket();
+    const storagePath = normalizeStoragePath(
+      payload?.storagePath || `key-overlay/keys/${keycode}/image${ext}`,
+      bucket
+    );
+    if (!storagePath) {
+      return { ok: false, error: 'Ruta de archivo inválida para el bucket.' };
+    }
+
+    const up = await supabase.storage.from(bucket).upload(storagePath, parsed.body, {
+      contentType: mimeType,
+      upsert: true,
+      cacheControl: '3600',
+    });
+    if (up?.error) {
+      const msg = [up.error.message, up.error.code, up.error.details, up.error.hint]
+        .filter(Boolean)
+        .join(' | ');
+      return { ok: false, error: msg || 'No se pudo subir la imagen de la tecla.' };
+    }
+
+    const signedUrl = await signedUrlFor(bucket, storagePath);
+    if (!signedUrl) return { ok: false, error: 'No se pudo crear la URL firmada del archivo.' };
+
+    return {
+      ok: true,
+      image: {
+        type: 'upload',
+        value: signedUrl,
+        name: fileName.slice(0, 255),
+        bucket,
+        storagePath,
+        fit: 'cover',
+        opacity: 1,
+        scale: 1,
+        rotation: 0,
+        offsetX: 0,
+        offsetY: 0,
+      },
+    };
+  }
+
+  async function listBackgroundImages() {
+    const supabase = state.supabase;
+    if (!supabase) return { ok: false, error: 'Sin conexión a Supabase', images: [] };
+    const bucket = getBackgroundBucket();
+    const listed = await supabase.storage.from(bucket).list(KO_BG_FOLDER, {
+      limit: 100,
+      offset: 0,
+      sortBy: { column: 'updated_at', order: 'desc' },
+    });
+    if (listed?.error) {
+      return { ok: false, error: listed.error.message || 'No se pudieron listar las imágenes.', images: [], bucket };
+    }
+    const files = (listed.data || []).filter((item) => {
+      if (!item || !item.name || !item.metadata) return false;
+      const mime = String(item.metadata.mimetype || item.metadata.mimeType || '').toLowerCase();
+      return mime.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(item.name);
+    });
+    const images = [];
+    for (const file of files) {
+      const storagePath = `${KO_BG_FOLDER}/${file.name}`;
+      const value = await signedUrlFor(bucket, storagePath);
+      if (!value) continue;
+      images.push({
+        type: 'upload',
+        enabled: true,
+        value,
+        name: file.name,
+        bucket,
+        storagePath,
+        size: Number(file.metadata?.size || 0),
+        updatedAt: file.updated_at || file.created_at || '',
+      });
+    }
+    return { ok: true, bucket, images };
+  }
+
+  function isStorageImageFile(item) {
+    if (!item || !item.name) return false;
+    const mime = String(item.metadata?.mimetype || item.metadata?.mimeType || '').toLowerCase();
+    return mime.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(item.name);
+  }
+
+  async function listKeyImages() {
+    const supabase = state.supabase;
+    if (!supabase) return { ok: false, error: 'Sin conexión a Supabase', images: [] };
+    const bucket = getBackgroundBucket();
+    const roots = await supabase.storage.from(bucket).list(KO_KEY_IMAGE_FOLDER, {
+      limit: 200,
+      offset: 0,
+      sortBy: { column: 'updated_at', order: 'desc' },
+    });
+    if (roots?.error) {
+      return { ok: false, error: roots.error.message || 'No se pudieron listar las imágenes de teclas.', images: [], bucket };
+    }
+
+    const images = [];
+    const entries = roots.data || [];
+    for (const entry of entries) {
+      if (isStorageImageFile(entry)) {
+        const storagePath = `${KO_KEY_IMAGE_FOLDER}/${entry.name}`;
+        const value = await signedUrlFor(bucket, storagePath);
+        if (value) {
+          images.push({
+            type: 'upload',
+            value,
+            name: entry.name,
+            bucket,
+            storagePath,
+            keycode: '',
+            size: Number(entry.metadata?.size || 0),
+            updatedAt: entry.updated_at || entry.created_at || '',
+          });
+        }
+        continue;
+      }
+
+      const folderName = String(entry?.name || '').trim();
+      if (!folderName) continue;
+      const folderPath = `${KO_KEY_IMAGE_FOLDER}/${folderName}`;
+      const listed = await supabase.storage.from(bucket).list(folderPath, {
+        limit: 50,
+        offset: 0,
+        sortBy: { column: 'updated_at', order: 'desc' },
+      });
+      if (listed?.error) continue;
+      for (const file of listed.data || []) {
+        if (!isStorageImageFile(file)) continue;
+        const storagePath = `${folderPath}/${file.name}`;
+        const value = await signedUrlFor(bucket, storagePath);
+        if (!value) continue;
+        images.push({
+          type: 'upload',
+          value,
+          name: `${folderName}/${file.name}`,
+          bucket,
+          storagePath,
+          keycode: folderName,
+          size: Number(file.metadata?.size || 0),
+          updatedAt: file.updated_at || file.created_at || '',
+        });
+      }
+    }
+
+    images.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+    return { ok: true, bucket, images };
   }
 
   async function pushConfigToSupabase(cfg) {
@@ -467,7 +707,7 @@ function registerKeyOverlayIpc({ ipcMain, loadConfig, saveConfig, startKeyOverla
 
   ipcMain.handle('keyoverlay-set-config', async (_, cfg) => {
     ensureRealtimeSync();
-    applyConfig(cfg, {
+    const nextCfg = applyConfig(cfg, {
       persistLocal: true,
       broadcast: true,
       notifyRenderer: false,
@@ -475,11 +715,11 @@ function registerKeyOverlayIpc({ ipcMain, loadConfig, saveConfig, startKeyOverla
       markLocalChange: true,
     });
     const syncRes = await syncConfigToSupabase('set-config');
-    if (!syncRes.ok) return { ok: true, synced: false, error: syncRes.error || 'No se pudo sincronizar en Supabase' };
-    return { ok: true, synced: true };
+    if (!syncRes.ok) return { ok: true, synced: false, error: syncRes.error || 'No se pudo sincronizar en Supabase', config: nextCfg };
+    return { ok: true, synced: true, config: nextCfg };
   });
 
-  // Preview en vivo (drag/zoom del fondo): difunde a los overlays conectados
+  // Preview en vivo (drag/zoom del fondo y detalles por tecla): difunde a los overlays conectados
   // sin escribir en disco ni sincronizar con Supabase. El estado definitivo se
   // persiste con keyoverlay-set-config al soltar.
   ipcMain.handle('keyoverlay-preview-config', (_, cfg) => {
@@ -514,6 +754,41 @@ function registerKeyOverlayIpc({ ipcMain, loadConfig, saveConfig, startKeyOverla
     const syncRes = await syncConfigToSupabase('upload-background');
     if (!syncRes.ok) return { ok: true, synced: false, error: syncRes.error || 'No se pudo sincronizar en Supabase', background: nextCfg.background };
     return { ok: true, synced: true, background: nextCfg.background };
+  });
+
+  ipcMain.handle('keyoverlay-list-backgrounds', async () => {
+    ensureRealtimeSync();
+    return listBackgroundImages();
+  });
+
+  ipcMain.handle('keyoverlay-list-key-images', async () => {
+    ensureRealtimeSync();
+    return listKeyImages();
+  });
+
+  ipcMain.handle('keyoverlay-upload-key-image', async (_, payload) => {
+    ensureRealtimeSync();
+    const uploaded = await uploadKeyImageToBucket(payload);
+    if (!uploaded.ok) return uploaded;
+
+    const keycode = String(payload?.keycode || '').trim();
+    const baseCfg = normalizeKeyOverlayConfig(state.keyOverlayConfig, state.keyOverlayConfig);
+    const keyStyles = { ...(baseCfg.keyStyles || {}) };
+    keyStyles[keycode] = { ...(keyStyles[keycode] || {}), image: uploaded.image };
+    const nextCfg = applyConfig({
+      ...baseCfg,
+      keyStyles,
+    }, {
+      persistLocal: true,
+      broadcast: true,
+      notifyRenderer: false,
+      source: 'local',
+      markLocalChange: true,
+    });
+
+    const syncRes = await syncConfigToSupabase('upload-key-image');
+    if (!syncRes.ok) return { ok: true, synced: false, error: syncRes.error || 'No se pudo sincronizar en Supabase', keyStyle: nextCfg.keyStyles?.[keycode] };
+    return { ok: true, synced: true, keyStyle: nextCfg.keyStyles?.[keycode] };
   });
 
   ipcMain.handle('keyoverlay-detect-next', () => {

@@ -81,20 +81,46 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
     return (cfg.customKeys || []).some(k => String(k.keycode) === kStr);
   }
 
+  function keyStyleFor(keycode) {
+    const cfg = state.keyOverlayConfig || {};
+    const styles = cfg.keyStyles && typeof cfg.keyStyles === 'object' ? cfg.keyStyles : {};
+    return styles[String(keycode)] && typeof styles[String(keycode)] === 'object' ? styles[String(keycode)] : {};
+  }
+
+  function labelForKeycode(keycode, fallback) {
+    const custom = (state.keyOverlayConfig?.customKeys || []).find(k => String(k.keycode) === String(keycode));
+    const style = keyStyleFor(keycode);
+    return style.label || custom?.label || fallback || KEY_LABELS_MAP[keycode] || `#${keycode}`;
+  }
+
   function buildKeysList() {
     const cfg = state.keyOverlayConfig || { selectedKeys: [], customKeys: [] };
     const sel = new Set((cfg.selectedKeys || []).map(String));
     // Start with KEY_LAYOUT keys
     const items = KEY_LAYOUT.filter(k => sel.has(String(k.kc)))
-      .map(k => ({ keycode: k.kc, label: k.l, row: k.row, hi: !!k.hi, flex: !!k.flex, sub: k.sub || null, aliases: [] }));
+      .map(k => {
+        const style = keyStyleFor(k.kc);
+        return {
+          keycode: k.kc,
+          label: style.label || k.l,
+          row: k.row,
+          hi: !!k.hi,
+          flex: !!k.flex,
+          sub: style.sub ?? k.sub ?? null,
+          aliases: [],
+          style,
+        };
+      });
 
     // Merge customKeys: if same label exists -> add as alias; otherwise add as new key
     (cfg.customKeys || []).forEach(ck => {
-      const existing = items.find(i => i.label === ck.label);
+      const style = keyStyleFor(ck.keycode);
+      const label = style.label || ck.label;
+      const existing = items.find(i => i.label === label);
       if (existing) {
         existing.aliases.push(ck.keycode);
       } else {
-        items.push({ keycode: ck.keycode, label: ck.label, row: ck.row ?? 8, hi: false, flex: false, sub: null, aliases: [] });
+        items.push({ keycode: ck.keycode, label, row: ck.row ?? 8, hi: false, flex: false, sub: style.sub || null, aliases: [], style });
       }
     });
 
@@ -155,12 +181,12 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
       uIOhook.on('keydown', (e) => {
         if (state.koDetecting) {
           state.koDetecting = false;
-          const label = KEY_LABELS_MAP[e.keycode] || `#${e.keycode}`;
+          const label = labelForKeycode(e.keycode, KEY_LABELS_MAP[e.keycode]);
           state.mainWindow?.webContents.send('keyoverlay-detected', { keycode: e.keycode, label });
           return;
         }
         if (!keyAllowed(e.keycode)) return;
-        const label = KEY_LABELS_MAP[e.keycode] || String.fromCharCode(e.keycode) || `#${e.keycode}`;
+        const label = labelForKeycode(e.keycode, KEY_LABELS_MAP[e.keycode] || String.fromCharCode(e.keycode));
         const msg = { type: 'keydown', keycode: e.keycode, label };
         broadcastOverlay(msg);
         state.mainWindow?.webContents.send('keyoverlay-key', msg);

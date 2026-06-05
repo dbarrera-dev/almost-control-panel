@@ -119,7 +119,7 @@ const DEFAULT_CONFIG = {
   soundboardStorageMode: 'supabase',
   soundboardBucket: 'soundboard',
   soundboardHotkeysEnabled: true,
-  keyOverlayStorageBucket: 'overlays',
+  keyOverlayStorageBucket: 'soundboard',
 };
 
 function createConfigStore(app) {
