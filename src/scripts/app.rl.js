@@ -11,14 +11,15 @@ const RL_DEFAULT_CONFIG = {
   playerName: '',
   primaryId: '',
   statsApiPort: 49123,
+  autoConnectStatsApi: true,
   overlayPort: 9003,
   eventLabel: 'Rocket League',
   seriesLabel: '',
   subtitle: '',
   showPlayers: true,
-  blueTeam: { name: 'BLUE', logoDataUrl: '', color: '#2f8cff' },
-  orangeTeam: { name: 'ORANGE', logoDataUrl: '', color: '#ff7a18' },
-  style: { theme: 'broadcast', bg: 'rgba(6,11,18,0.88)', text: '#ffffff', accent: '#ffffff', radius: 10 }
+  blueTeam: { name: 'Azul', logoDataUrl: '', color: '#2f8cff' },
+  orangeTeam: { name: 'Naranja', logoDataUrl: '', color: '#ff7a18' },
+  style: { theme: 'slate', bg: 'rgba(6,11,18,0.88)', text: '#ffffff', accent: '#ffffff', radius: 10 }
 };
 
 async function loadRLOverlay() {
@@ -54,12 +55,25 @@ async function loadRLOverlay() {
 }
 
 function _rlNormalizeConfig(config) {
-  const theme = RL_THEMES.includes(config?.style?.theme) ? config.style.theme : 'broadcast';
+  const rawTheme = config?.style?.theme === 'broadcast' ? 'slate' : config?.style?.theme;
+  const theme = RL_THEMES.includes(rawTheme) ? rawTheme : 'slate';
+  const normalizeTeam = (team, fallback) => {
+    const rawName = String(team?.name ?? fallback.name);
+    const legacyDefault = (
+      (fallback.name === 'Azul' && rawName.trim().toUpperCase() === 'BLUE') ||
+      (fallback.name === 'Naranja' && rawName.trim().toUpperCase() === 'ORANGE')
+    );
+    return {
+      ...fallback,
+      ...(team || {}),
+      name: legacyDefault ? fallback.name : rawName,
+    };
+  };
   return {
     ...RL_DEFAULT_CONFIG,
     ...(config || {}),
-    blueTeam: { ...RL_DEFAULT_CONFIG.blueTeam, ...(config?.blueTeam || {}) },
-    orangeTeam: { ...RL_DEFAULT_CONFIG.orangeTeam, ...(config?.orangeTeam || {}) },
+    blueTeam: normalizeTeam(config?.blueTeam, RL_DEFAULT_CONFIG.blueTeam),
+    orangeTeam: normalizeTeam(config?.orangeTeam, RL_DEFAULT_CONFIG.orangeTeam),
     style: { ...RL_DEFAULT_CONFIG.style, ...(config?.style || {}), theme }
   };
 }
@@ -96,6 +110,8 @@ function _rlEscape(value) {
 function rlApplyUI() {
   if (!rlCfg) return;
   _rlVal('rlStatsApiPort', rlCfg.statsApiPort || 49123);
+  const autoConnectEl = _rlEl('rlAutoConnectStatsApi');
+  if (autoConnectEl) autoConnectEl.checked = rlCfg.autoConnectStatsApi !== false;
   _rlVal('rlPlayerName', rlCfg.playerName || '');
   _rlVal('rlPrimaryId', rlCfg.primaryId || '');
   _rlVal('rlEventLabel', rlCfg.eventLabel || 'Rocket League');
@@ -104,9 +120,9 @@ function rlApplyUI() {
   const showPlayersEl = _rlEl('rlShowPlayers');
   if (showPlayersEl) showPlayersEl.checked = rlCfg.showPlayers !== false;
   rlRenderThemeSelection();
-  _rlVal('rlBlueName', rlCfg.blueTeam.name || 'BLUE');
+  _rlVal('rlBlueName', rlCfg.blueTeam.name || '');
   _rlVal('rlBlueColor', rlCfg.blueTeam.color || '#2f8cff');
-  _rlVal('rlOrangeName', rlCfg.orangeTeam.name || 'ORANGE');
+  _rlVal('rlOrangeName', rlCfg.orangeTeam.name || '');
   _rlVal('rlOrangeColor', rlCfg.orangeTeam.color || '#ff7a18');
   rlRenderLogo('blue');
   rlRenderLogo('orange');
@@ -128,10 +144,12 @@ function rlApplyStatus(status) {
   }
   if (apiBadge) {
     const state = status?.connectionStatus || rlState?.connectionStatus || 'disconnected';
+    const autoConnect = status?.autoConnectStatsApi ?? rlState?.config?.autoConnectStatsApi ?? rlCfg?.autoConnectStatsApi ?? true;
     apiBadge.textContent =
       state === 'connected' ? 'Stats API conectada' :
       state === 'waiting-match' ? 'Esperando partida' :
       state === 'reconnecting' ? 'Reconectando Stats API' :
+      autoConnect === false ? 'Stats API manual' :
       'Stats API offline';
     apiBadge.className = state === 'connected' || state === 'waiting-match' ? 'badge badge-on' : 'badge badge-off';
   }
@@ -182,7 +200,7 @@ function rlOpenStyles() { _rlOpenModal('rlStylesModal'); }
 function rlCloseStyles() { _rlCloseModal('rlStylesModal'); }
 
 function rlRenderThemeSelection() {
-  const active = RL_THEMES.includes(rlCfg?.style?.theme) ? rlCfg.style.theme : 'broadcast';
+  const active = RL_THEMES.includes(rlCfg?.style?.theme) ? rlCfg.style.theme : 'slate';
   document.querySelectorAll('#rlThemeGrid .rl-theme-card').forEach((card) => {
     card.classList.toggle('on', card.dataset.theme === active);
   });
@@ -204,6 +222,7 @@ function rlReadForm() {
   rlCfg = _rlNormalizeConfig({
     ...rlCfg,
     statsApiPort: numberVal('rlStatsApiPort', 49123),
+    autoConnectStatsApi: _rlEl('rlAutoConnectStatsApi') ? !!_rlEl('rlAutoConnectStatsApi').checked : (rlCfg?.autoConnectStatsApi !== false),
     playerName: _rlEl('rlPlayerName')?.value?.trim() || '',
     primaryId: _rlEl('rlPrimaryId')?.value?.trim() || '',
     eventLabel: _rlEl('rlEventLabel')?.value?.trim() || 'Rocket League',
@@ -213,12 +232,12 @@ function rlReadForm() {
     style: { ...(rlCfg?.style || RL_DEFAULT_CONFIG.style) },
     blueTeam: {
       ...(rlCfg?.blueTeam || RL_DEFAULT_CONFIG.blueTeam),
-      name: _rlEl('rlBlueName')?.value?.trim() || 'BLUE',
+      name: _rlEl('rlBlueName')?.value?.trim() || '',
       color: _rlEl('rlBlueColor')?.value || '#2f8cff'
     },
     orangeTeam: {
       ...(rlCfg?.orangeTeam || RL_DEFAULT_CONFIG.orangeTeam),
-      name: _rlEl('rlOrangeName')?.value?.trim() || 'ORANGE',
+      name: _rlEl('rlOrangeName')?.value?.trim() || '',
       color: _rlEl('rlOrangeColor')?.value || '#ff7a18'
     }
   });
@@ -265,6 +284,27 @@ function rlClearLogo(side) {
   rlMarkDirty();
 }
 
+async function rlClearTeamNames() {
+  rlReadForm();
+  rlCfg.blueTeam.name = '';
+  rlCfg.orangeTeam.name = '';
+  _rlVal('rlBlueName', '');
+  _rlVal('rlOrangeName', '');
+  try {
+    const result = await api.rlOverlaySetConfig(rlCfg);
+    rlDirty = false;
+    rlState = result.state || rlState;
+    if (result.config) rlCfg = _rlNormalizeConfig(result.config);
+    rlApplyUI();
+    rlRenderState(rlState);
+    rlApplyStatus(await api.rlOverlayStatus());
+    toast('Nombres manuales limpiados', 'ok');
+  } catch (error) {
+    rlDirty = true;
+    toast('Nombres limpiados. Guardá para aplicar.', 'warn');
+  }
+}
+
 function rlRenderLogo(side) {
   const team = side === 'blue' ? rlCfg?.blueTeam : rlCfg?.orangeTeam;
   const preview = _rlEl(side === 'blue' ? 'rlBlueLogoPreview' : 'rlOrangeLogoPreview');
@@ -272,7 +312,7 @@ function rlRenderLogo(side) {
   if (team.logoDataUrl) {
     preview.innerHTML = `<img alt="" src="${_rlEscape(team.logoDataUrl)}">`;
   } else {
-    preview.textContent = side === 'blue' ? 'B' : 'O';
+    preview.textContent = '';
     preview.style.color = team.color || (side === 'blue' ? '#2f8cff' : '#ff7a18');
   }
 }
@@ -367,8 +407,8 @@ function rlRenderSeriesControls(state) {
     btn.classList.toggle('on', Number(btn.dataset.bo) === bestOf);
   });
 
-  const blueName = state?.config?.blueTeam?.name || rlCfg?.blueTeam?.name || 'BLUE';
-  const orangeName = state?.config?.orangeTeam?.name || rlCfg?.orangeTeam?.name || 'ORANGE';
+  const blueName = scoreboard?.blueTeam?.name || state?.config?.blueTeam?.name || rlCfg?.blueTeam?.name || 'Azul';
+  const orangeName = scoreboard?.orangeTeam?.name || state?.config?.orangeTeam?.name || rlCfg?.orangeTeam?.name || 'Naranja';
   _rlText('rlSeriesBlueName', blueName);
   _rlText('rlSeriesOrangeName', orangeName);
   _rlText('rlSeriesBlueGames', _rlNum(seriesState.blueGames));

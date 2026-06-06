@@ -8,23 +8,24 @@ const DEFAULT_CONFIG = {
   playerName: '',
   primaryId: '',
   statsApiPort: 49123,
+  autoConnectStatsApi: true,
   overlayPort: 9003,
   eventLabel: 'Rocket League',
   seriesLabel: '',
   subtitle: '',
   showPlayers: true,
   blueTeam: {
-    name: 'BLUE',
+    name: 'Azul',
     logoDataUrl: '',
     color: '#2f8cff'
   },
   orangeTeam: {
-    name: 'ORANGE',
+    name: 'Naranja',
     logoDataUrl: '',
     color: '#ff7a18'
   },
   style: {
-    theme: 'broadcast',
+    theme: 'slate',
     bg: 'rgba(6,11,18,0.88)',
     text: '#ffffff',
     accent: '#ffffff',
@@ -33,6 +34,7 @@ const DEFAULT_CONFIG = {
 };
 
 const CONNECTION_STATUS_VISIBILITY_DELAY_MS = 4000;
+const RECONNECT_INTERVAL_MS = 45000;
 
 const SCOREBOARD_THEMES = ['broadcast', 'slate', 'minimal', 'neon', 'classic', 'arena'];
 
@@ -129,10 +131,15 @@ function normalizeArray(value) {
 }
 
 function normalizeTeam(team, fallback) {
+  const rawName = String(team?.name ?? fallback.name);
+  const legacyDefault = (
+    (fallback.name === 'Azul' && rawName.trim().toUpperCase() === 'BLUE') ||
+    (fallback.name === 'Naranja' && rawName.trim().toUpperCase() === 'ORANGE')
+  );
   return {
     ...fallback,
     ...(team || {}),
-    name: String(team?.name ?? fallback.name),
+    name: legacyDefault ? fallback.name : rawName,
     logoDataUrl: String(team?.logoDataUrl ?? fallback.logoDataUrl),
     color: String(team?.color ?? fallback.color)
   };
@@ -140,12 +147,14 @@ function normalizeTeam(team, fallback) {
 
 function normalizeConfig(config = {}) {
   const overlayPort = Number(config.overlayPort || DEFAULT_CONFIG.overlayPort);
+  const rawTheme = config.style?.theme === 'broadcast' ? 'slate' : config.style?.theme;
   return {
     ...DEFAULT_CONFIG,
     ...config,
     playerName: String(config.playerName ?? DEFAULT_CONFIG.playerName),
     primaryId: String(config.primaryId ?? DEFAULT_CONFIG.primaryId),
     statsApiPort: Number(config.statsApiPort || DEFAULT_CONFIG.statsApiPort),
+    autoConnectStatsApi: config.autoConnectStatsApi !== false,
     overlayPort: Number.isFinite(overlayPort) ? overlayPort : DEFAULT_CONFIG.overlayPort,
     eventLabel: String(config.eventLabel ?? DEFAULT_CONFIG.eventLabel),
     seriesLabel: String(config.seriesLabel ?? DEFAULT_CONFIG.seriesLabel),
@@ -156,7 +165,7 @@ function normalizeConfig(config = {}) {
     style: {
       ...DEFAULT_CONFIG.style,
       ...(config.style || {}),
-      theme: SCOREBOARD_THEMES.includes(config.style?.theme) ? config.style.theme : DEFAULT_CONFIG.style.theme
+      theme: SCOREBOARD_THEMES.includes(rawTheme) ? rawTheme : DEFAULT_CONFIG.style.theme
     }
   };
 }
@@ -425,8 +434,13 @@ function readTeams(payload = {}) {
   return normalizeArray(payload.Teams || payload.Game?.Teams);
 }
 
+function readRawPlayers(payload = {}) {
+  return normalizeArray(payload.Players ?? payload.players ?? payload.Game?.Players ?? payload.Game?.players);
+}
+
 function readTeamScore(teams, teamNum) {
-  return numberOrZero(teams.find((team) => Number(team.TeamNum) === teamNum)?.Score);
+  const row = teams.find((team, index) => Number(team.TeamNum ?? team.teamNum ?? team.team_num ?? index) === teamNum);
+  return numberOrZero(row?.Score ?? row?.score);
 }
 
 function readPlayerName(playerOrName) {
@@ -443,10 +457,54 @@ function firstFiniteNumber(...values) {
   return null;
 }
 
-function readPlayers(payload = {}) {
-  const raw = normalizeArray(
-    payload.Players ?? payload.players ?? payload.Game?.Players ?? payload.Game?.players
+function normalizeHexColor(value, fallback = '') {
+  let raw = String(value || '').trim().replace(/^#/, '');
+  if (/^[0-9a-f]{3}$/i.test(raw)) {
+    raw = raw.split('').map((ch) => ch + ch).join('');
+  }
+  if (!/^[0-9a-f]{6}$/i.test(raw)) return fallback;
+  return `#${raw.toLowerCase()}`;
+}
+
+function genericTeamName(name, teamNum) {
+  const value = String(name || '').trim().toLowerCase();
+  if (!value) return true;
+  const genericBySide = teamNum === 0
+    ? new Set(['blue', 'azul', 'team blue', 'blue team', 'equipo azul'])
+    : new Set(['orange', 'naranja', 'team orange', 'orange team', 'equipo naranja']);
+  return genericBySide.has(value) || /^team\s*[12]$/.test(value) || /^equipo\s*[12]$/.test(value);
+}
+
+function readTeamMeta(teams, players, teamNum, fallbackTeam) {
+  const row = teams.find((team, index) => Number(team.TeamNum ?? team.teamNum ?? team.team_num ?? index) === teamNum) || {};
+  const sidePlayers = players.filter((player) => Number(player.TeamNum ?? player.Team ?? player.team ?? player.team_num) === teamNum);
+  const rawName = String(row.Name ?? row.name ?? '').trim();
+  const oneVersusOne = sidePlayers.length === 1 && players.filter((player) => {
+    const n = Number(player.TeamNum ?? player.Team ?? player.team ?? player.team_num);
+    return n === 0 || n === 1;
+  }).length === 2;
+  const playerName = oneVersusOne ? readPlayerName(sidePlayers[0]) : '';
+  const detectedName = oneVersusOne && genericTeamName(rawName, teamNum) ? playerName : rawName;
+  const primary = normalizeHexColor(
+    row.ColorPrimary ?? row.colorPrimary ?? row.color_primary ?? row.PrimaryColor ?? row.primaryColor,
+    ''
   );
+  const secondary = normalizeHexColor(
+    row.ColorSecondary ?? row.colorSecondary ?? row.color_secondary ?? row.SecondaryColor ?? row.secondaryColor,
+    ''
+  );
+  return {
+    name: detectedName || fallbackTeam.name,
+    color: primary || fallbackTeam.color,
+    secondaryColor: secondary || '',
+    logoDataUrl: fallbackTeam.logoDataUrl || '',
+    source: detectedName || primary || secondary ? 'stats-api' : 'manual',
+    playerCount: sidePlayers.length,
+  };
+}
+
+function readPlayers(payload = {}) {
+  const raw = readRawPlayers(payload);
   return raw.map((player) => {
     const boost = firstFiniteNumber(player.Boost, player.boost);
     return {
@@ -703,8 +761,22 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     const blueGoalAdjust = numberOrZero(seriesState.blueGoalAdjust);
     const orangeGoalAdjust = numberOrZero(seriesState.orangeGoalAdjust);
     const series = buildSeriesStatus(seriesState);
+    const detectedBlueTeam = {
+      ...config.blueTeam,
+      ...(match.teams?.blue || {}),
+      logoDataUrl: config.blueTeam.logoDataUrl || '',
+    };
+    const detectedOrangeTeam = {
+      ...config.orangeTeam,
+      ...(match.teams?.orange || {}),
+      logoDataUrl: config.orangeTeam.logoDataUrl || '',
+    };
+    const blueTeam = seriesState.sidesSwapped === true ? detectedOrangeTeam : detectedBlueTeam;
+    const orangeTeam = seriesState.sidesSwapped === true ? detectedBlueTeam : detectedOrangeTeam;
     return {
       ...match,
+      blueTeam,
+      orangeTeam,
       blueScore: Math.max(0, rawBlueScore + blueGoalAdjust),
       orangeScore: Math.max(0, rawOrangeScore + orangeGoalAdjust),
       rawBlueScore,
@@ -774,7 +846,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
 
   function processUpdateState(payload) {
     const teams = readTeams(payload);
-    const players = normalizeArray(payload.Players);
+    const players = readRawPlayers(payload);
     const me = findCurrentPlayer(players);
     const matchGuid = readMatchGuid(payload) || currentMatch?.matchGuid;
     if (!currentAccumulator || (matchGuid && currentAccumulator.id && currentAccumulator.id !== matchGuid)) {
@@ -783,11 +855,17 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     if (matchGuid && currentAccumulator && !currentAccumulator.id) currentAccumulator.id = matchGuid;
     addTelemetrySample(me);
     currentPlayer = me || currentPlayer;
+    const detectedBlueTeam = readTeamMeta(teams, players, 0, config.blueTeam);
+    const detectedOrangeTeam = readTeamMeta(teams, players, 1, config.orangeTeam);
     currentMatch = {
       matchGuid,
       arena: payload.Arena || payload.Game?.Arena || currentMatch?.arena,
       blueScore: readTeamScore(teams, 0),
       orangeScore: readTeamScore(teams, 1),
+      teams: {
+        blue: detectedBlueTeam,
+        orange: detectedOrangeTeam,
+      },
       secondsRemaining:
         typeof payload.SecondsRemaining === 'number' ? payload.SecondsRemaining :
         typeof payload.GameTimeRemaining === 'number' ? payload.GameTimeRemaining :
@@ -999,6 +1077,10 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
       result,
       blueScore: finalScoreboard.blueScore ?? 0,
       orangeScore: finalScoreboard.orangeScore ?? 0,
+      teams: {
+        blue: finalScoreboard.blueTeam || currentMatch?.teams?.blue || config.blueTeam,
+        orange: finalScoreboard.orangeTeam || currentMatch?.teams?.orange || config.orangeTeam,
+      },
       playerTeamNum,
       winnerTeamNum,
       stats: playerStats,
@@ -1068,12 +1150,18 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
 
   function scheduleReconnect() {
     if (reconnectTimer) return;
+    if (config.autoConnectStatsApi === false) {
+      closeStatsApi();
+      setConnectionStatus('disconnected', { smoothTransient: true });
+      emitUpdate();
+      return;
+    }
     setConnectionStatus('disconnected', { smoothTransient: true });
     emitUpdate();
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
-      connectStatsApi();
-    }, 2500);
+      connectStatsApi({ force: false });
+    }, RECONNECT_INTERVAL_MS);
   }
 
   function closeStatsApi() {
@@ -1093,7 +1181,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     currentTransport = null;
   }
 
-  function connectTcp(port) {
+  function connectTcp(port, options = {}) {
     currentTransport = 'tcp';
     setConnectionStatus('reconnecting', { smoothTransient: true });
     emitUpdate();
@@ -1119,11 +1207,18 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     apiTcp.on('error', scheduleReconnect);
   }
 
-  function connectStatsApi() {
+  function connectStatsApi(options = {}) {
+    const force = options?.force === true;
+    if (config.autoConnectStatsApi === false && !force) {
+      closeStatsApi();
+      setConnectionStatus('disconnected');
+      emitUpdate();
+      return;
+    }
     const port = Number(config.statsApiPort || DEFAULT_CONFIG.statsApiPort);
     closeStatsApi();
     if (preferredStatsApiTransport === 'tcp') {
-      connectTcp(port);
+      connectTcp(port, options);
       return;
     }
     currentTransport = 'ws';
@@ -1138,14 +1233,14 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
       fellBack = true;
       try { apiWs?.terminate?.(); } catch {}
       apiWs = null;
-      connectTcp(port);
+      connectTcp(port, options);
     }, 1500);
 
     try {
       apiWs = new WebSocket(`ws://127.0.0.1:${port}`);
     } catch {
       if (wsFallbackTimer) clearTimeout(wsFallbackTimer);
-      connectTcp(port);
+      connectTcp(port, options);
       return;
     }
 
@@ -1217,19 +1312,29 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
   function start() {
     loadStore();
     startOverlayServer();
-    connectStatsApi();
+    if (config.autoConnectStatsApi !== false) {
+      connectStatsApi({ force: false });
+    } else {
+      setConnectionStatus('disconnected');
+      emitUpdate();
+    }
     return snapshot();
   }
 
   function setConfig(nextConfig = {}) {
     const prevStatsPort = Number(config.statsApiPort);
     const prevOverlayPort = Number(config.overlayPort);
+    const prevAutoConnect = config.autoConnectStatsApi !== false;
     config = normalizeConfig({ ...config, ...nextConfig });
     saveStore();
     broadcast({ type: 'config', data: config });
-    if (Number(config.statsApiPort) !== prevStatsPort) {
+    const nextAutoConnect = config.autoConnectStatsApi !== false;
+    if (!nextAutoConnect) {
+      closeStatsApi();
+      setConnectionStatus('disconnected');
+    } else if (Number(config.statsApiPort) !== prevStatsPort || !prevAutoConnect) {
       preferredStatsApiTransport = null;
-      connectStatsApi();
+      connectStatsApi({ force: false });
     }
     if (Number(config.overlayPort) !== prevOverlayPort) {
       log('warn', 'Cambio de puerto OBS requiere reiniciar la app para reabrir el servidor local.');
@@ -1256,7 +1361,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
   }
 
   function refresh() {
-    connectStatsApi();
+    connectStatsApi({ force: true });
     return snapshot();
   }
 
@@ -1278,6 +1383,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
       connectionStatus: visibleConnectionStatus,
       rawConnectionStatus: connectionStatus,
       transport: currentTransport,
+      autoConnectStatsApi: config.autoConnectStatsApi !== false,
       url: `http://localhost:${config.overlayPort}/broadcast`,
       statsUrl: `http://localhost:${config.overlayPort}/stats`,
       statsApiPort: config.statsApiPort,

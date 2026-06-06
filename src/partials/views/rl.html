@@ -132,7 +132,10 @@
     <section class="ops-panel">
       <div class="ops-panel-head">
         <span class="ops-panel-title"><span class="tick"></span>Equipos</span>
-        <button type="button" class="btn btn-ghost" style="padding:5px 11px;font-size:10px" onclick="rlSwapSides()">Intercambiar lados</button>
+        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-ghost" style="padding:5px 11px;font-size:10px" onclick="rlClearTeamNames()">Limpiar nombres</button>
+          <button type="button" class="btn btn-ghost" style="padding:5px 11px;font-size:10px" onclick="rlSwapSides()">Intercambiar lados</button>
+        </span>
       </div>
       <div class="ops-panel-body">
         <div class="g2">
@@ -143,10 +146,10 @@
             </div>
             <div class="ig">
               <label>Nombre</label>
-              <input type="text" id="rlBlueName" placeholder="BLUE" oninput="rlMarkDirty()" />
+              <input type="text" id="rlBlueName" placeholder="Azul" oninput="rlMarkDirty()" />
             </div>
             <div class="rl-logo-row">
-              <div class="rl-logo-preview" id="rlBlueLogoPreview">B</div>
+              <div class="rl-logo-preview" id="rlBlueLogoPreview"></div>
               <label class="btn btn-ghost rl-file-btn">Subir logo<input type="file" id="rlBlueLogoFile" accept="image/*" onchange="rlReadLogo('blue', this.files && this.files[0])" /></label>
               <button class="btn btn-ghost" onclick="rlClearLogo('blue')" type="button">Quitar</button>
             </div>
@@ -159,10 +162,10 @@
             </div>
             <div class="ig">
               <label>Nombre</label>
-              <input type="text" id="rlOrangeName" placeholder="ORANGE" oninput="rlMarkDirty()" />
+              <input type="text" id="rlOrangeName" placeholder="Naranja" oninput="rlMarkDirty()" />
             </div>
             <div class="rl-logo-row">
-              <div class="rl-logo-preview" id="rlOrangeLogoPreview">O</div>
+              <div class="rl-logo-preview" id="rlOrangeLogoPreview"></div>
               <label class="btn btn-ghost rl-file-btn">Subir logo<input type="file" id="rlOrangeLogoFile" accept="image/*" onchange="rlReadLogo('orange', this.files && this.files[0])" /></label>
               <button class="btn btn-ghost" onclick="rlClearLogo('orange')" type="button">Quitar</button>
             </div>
@@ -218,7 +221,7 @@
           <div class="rl-series-panel">
             <div class="rl-versus-control">
               <div class="rl-side-control blue">
-                <span id="rlSeriesBlueName">BLUE</span>
+                <span id="rlSeriesBlueName">Azul</span>
                 <strong id="rlSeriesBlueGames">0</strong>
                 <div class="rl-step-row">
                   <button type="button" class="btn btn-ghost" onclick="rlAdjustSeriesGame('blue', -1)">-</button>
@@ -226,7 +229,7 @@
                 </div>
               </div>
               <div class="rl-side-control orange">
-                <span id="rlSeriesOrangeName">ORANGE</span>
+                <span id="rlSeriesOrangeName">Naranja</span>
                 <strong id="rlSeriesOrangeGames">0</strong>
                 <div class="rl-step-row">
                   <button type="button" class="btn btn-ghost" onclick="rlAdjustSeriesGame('orange', -1)">-</button>
@@ -451,6 +454,13 @@
           <div class="ig">
             <label>Puerto Stats API</label>
             <input type="number" min="1" max="65535" id="rlStatsApiPort" value="49123" oninput="rlMarkDirty()" />
+          </div>
+          <div class="ig">
+            <label>Conexión automática</label>
+            <label class="rl-toggle" style="height:38px;margin:0;align-items:center">
+              <input type="checkbox" id="rlAutoConnectStatsApi" onchange="rlMarkDirty()" />
+              <span>Auto conectar Stats API</span>
+            </label>
           </div>
           <div class="ig">
             <label>Nombre jugador</label>

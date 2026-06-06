@@ -122,6 +122,8 @@ let kickPresenceState = { localInstanceId: '', staleAfterMs: 20000, instances: [
 let kickCommandHealthState = { totals: {}, actions: [], alerts: [] };
 let kickMonitorState = null;
 let kickMonitorTimer = null;
+let kickManualChatSending = false;
+let kickManualChatHistory = [];
 let kickAccountIdentities = {
   broadcaster: null,
   bot: null,
@@ -552,6 +554,107 @@ async function kickCommandsToggle(key, enabled) {
     kickCommandsConfig = _normalizeKickCommandsConfig(prev);
     kickCommandsApplyUI();
     _setKickCommandsMsg(r?.error || 'No se pudo guardar el cambio.', 'err');
+  }
+}
+
+function _setKickManualChatMsg(text, tone = 'muted') {
+  const el = document.getElementById('kickManualChatMsg');
+  if (!el) return;
+  el.textContent = text || '';
+  if (tone === 'ok') el.style.color = 'var(--green)';
+  else if (tone === 'err') el.style.color = 'var(--red)';
+  else if (tone === 'warn') el.style.color = 'var(--orange2)';
+  else el.style.color = 'var(--text3)';
+}
+
+function kickManualChatInput() {
+  const input = document.getElementById('kickManualChatInput');
+  const count = document.getElementById('kickManualChatCount');
+  const btn = document.getElementById('kickManualChatSendBtn');
+  const len = String(input?.value || '').length;
+  if (count) {
+    count.textContent = `${len}/500`;
+    count.classList.toggle('warn', len > 450);
+    count.classList.toggle('bad', len > 500);
+  }
+  if (btn) btn.disabled = kickManualChatSending || !String(input?.value || '').trim() || len > 500;
+}
+
+function kickManualChatInsert(text) {
+  const input = document.getElementById('kickManualChatInput');
+  if (!input) return;
+  input.value = String(text || '').slice(0, 500);
+  kickManualChatInput();
+  input.focus();
+}
+
+function kickManualChatKeydown(event) {
+  if (event.key !== 'Enter' || event.shiftKey) return;
+  event.preventDefault();
+  kickManualChatSend();
+}
+
+function kickManualChatRenderHistory() {
+  const list = document.getElementById('kickManualChatHistory');
+  if (!list) return;
+  if (!kickManualChatHistory.length) {
+    list.innerHTML = '<div class="kick-manual-empty">Sin mensajes enviados en esta sesión.</div>';
+    return;
+  }
+  list.innerHTML = kickManualChatHistory.slice(0, 5).map((row) => `
+    <div class="kick-manual-row">
+      <span>${_hKick(row.time || '--:--')}</span>
+      <strong>${_hKick(row.message)}</strong>
+    </div>
+  `).join('');
+}
+
+async function kickManualChatSend() {
+  if (kickManualChatSending) return;
+  const input = document.getElementById('kickManualChatInput');
+  const btn = document.getElementById('kickManualChatSendBtn');
+  const message = String(input?.value || '').replace(/\s+/g, ' ').trim();
+  if (!message) {
+    _setKickManualChatMsg('Escribí un mensaje.', 'warn');
+    kickManualChatInput();
+    return;
+  }
+  if (message.length > 500) {
+    _setKickManualChatMsg('El mensaje supera 500 caracteres.', 'err');
+    kickManualChatInput();
+    return;
+  }
+  kickManualChatSending = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+  }
+  _setKickManualChatMsg('Enviando al chat...', 'muted');
+  try {
+    const r = await api.kickChatSendManual(message);
+    if (!r?.ok) {
+      _setKickManualChatMsg(r?.error || 'No se pudo enviar el mensaje.', 'err');
+      return;
+    }
+    const sentAt = r.sentAt ? new Date(r.sentAt) : new Date();
+    kickManualChatHistory.unshift({
+      message,
+      time: sentAt.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }),
+    });
+    kickManualChatHistory = kickManualChatHistory.slice(0, 12);
+    if (input) input.value = '';
+    kickManualChatRenderHistory();
+    kickManualChatInput();
+    _setKickManualChatMsg(`Enviado como bot (${r.via || 'chat'}).`, 'ok');
+    toast('Mensaje enviado a Kick', 'ok');
+  } catch (e) {
+    _setKickManualChatMsg(e?.message || 'Error enviando mensaje.', 'err');
+  } finally {
+    kickManualChatSending = false;
+    if (btn) {
+      btn.textContent = 'Enviar';
+    }
+    kickManualChatInput();
   }
 }
 

@@ -84,6 +84,28 @@
       <div class="page-col">
         <section class="ops-panel">
           <div class="ops-panel-head">
+            <span class="ops-panel-title"><span class="tick"></span>Enviar como bot</span>
+            <span id="kickManualChatCount" class="kick-badge-muted">0/500</span>
+          </div>
+          <div class="ops-panel-body">
+            <div class="kick-manual-chat">
+              <textarea id="kickManualChatInput" maxlength="500" rows="3" placeholder="Mensaje para el chat de Kick..." oninput="kickManualChatInput()" onkeydown="kickManualChatKeydown(event)"></textarea>
+              <div class="kick-manual-actions">
+                <button class="btn btn-ghost" type="button" onclick="kickManualChatInsert('Song Request activo. Canjeá la reward y dejá artista + canción.')">Song Request</button>
+                <button class="btn btn-ghost" type="button" onclick="kickManualChatInsert('Sumate con !join y salí con !salir.')">Torneo</button>
+                <button class="btn btn-ghost" type="button" onclick="kickManualChatInsert('Gracias por estar en el stream.')">Gracias</button>
+                <button id="kickManualChatSendBtn" class="btn kick-btn-green" type="button" onclick="kickManualChatSend()" disabled>Enviar</button>
+              </div>
+              <div id="kickManualChatMsg" class="kick-manual-msg"></div>
+              <div id="kickManualChatHistory" class="kick-manual-history">
+                <div class="kick-manual-empty">Sin mensajes enviados en esta sesión.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="ops-panel">
+          <div class="ops-panel-head">
             <span class="ops-panel-title"><span class="tick"></span>Reward activa para Song Request</span>
             <span id="kickRewardBadge" class="kick-badge-muted">—</span>
           </div>

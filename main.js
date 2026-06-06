@@ -417,7 +417,8 @@ async function spotifyApiRequest(method, endpoint, body = null, options = {}) {
   const headers = { Authorization: `Bearer ${authRes.accessToken}` };
   if (body !== null) headers['Content-Type'] = 'application/json';
   const payload = body === null ? null : JSON.stringify(body);
-  const r = await httpsRequest(method, 'api.spotify.com', endpoint, headers, payload);
+  const requestTimeoutMs = Number.isFinite(Number(opts.timeoutMs)) ? Math.max(500, Number(opts.timeoutMs)) : undefined;
+  const r = await httpsRequest(method, 'api.spotify.com', endpoint, headers, payload, requestTimeoutMs);
   const status = Number(r?.status || 0);
 
   if (status === 401 && opts.retryOn401 !== false) {
@@ -438,12 +439,33 @@ async function spotifyApiRequest(method, endpoint, body = null, options = {}) {
   };
 }
 
-async function spotifyNowPlayingData() {
-  const r = await spotifyApiRequest('GET', '/v1/me/player', null);
+const SPOTIFY_NOW_PLAYING_CHAT_CACHE_MS = 10000;
+let _spotifyNowPlayingCache = { data: null, at: 0 };
+
+function getCachedSpotifyNowPlaying(maxAgeMs = SPOTIFY_NOW_PLAYING_CHAT_CACHE_MS) {
+  const age = Date.now() - Number(_spotifyNowPlayingCache.at || 0);
+  if (_spotifyNowPlayingCache.at && age >= 0 && age <= maxAgeMs) {
+    return { hit: true, data: _spotifyNowPlayingCache.data };
+  }
+  return { hit: false, data: null };
+}
+
+async function spotifyNowPlayingData(options = {}) {
+  const opts = (options && typeof options === 'object') ? options : {};
+  const cacheMaxAgeMs = Number.isFinite(Number(opts.cacheMaxAgeMs)) ? Math.max(0, Number(opts.cacheMaxAgeMs)) : 0;
+  if (cacheMaxAgeMs > 0 && !opts.force) {
+    const cached = getCachedSpotifyNowPlaying(cacheMaxAgeMs);
+    if (cached.hit) return cached.data;
+  }
+
+  const apiOptions = {};
+  if (Number.isFinite(Number(opts.timeoutMs))) apiOptions.timeoutMs = Number(opts.timeoutMs);
+  const r = await spotifyApiRequest('GET', '/v1/me/player', null, apiOptions);
   if (r.status === 0) throw new Error(r.error || 'Sin conexión a Supabase');
   if (r.status === 401) throw new Error('Token inválido o expirado (401)');
   if (r.status === 403) throw new Error('Sin permisos suficientes en Spotify (403)');
   if (r.status !== 200 && r.status !== 204) throw new Error(`Respuesta inesperada de Spotify: ${r.status}`);
+  _spotifyNowPlayingCache = { data: r.data || null, at: Date.now() };
   return r.data;
 }
 
@@ -777,6 +799,7 @@ function registerIpcHandlers() {
     httpsRequest,
     kickApiRequest,
     kickRefreshAccessToken,
+    kickChatSend,
     connectKickBot,
     disconnectKickBot,
     stopKickPolling,
@@ -1909,10 +1932,10 @@ async function processQueue() {
         const nowPlayingOp = await runOperationWithPolicy({
           action: actionName,
           op: 'spotify-now-playing',
-          timeoutMs: 9000,
-          retries: 1,
+          timeoutMs: 2000,
+          retries: 0,
           retryDelayMs: 300,
-          run: () => spotifyNowPlayingData(),
+          run: () => spotifyNowPlayingData({ cacheMaxAgeMs: SPOTIFY_NOW_PLAYING_CHAT_CACHE_MS, timeoutMs: 1500 }),
         });
         if (!nowPlayingOp.ok) throw new Error(nowPlayingOp.error || 'No se pudo obtener now playing');
         const track = nowPlayingOp.value;
@@ -1993,10 +2016,10 @@ async function processQueue() {
         const nowPlayingOp = await runOperationWithPolicy({
           action: actionName,
           op: 'spotify-now-playing',
-          timeoutMs: 9000,
-          retries: 1,
+          timeoutMs: 2000,
+          retries: 0,
           retryDelayMs: 300,
-          run: () => spotifyNowPlayingData(),
+          run: () => spotifyNowPlayingData({ cacheMaxAgeMs: SPOTIFY_NOW_PLAYING_CHAT_CACHE_MS, timeoutMs: 1500 }),
         });
         if (!nowPlayingOp.ok) throw new Error(nowPlayingOp.error || 'No se pudo obtener contexto actual');
         const track = nowPlayingOp.value;

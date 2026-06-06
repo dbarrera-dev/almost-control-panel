@@ -481,27 +481,11 @@ function createKickService({ loadConfig, saveConfig, httpsRequest, saveLog, stat
       token = ctx.creds.botAccessToken;
       if (token) state.kickBotAccessToken = token;
     }
-    const botTokenState = await ensureKickTokenUsable({
-      kind: 'bot',
-      token,
-      modeOverride: kickRuntimeMode,
-      requiredScopes: KICK_REQUIRED_BOT_SCOPES,
-      silent: true,
-    });
-    if (botTokenState.ok && botTokenState.token) {
-      token = botTokenState.token;
-      state.kickBotAccessToken = token;
-    } else if (botTokenState.reason === 'missing_scope') {
-      saveLog('warn', 'Kick chat: token bot sin scope chat:write. El mensaje no se envía con broadcaster para mantener identidad de bot.');
-      return { ok: false, status: 403, via: 'bot', error: 'Token bot sin scope chat:write' };
-    } else {
-      token = '';
-    }
 
     const sendChat = async (t, type) => {
       const payload = { content: message, type };
       if (type === 'user' && state.kickChannelId) payload.broadcaster_user_id = Number(state.kickChannelId) || state.kickChannelId;
-      return kickApiRequestWithRetry('POST', '/public/v1/chat', payload, t, { retries: 2, baseDelayMs: 350 });
+      return kickApiRequestWithRetry('POST', '/public/v1/chat', payload, t, { retries: 0, baseDelayMs: 350 });
     };
 
     if (!token) {

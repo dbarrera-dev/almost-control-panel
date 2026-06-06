@@ -17,6 +17,10 @@ body {
   user-select: none;
   -webkit-font-smoothing: antialiased;
 }
+body:not(.is-ready) .wrap,
+body:not(.is-ready) .players {
+  visibility: hidden;
+}
 :root {
   --blue: #2f8cff;
   --orange: #ff7a18;
@@ -155,6 +159,9 @@ body {
 }
 .team--blue { grid-template-columns: auto minmax(0, 1fr) auto; }
 .team--orange { grid-template-columns: auto minmax(0, 1fr) auto; }
+.team.no-logo .logo { display: none; }
+.team--blue.no-logo { grid-template-columns: minmax(0, 1fr) auto; }
+.team--orange.no-logo { grid-template-columns: auto minmax(0, 1fr); }
 .logo {
   display: grid;
   place-items: center;
@@ -540,12 +547,12 @@ body {
 </head>
 <body>
   <div class="wrap" id="wrap">
-    <main class="sb" id="sb" data-theme="broadcast" aria-label="Rocket League scoreboard">
+    <main class="sb" id="sb" data-theme="slate" aria-label="Rocket League scoreboard">
       <section class="team team--blue">
-        <div class="logo" id="blueLogo">B</div>
+        <div class="logo" id="blueLogo"></div>
         <div class="meta">
           <div class="tag" id="blueTag">Local</div>
-          <div class="name" id="blueName">BLUE</div>
+          <div class="name" id="blueName">Azul</div>
           <div class="games" id="blueGames">0</div>
         </div>
         <div class="score" id="blueScore">0</div>
@@ -561,10 +568,10 @@ body {
         <div class="score" id="orangeScore">0</div>
         <div class="meta">
           <div class="tag" id="orangeTag">Visitante</div>
-          <div class="name" id="orangeName">ORANGE</div>
+          <div class="name" id="orangeName">Naranja</div>
           <div class="games" id="orangeGames">0</div>
         </div>
-        <div class="logo" id="orangeLogo">O</div>
+        <div class="logo" id="orangeLogo"></div>
       </section>
     </main>
     <div class="subtitle" id="subtitle"><span class="subtitle-text" id="subtitleText"></span></div>
@@ -575,14 +582,14 @@ body {
   </div>
 
 <script>
-const params = new URLSearchParams(location.search);
 const THEMES = ['broadcast', 'slate', 'minimal', 'neon', 'classic', 'arena'];
 const FULLBLEED_THEMES = ['classic'];
-const themeOverride = THEMES.includes(params.get('theme')) ? params.get('theme') : null;
 
 const el = {
   wrap: document.getElementById('wrap'),
   sb: document.getElementById('sb'),
+  blueTeam: document.querySelector('.team--blue'),
+  orangeTeam: document.querySelector('.team--orange'),
   blueLogo: document.getElementById('blueLogo'),
   orangeLogo: document.getElementById('orangeLogo'),
   blueName: document.getElementById('blueName'),
@@ -616,20 +623,20 @@ function formatClock(seconds, overtime) {
   return `${overtime ? '+' : ''}${mins}:${String(secs).padStart(2, '0')}`;
 }
 
-function renderLogo(target, team, fallback) {
+function renderLogo(target, team, teamEl) {
   target.textContent = '';
-  if (team.logoDataUrl) {
+  const hasLogo = !!team.logoDataUrl;
+  if (teamEl) teamEl.classList.toggle('no-logo', !hasLogo);
+  if (hasLogo) {
     const img = document.createElement('img');
     img.alt = '';
     img.src = team.logoDataUrl;
     target.appendChild(img);
-  } else {
-    target.textContent = fallback;
   }
 }
 
 function applyTheme(theme) {
-  const next = THEMES.includes(theme) ? theme : 'broadcast';
+  const next = THEMES.includes(theme) ? theme : 'slate';
   el.sb.dataset.theme = next;
   el.wrap.dataset.theme = next;
   el.players.dataset.theme = next;
@@ -665,9 +672,9 @@ function fitNames(blueName, orangeName) {
 
 function render(state) {
   const cfg = state?.config || {};
-  const blue = cfg.blueTeam || { name: 'BLUE', color: '#2f8cff' };
-  const orange = cfg.orangeTeam || { name: 'ORANGE', color: '#ff7a18' };
   const match = state?.scoreboard || state?.currentMatch || {};
+  const blue = match.blueTeam || cfg.blueTeam || { name: 'Azul', color: '#2f8cff' };
+  const orange = match.orangeTeam || cfg.orangeTeam || { name: 'Naranja', color: '#ff7a18' };
   const seriesState = state?.seriesState || {};
   const style = cfg.style || {};
 
@@ -676,10 +683,11 @@ function render(state) {
   document.documentElement.style.setProperty('--panel', style.bg || 'rgba(6,11,18,0.88)');
   document.documentElement.style.setProperty('--text', style.text || '#fff');
   document.documentElement.style.setProperty('--radius', `${Number(style.radius ?? 10)}px`);
-  applyTheme(themeOverride || style.theme || 'broadcast');
+  applyTheme(style.theme || 'slate');
+  document.body.classList.add('is-ready');
 
-  const blueName = (blue.name || 'BLUE').trim() || 'BLUE';
-  const orangeName = (orange.name || 'ORANGE').trim() || 'ORANGE';
+  const blueName = (blue.name || 'Azul').trim() || 'Azul';
+  const orangeName = (orange.name || 'Naranja').trim() || 'Naranja';
   fitNames(blueName, orangeName);
   el.blueName.textContent = blueName;
   el.orangeName.textContent = orangeName;
@@ -689,8 +697,8 @@ function render(state) {
   const target = Number(series.targetWins) || 0;
   renderPips(el.blueGames, seriesState.blueGames, target, false);
   renderPips(el.orangeGames, seriesState.orangeGames, target, true);
-  renderLogo(el.blueLogo, blue, 'B');
-  renderLogo(el.orangeLogo, orange, 'O');
+  renderLogo(el.blueLogo, blue, el.blueTeam);
+  renderLogo(el.orangeLogo, orange, el.orangeTeam);
   el.blueScore.textContent = Number.isFinite(Number(match.blueScore)) ? String(match.blueScore) : '0';
   el.orangeScore.textContent = Number.isFinite(Number(match.orangeScore)) ? String(match.orangeScore) : '0';
   el.clock.textContent = formatClock(match.secondsRemaining, match.isOvertime);

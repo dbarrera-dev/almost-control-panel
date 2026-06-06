@@ -54,12 +54,16 @@ function registerKickIpc({
   httpsRequest,
   kickApiRequest,
   kickRefreshAccessToken,
+  kickChatSend,
   connectKickBot,
   disconnectKickBot,
   stopKickPolling,
   saveLog,
   state,
 }) {
+  const KICK_MANUAL_CHAT_MAX_LENGTH = 500;
+  const KICK_MANUAL_CHAT_COOLDOWN_MS = 1200;
+  let lastManualChatSentAt = 0;
   let kickCommandsRealtimeChannel = null;
   let kickCommandsRealtimeSupabaseRef = null;
   let kickCommandsRealtimeStatus = 'CLOSED';
@@ -1677,6 +1681,62 @@ function registerKickIpc({
       };
     }
     return { ok: true, synced: true, config: applied };
+  });
+
+  ipcMain.handle('kick-chat-send-manual', async (_, input = {}) => {
+    try {
+      if (typeof kickChatSend !== 'function') {
+        return { ok: false, error: 'El envío de chat no está disponible en esta versión.' };
+      }
+      if (!state.kickPollTimer) {
+        return { ok: false, error: 'Conectá el bot de Kick antes de enviar mensajes.' };
+      }
+
+      const rawMessage = String(input?.message || '').replace(/\s+/g, ' ').trim();
+      if (!rawMessage) return { ok: false, error: 'Escribí un mensaje para enviar.' };
+      if (rawMessage.length > KICK_MANUAL_CHAT_MAX_LENGTH) {
+        return {
+          ok: false,
+          error: `El mensaje supera ${KICK_MANUAL_CHAT_MAX_LENGTH} caracteres.`,
+          maxLength: KICK_MANUAL_CHAT_MAX_LENGTH,
+        };
+      }
+
+      const now = Date.now();
+      const waitMs = Math.max(0, KICK_MANUAL_CHAT_COOLDOWN_MS - (now - lastManualChatSentAt));
+      if (waitMs > 0) {
+        return {
+          ok: false,
+          error: `Esperá ${Math.ceil(waitMs / 1000)}s antes de mandar otro mensaje.`,
+          cooldownMs: waitMs,
+        };
+      }
+
+      lastManualChatSentAt = now;
+      const res = await kickChatSend(rawMessage);
+      if (!res?.ok) {
+        lastManualChatSentAt = 0;
+        const status = Number(res?.status || 0);
+        let detail = String(res?.error || '').trim();
+        if (status === 403) detail = 'El token del bot no tiene permisos de chat o no pertenece al canal.';
+        else if (status === 429) detail = 'Kick está aplicando rate limit. Probá de nuevo en unos segundos.';
+        else if (status === 503) detail = 'No hay token de bot disponible. Reautorizá la cuenta bot.';
+        else if (!detail) detail = `Kick devolvió status ${status || 'desconocido'}.`;
+        return { ok: false, status, via: res?.via || '', error: detail };
+      }
+
+      saveLog('info', `[Kick manual] Bot envió mensaje: ${rawMessage.slice(0, 140)}${rawMessage.length > 140 ? '...' : ''}`);
+      return {
+        ok: true,
+        status: Number(res.status || 200),
+        via: res.via || 'bot',
+        sentAt: new Date().toISOString(),
+        message: rawMessage,
+      };
+    } catch (e) {
+      lastManualChatSentAt = 0;
+      return { ok: false, error: e?.message || String(e) };
+    }
   });
 
   ipcMain.handle('kick-subs-list', async (_, input = {}) => {

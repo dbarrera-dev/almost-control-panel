@@ -115,6 +115,7 @@ const api = {
   kickResetTokens:     (opts)     => ipcRenderer.invoke('kick-reset-tokens', opts),
   kickCommandsGetConfig: ()       => ipcRenderer.invoke('kick-commands-get-config'),
   kickCommandsSetConfig: (cfg)    => ipcRenderer.invoke('kick-commands-set-config', cfg),
+  kickChatSendManual:   (message) => ipcRenderer.invoke('kick-chat-send-manual', { message }),
   runtimePresenceGet:     ()      => ipcRenderer.invoke('runtime-presence-get'),
   runtimePresencePing:    ()      => ipcRenderer.invoke('runtime-presence-ping'),
   runtimePresenceMeta:    ()      => ipcRenderer.invoke('runtime-presence-meta'),
