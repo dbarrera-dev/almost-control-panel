@@ -120,6 +120,11 @@ const DEFAULT_CONFIG = {
   soundboardBucket: 'soundboard',
   soundboardHotkeysEnabled: true,
   keyOverlayStorageBucket: 'soundboard',
+
+  // ── Content / Discord ──
+  contentStorageBucket: 'almost-content',
+  discordBotName: 'Almost Bot',
+  discordBotAvatarUrl: '',
 };
 
 function createConfigStore(app) {

@@ -39,6 +39,7 @@ const api = {
   maximize:   () => ipcRenderer.invoke('window-maximize'),
   close:      () => ipcRenderer.invoke('window-close'),
   getVersion: () => ipcRenderer.invoke('get-version'),
+  onTrayNavigate: (cb) => ipcRenderer.on('tray-navigate', (_, tab) => cb(tab)),
 
   // Config
   getConfig:            ()    => ipcRenderer.invoke('get-config'),
@@ -154,6 +155,28 @@ const api = {
   todosAdd:    (todo)       => ipcRenderer.invoke('todos-add', todo),
   todosUpdate: (id, data, title) => ipcRenderer.invoke('todos-update', { id, data, title }),
   todosDelete: (id)         => ipcRenderer.invoke('todos-delete', id),
+
+  // Content / Ideas
+  contentUploadImage: (payload) => ipcRenderer.invoke('content-upload-image', payload),
+  ideasGet:    ()           => ipcRenderer.invoke('content-ideas-get'),
+  ideasAdd:    (idea)       => ipcRenderer.invoke('content-ideas-add', idea),
+  ideasUpdate: (id, data)   => ipcRenderer.invoke('content-ideas-update', { id, data }),
+  ideasDelete: (id)         => ipcRenderer.invoke('content-ideas-delete', id),
+
+  // Discord Announcements
+  discordSettingsGet:    ()       => ipcRenderer.invoke('discord-settings-get'),
+  discordSettingsSet:    (data)   => ipcRenderer.invoke('discord-settings-set', data),
+  discordWebhooksGet:    ()       => ipcRenderer.invoke('discord-webhooks-get'),
+  discordWebhooksAdd:    (data)   => ipcRenderer.invoke('discord-webhooks-add', data),
+  discordWebhooksDelete: (id)     => ipcRenderer.invoke('discord-webhooks-delete', id),
+  discordWebhooksTest:   (id)     => ipcRenderer.invoke('discord-webhooks-test', id),
+  discordAnnouncementsGet:      ()         => ipcRenderer.invoke('discord-announcements-get'),
+  discordAnnouncementsSend:     (data)     => ipcRenderer.invoke('discord-announcements-send', data),
+  discordAnnouncementsSchedule: (data)     => ipcRenderer.invoke('discord-announcements-schedule', data),
+  discordAnnouncementsUpdate:   (id, data) => ipcRenderer.invoke('discord-announcements-update', { id, data }),
+  discordAnnouncementsSendNow:  (id)       => ipcRenderer.invoke('discord-announcements-send-now', id),
+  discordAnnouncementsDelete:   (id)       => ipcRenderer.invoke('discord-announcements-delete', id),
+  onDiscordAnnouncementsChanged:(cb)       => ipcRenderer.on('discord-announcements-changed', (_, d) => cb(d)),
 
   // Duelos
   duelosGet:    ()             => ipcRenderer.invoke('duelos-get'),

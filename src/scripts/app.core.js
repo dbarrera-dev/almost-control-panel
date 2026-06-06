@@ -21,6 +21,8 @@ const _TAB_LOADER_FN = {
   keys: 'loadKeyOverlay',
   rl: 'loadRLOverlay',
   todos: 'loadTodos',
+  ideas: 'loadIdeas',
+  anuncios: 'loadAnuncios',
   audiolink: 'loadAudiolink',
   'obs-dual': 'loadObsDual',
   soundboard: 'loadSoundboard',
@@ -57,7 +59,7 @@ function _runTabLoader(name, attempt = 0) {
 function goTab(name) {
   // Pestañas marcadas como "Pronto" no son navegables
   if (document.getElementById('tab-' + name)?.classList.contains('tab-soon')) return;
-  ['dashboard','torneo','overlays','keys','spotify','kick','duelos','sorteos','rl','config','todos','audiolink','obs-dual','soundboard'].forEach(n => {
+  ['dashboard','torneo','overlays','keys','spotify','kick','duelos','sorteos','rl','config','todos','ideas','anuncios','audiolink','obs-dual','soundboard'].forEach(n => {
     const view = document.getElementById('view-' + n);
     const tab = document.getElementById('tab-' + n);
     if (view) view.classList.toggle('on', n === name);
@@ -68,6 +70,11 @@ function goTab(name) {
     s.classList.toggle('hidden', s.id !== 'subnav-' + name);
   });
   _runTabLoader(name);
+}
+
+// Accesos directos del menú del tray → navegar a la pestaña.
+if (typeof api?.onTrayNavigate === 'function') {
+  api.onTrayNavigate((tab) => { if (tab) goTab(tab); });
 }
 
 function goOverlay(name) {
@@ -239,7 +246,7 @@ document.addEventListener('keydown', (e) => {
 
   // Alt+1..9 → switch tabs
   if (e.altKey && !e.ctrlKey && !e.shiftKey) {
-    const tabs = ['dashboard','torneo','sorteos','duelos','todos','spotify','kick','overlays','keys','rl','config','audiolink','obs-dual','soundboard'];
+    const tabs = ['dashboard','torneo','sorteos','duelos','todos','ideas','anuncios','spotify','kick','keys','rl','config','audiolink','obs-dual','soundboard'];
     const idx = parseInt(e.key) - 1;
     if (idx >= 0 && idx < tabs.length) { e.preventDefault(); goTab(tabs[idx]); return; }
   }

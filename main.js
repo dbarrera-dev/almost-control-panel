@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -124,6 +124,7 @@ const { registerOverlayIpc } = require('./main/ipc/overlay');
 const { registerSpotifyIpc } = require('./main/ipc/spotify');
 const { registerDuelosIpc } = require('./main/ipc/duelos');
 const { registerTodosIpc } = require('./main/ipc/todos');
+const { registerContentIpc } = require('./main/ipc/content');
 const { registerSorteoIpc } = require('./main/ipc/sorteo');
 const { registerLogsIpc } = require('./main/ipc/logs');
 const { registerKeyOverlayIpc } = require('./main/ipc/keyoverlay');
@@ -802,6 +803,10 @@ function registerIpcHandlers() {
   });
   registerDuelosIpc({ ipcMain, saveLog, state });
   registerTodosIpc({ ipcMain, saveLog, state });
+  registerContentIpc({
+    ipcMain, loadConfig, saveConfig, saveLog, state,
+    notify: (channel, data) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, data); },
+  });
   registerSorteoIpc({ ipcMain, saveLog, state });
   registerLogsIpc({ ipcMain, state });
   registerKeyOverlayIpc({ ipcMain, loadConfig, saveConfig, startKeyOverlay, stopKeyOverlay, getKeyOverlayStatus, broadcastOverlay, configMsg, configRefreshMsg, state });
@@ -959,23 +964,89 @@ function stripKickCredentialsFromConfig(cfg) {
   return { cfg: out, changed };
 }
 
+let trayMenuWindow = null;
+const TRAY_MENU_WIDTH = 196;
+let trayMenuHeight = 320;
+
+function showMainWindowFromTray() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function createTrayMenuWindow() {
+  trayMenuWindow = new BrowserWindow({
+    width: TRAY_MENU_WIDTH,
+    height: trayMenuHeight,
+    show: false,
+    frame: false,
+    transparent: false,
+    backgroundColor: '#0d0e10',
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    fullscreenable: false,
+    hasShadow: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'tray-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  trayMenuWindow.loadFile(path.join(__dirname, 'src', 'tray-menu.html'));
+  trayMenuWindow.on('blur', () => {
+    if (trayMenuWindow && !trayMenuWindow.isDestroyed()) trayMenuWindow.hide();
+  });
+}
+
+function showTrayMenu() {
+  if (!trayMenuWindow || trayMenuWindow.isDestroyed()) return;
+  // Segundo click derecho = cerrar (toggle), evita que se apilen aperturas.
+  if (trayMenuWindow.isVisible()) { trayMenuWindow.hide(); return; }
+  const cursor = screen.getCursorScreenPoint();
+  const wa = screen.getDisplayNearestPoint(cursor).workArea;
+  const w = TRAY_MENU_WIDTH;
+  const h = trayMenuHeight;
+  let x = cursor.x - w + 12;
+  let y = cursor.y - h + 6;
+  x = Math.round(Math.max(wa.x, Math.min(x, wa.x + wa.width - w)));
+  y = Math.round(Math.max(wa.y, Math.min(y, wa.y + wa.height - h)));
+  // Reescribimos el rectángulo completo en cada apertura para auto-corregir
+  // cualquier estado raro de tamaño/posición acumulado.
+  trayMenuWindow.setBounds({ x, y, width: w, height: h });
+  trayMenuWindow.show();
+  trayMenuWindow.focus();
+}
+
 function createTray() {
   const iconPath = path.join(__dirname, 'assets', 'icon.ico');
   tray = new Tray(iconPath);
   tray.setToolTip('Almost Control');
-  const showMainWindowFromTray = () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
-  };
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Mostrar', click: showMainWindowFromTray },
-    { type: 'separator' },
-    { label: 'Salir', click: () => { isQuitting = true; app.quit(); } },
-  ]));
+  createTrayMenuWindow();
+
   tray.on('click', showMainWindowFromTray);
   tray.on('double-click', showMainWindowFromTray);
+  tray.on('right-click', showTrayMenu);
+
+  ipcMain.on('tray-menu-size', (_, height) => {
+    if (!trayMenuWindow || trayMenuWindow.isDestroyed()) return;
+    trayMenuHeight = Math.max(120, Math.min(560, Math.round(Number(height) || trayMenuHeight)));
+    trayMenuWindow.setBounds({ ...trayMenuWindow.getBounds(), width: TRAY_MENU_WIDTH, height: trayMenuHeight });
+  });
+
+  ipcMain.on('tray-menu-action', (_, action) => {
+    if (trayMenuWindow && !trayMenuWindow.isDestroyed()) trayMenuWindow.hide();
+    if (action === 'cancel') return;
+    if (action === 'quit') { isQuitting = true; app.quit(); return; }
+    showMainWindowFromTray();
+    if (action !== 'show' && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('tray-navigate', action);
+    }
+  });
 }
 
 app.whenReady().then(async () => {

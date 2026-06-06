@@ -22,9 +22,11 @@
   } catch (e) {
     log('warn', 'Error en init: ' + (e.message || e));
   }
-  // Pre-cargar badges sin necesidad de visitar los tabs
+  // Pre-cargar badges/datos sin necesidad de visitar los tabs
   api.todosGet().then(r => { if (r.ok) { todosData = r.data || []; todoUpdateBadge(); } }).catch(() => {});
   api.duelosGet().then(r => { if (r.ok) { duelos = r.data || []; _updateDueloBadge(); } }).catch(() => {});
+  if (typeof loadIdeas === 'function') loadIdeas().catch(() => {});
+  if (typeof loadAnuncios === 'function') loadAnuncios().catch(() => {});
   loadLogHistory();
   loadHistorial();
   // Pintamos la estructura del bracket aunque todavía no haya datos

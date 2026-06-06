@@ -38,7 +38,7 @@
       <span class="ops-panel-meta">presioná teclas</span>
     </div>
     <div class="ops-panel-body">
-      <div id="koPreview" style="min-height:52px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;border:1px solid var(--border)">
+      <div id="koPreview" class="ko-preview-box">
         <span style="font-size:11px;color:var(--text3)">Activá el overlay y presioná teclas...</span>
       </div>
     </div>
@@ -145,12 +145,12 @@
       </div>
 
       <!-- Detectar tecla -->
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <div class="ko-subsection">
         <span class="section-label" style="margin-bottom:8px">¿No aparece tu tecla? Detectala directamente</span>
-        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+        <div class="ko-tools">
           <button class="btn btn-ghost" id="koDetectBtn" onclick="koDetectStart()" style="font-size:11px;padding:5px 13px">Detectar tecla</button>
           <span id="koDetectStatus" style="font-size:11px;color:var(--text3)"></span>
-          <input id="koDetectLabel" type="text" placeholder="Etiqueta (ej: Ñ)" style="width:90px;font-size:11px;display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:5px;padding:4px 8px;color:var(--text);outline:none">
+          <input id="koDetectLabel" type="text" placeholder="Etiqueta (ej: Ñ)" class="ko-field" style="width:90px;display:none">
           <button id="koDetectAdd" class="btn btn-ghost" onclick="koDetectAdd()" style="font-size:11px;padding:5px 12px;display:none;border-color:rgba(74,222,128,.35);color:#4ade80">Agregar</button>
         </div>
       </div>
@@ -163,7 +163,7 @@
       <span class="ops-panel-title"><span class="tick"></span>Estilo</span>
     </div>
     <div class="ops-panel-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="ko-style-grid">
         <div class="ig" style="margin-bottom:0">
           <label>Tamaño</label>
           <div style="display:flex;gap:5px">
@@ -175,11 +175,11 @@
         </div>
         <div class="ig" style="margin-bottom:0">
           <label>Opacidad teclas inactivas <span id="koOpacityVal" style="color:var(--text2);font-weight:600;float:right"></span></label>
-          <input type="range" id="koInactiveOpacity" min="0" max="1" step="0.05" oninput="koOnOpacity(this.value)" style="width:100%;accent-color:var(--orange);margin-top:8px">
+          <input type="range" id="koInactiveOpacity" min="0" max="1" step="0.05" oninput="koOnOpacity(this.value)" class="ko-range">
         </div>
         <div class="ig" style="margin-bottom:0">
           <label>Fuente</label>
-          <select id="koFontFamily" onchange="koSaveConfig()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:7px 9px;color:var(--text);font-size:11px;outline:none">
+          <select id="koFontFamily" onchange="koSaveConfig()" class="ko-field">
             <option value="russo">Russo One</option>
             <option value="bangers">Bangers</option>
             <option value="inter">Inter</option>
@@ -190,15 +190,15 @@
         </div>
         <div class="ig" style="margin-bottom:0">
           <label>Color texto</label>
-          <input type="color" id="koKeyColor" value="#ffffff" oninput="koSaveConfig()" style="width:48px;height:32px;border:none;background:none;cursor:pointer">
+          <input type="color" id="koKeyColor" value="#ffffff" oninput="koSaveConfig()" class="ko-color">
         </div>
         <div class="ig" style="margin-bottom:0">
           <label>Color base tecla</label>
-          <input type="color" id="koBgColor" value="#15151a" oninput="koSaveConfig()" style="width:48px;height:32px;border:none;background:none;cursor:pointer">
+          <input type="color" id="koBgColor" value="#15151a" oninput="koSaveConfig()" class="ko-color">
         </div>
         <div class="ig" style="margin-bottom:0">
           <label>Color al presionar</label>
-          <input type="color" id="koAccentColor" value="#f97316" oninput="koSaveConfig()" style="width:48px;height:32px;border:none;background:none;cursor:pointer">
+          <input type="color" id="koAccentColor" value="#f97316" oninput="koSaveConfig()" class="ko-color">
         </div>
         <div class="ig" style="margin-bottom:0">
           <label>Etiqueta inferior</label>
@@ -207,7 +207,7 @@
               <input type="checkbox" id="koBrandToggle" onchange="koSaveConfig()">
               <span class="toggle-slider"></span>
             </label>
-            <input id="koBrandText" type="text" maxlength="40" placeholder="WOOTING 80HE" oninput="koSaveConfig()" style="min-width:160px;flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:7px 9px;color:var(--text);font-size:11px;outline:none">
+            <input id="koBrandText" type="text" maxlength="40" placeholder="WOOTING 80HE" oninput="koSaveConfig()" class="ko-field" style="flex:1;min-width:160px">
           </div>
         </div>
       </div>
@@ -222,54 +222,71 @@
     </div>
     <div class="ops-panel-body">
       <div class="ko-key-editor">
-        <div class="ig">
-          <label>Tecla a editar</label>
-          <select id="koEditKeySelect" onchange="koSelectEditKey(this.value)" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:7px 9px;color:var(--text);font-size:11px;outline:none"></select>
-        </div>
-        <div class="ko-key-editor-preview">
-          <div id="koEditPreview" class="ko-edit-preview-key" title="Arrastrá para mover la imagen de esta tecla">K</div>
-          <div class="ko-key-editor-actions">
-            <button class="btn btn-ghost" onclick="koCenterKeyImage()" style="padding:5px 10px;font-size:10px">Centrar imagen</button>
-            <button class="btn btn-ghost" onclick="koResetKeyStyle()" style="padding:5px 10px;font-size:10px">Restablecer tecla</button>
+        <!-- Selector + preview -->
+        <div class="ko-edit-top">
+          <div class="ig" style="margin-bottom:0">
+            <label>Tecla a editar</label>
+            <select id="koEditKeySelect" onchange="koSelectEditKey(this.value)" class="ko-field"></select>
+            <div class="ko-meta" style="margin-top:8px">Tip: hacé click en una tecla del teclado de arriba para activarla y editarla al instante.</div>
+          </div>
+          <div class="ko-key-editor-preview">
+            <div id="koEditPreview" class="ko-edit-preview-key" title="Arrastrá para mover la imagen de esta tecla">K</div>
+            <div class="ko-key-editor-actions">
+              <button class="btn btn-ghost" onclick="koCenterKeyImage()" style="padding:5px 10px;font-size:10px">Centrar imagen</button>
+              <button class="btn btn-ghost" onclick="koResetKeyStyle()" style="padding:5px 10px;font-size:10px">Restablecer tecla</button>
+            </div>
           </div>
         </div>
-        <div class="ig">
-          <label>Texto principal</label>
-          <input id="koEditLabel" type="text" maxlength="30" placeholder="K" oninput="koSaveKeyStyle()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:7px 9px;color:var(--text);font-size:11px;outline:none">
+
+        <!-- Grupo: Contenido -->
+        <div class="ko-edit-group">
+          <div class="ko-edit-group-title">Contenido</div>
+          <div class="ko-edit-row ko-edit-row-2">
+            <div class="ig">
+              <label>Texto principal</label>
+              <input id="koEditLabel" type="text" maxlength="30" placeholder="K" oninput="koSaveKeyStyle()" class="ko-field">
+            </div>
+            <div class="ig">
+              <label>Texto debajo</label>
+              <input id="koEditSub" type="text" maxlength="30" placeholder="Nitro, Salto..." oninput="koSaveKeyStyle()" class="ko-field">
+            </div>
+          </div>
         </div>
-        <div class="ig">
-          <label>Texto debajo</label>
-          <input id="koEditSub" type="text" maxlength="30" placeholder="Nitro, Salto..." oninput="koSaveKeyStyle()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:7px 9px;color:var(--text);font-size:11px;outline:none">
+
+        <!-- Grupo: Colores -->
+        <div class="ko-edit-group">
+          <div class="ko-edit-group-title">Colores</div>
+          <div class="ko-edit-row ko-edit-row-3">
+            <div class="ig">
+              <label>Color texto</label>
+              <input type="color" id="koEditKeyColor" oninput="koSaveKeyStyle()" class="ko-color">
+            </div>
+            <div class="ig">
+              <label>Color tecla</label>
+              <input type="color" id="koEditBgColor" oninput="koSaveKeyStyle()" class="ko-color">
+            </div>
+            <div class="ig">
+              <label>Color al presionar</label>
+              <input type="color" id="koEditAccentColor" oninput="koSaveKeyStyle()" class="ko-color">
+            </div>
+          </div>
+          <div class="ko-edit-group-actions">
+            <button class="btn btn-ghost" onclick="koApplyColorsToSelected()" style="padding:6px 12px;font-size:10px" title="Copia estos 3 colores a todas las teclas activas">Aplicar colores a teclas activas</button>
+          </div>
         </div>
-        <div class="ig">
-          <label>Color texto</label>
-          <input type="color" id="koEditKeyColor" oninput="koSaveKeyStyle()" style="width:48px;height:32px;border:none;background:none;cursor:pointer">
-        </div>
-        <div class="ig">
-          <label>Color tecla</label>
-          <input type="color" id="koEditBgColor" oninput="koSaveKeyStyle()" style="width:48px;height:32px;border:none;background:none;cursor:pointer">
-        </div>
-        <div class="ig">
-          <label>Color al presionar</label>
-          <input type="color" id="koEditAccentColor" oninput="koSaveKeyStyle()" style="width:48px;height:32px;border:none;background:none;cursor:pointer">
-        </div>
-        <div class="ig">
-          <label>Ajuste imagen</label>
-          <select id="koEditImageFit" onchange="koSaveKeyStyle()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:7px 9px;color:var(--text);font-size:11px;outline:none">
-            <option value="cover">Cubrir</option>
-            <option value="contain">Contener</option>
-          </select>
-        </div>
-        <div class="ig ko-key-image-field">
-          <label>Imagen de fondo de la tecla</label>
-          <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
-            <input id="koEditImageUrl" type="text" placeholder="https://detalle.png" style="min-width:220px;flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:7px 9px;color:var(--text);font-size:11px;outline:none">
+
+        <!-- Grupo: Imagen de fondo -->
+        <div class="ko-edit-group">
+          <div class="ko-edit-group-title">Imagen de fondo</div>
+          <div class="ko-tools">
+            <input id="koEditImageUrl" type="text" placeholder="https://detalle.png" class="ko-field" style="flex:1;min-width:220px">
             <button class="btn btn-ghost" onclick="koApplyKeyImageUrl()" style="padding:5px 10px;font-size:10px">Usar URL</button>
             <button class="btn btn-ghost" onclick="koOpenKeyImageFilePicker()" style="padding:5px 10px;font-size:10px">Subir imagen</button>
             <button class="btn btn-ghost" onclick="koClearKeyImage()" style="padding:5px 10px;font-size:10px">Quitar imagen</button>
             <input type="file" id="koEditImageFile" accept="image/*" onchange="koUploadKeyImage(this)" style="display:none">
           </div>
-          <div id="koEditImageMeta" style="margin-top:8px;font-size:10px;color:var(--text3);line-height:1.5">Sin imagen propia.</div>
+          <div id="koEditImageMeta" class="ko-meta">Sin imagen propia.</div>
+
           <div class="ko-key-image-library">
             <div class="ko-bg-library-head">
               <span class="section-label" style="margin-bottom:0">Imágenes subidas</span>
@@ -278,19 +295,29 @@
             <div id="koKeyImageLibraryStatus" class="ko-bg-library-status">Cargando imágenes...</div>
             <div id="koKeyImageLibrary" class="ko-bg-library-grid"></div>
           </div>
-        </div>
-        <div class="ig">
-          <label>Opacidad imagen <span id="koEditImageOpacityVal" style="color:var(--text2);font-weight:600;float:right"></span></label>
-          <input id="koEditImageOpacity" type="range" min="0" max="1" step="0.05" oninput="koSaveKeyStyle()" style="width:100%;accent-color:var(--orange);margin-top:8px">
+
+          <div class="ko-edit-row ko-edit-row-auto" style="margin-top:14px">
+            <div class="ig">
+              <label>Ajuste</label>
+              <select id="koEditImageFit" onchange="koSaveKeyStyle()" class="ko-field">
+                <option value="cover">Cubrir</option>
+                <option value="contain">Contener</option>
+              </select>
+            </div>
+            <div class="ig">
+              <label>Opacidad <span id="koEditImageOpacityVal" style="color:var(--text2);font-weight:600;float:right"></span></label>
+              <input id="koEditImageOpacity" type="range" min="0" max="1" step="0.05" oninput="koSaveKeyStyle()" class="ko-range">
+            </div>
+            <div class="ig">
+              <label>Zoom <span id="koEditImageScaleVal" style="color:var(--text2);font-weight:600;float:right"></span></label>
+              <input id="koEditImageScale" type="range" min="0.2" max="4" step="0.01" oninput="koSaveKeyStyle()" class="ko-range">
+            </div>
+            <div class="ig">
+              <label>Giro <span id="koEditImageRotationVal" style="color:var(--text2);font-weight:600;float:right"></span></label>
+              <input id="koEditImageRotation" type="range" min="-180" max="180" step="1" oninput="koSaveKeyStyle()" class="ko-range">
+            </div>
+          </div>
           <div id="koEditImagePositionVal" style="margin-top:6px;font-size:10px;color:var(--text3);line-height:1.4"></div>
-        </div>
-        <div class="ig">
-          <label>Zoom imagen <span id="koEditImageScaleVal" style="color:var(--text2);font-weight:600;float:right"></span></label>
-          <input id="koEditImageScale" type="range" min="0.2" max="4" step="0.01" oninput="koSaveKeyStyle()" style="width:100%;accent-color:var(--orange);margin-top:8px">
-        </div>
-        <div class="ig">
-          <label>Giro imagen <span id="koEditImageRotationVal" style="color:var(--text2);font-weight:600;float:right"></span></label>
-          <input id="koEditImageRotation" type="range" min="-180" max="180" step="1" oninput="koSaveKeyStyle()" style="width:100%;accent-color:var(--orange);margin-top:8px">
         </div>
       </div>
     </div>
@@ -309,14 +336,14 @@
           <span class="toggle-slider"></span>
         </label>
       </div>
-      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
-        <input id="koBgUrl" type="text" placeholder="https://mi-imagen.com/fondo.jpg" style="min-width:260px;flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 9px;color:var(--text);font-size:11px;outline:none">
+      <div class="ko-tools">
+        <input id="koBgUrl" type="text" placeholder="https://mi-imagen.com/fondo.jpg" class="ko-field" style="flex:1;min-width:260px">
         <button class="btn btn-ghost" onclick="koApplyBackgroundUrl()" style="padding:5px 10px;font-size:10px">Usar URL</button>
         <button class="btn btn-ghost" onclick="koOpenBackgroundFilePicker()" style="padding:5px 10px;font-size:10px">Subir imagen</button>
         <button class="btn btn-ghost" onclick="koClearBackground()" style="padding:5px 10px;font-size:10px">Quitar fondo</button>
         <input type="file" id="koBgFile" accept="image/*" onchange="koUploadBackground(this)" style="display:none">
       </div>
-      <div id="koBgMeta" style="margin-top:8px;font-size:10px;color:var(--text3);line-height:1.5">Usando fondo por defecto.</div>
+      <div id="koBgMeta" class="ko-meta">Usando fondo por defecto.</div>
 
       <div class="ko-bg-library">
         <div class="ko-bg-library-head">
@@ -339,14 +366,14 @@
             <span style="font-size:10px;color:var(--text3);min-width:30px">Zoom</span>
             <input id="koBgScale" type="range" min="0.2" max="4" step="0.01" value="1"
                    oninput="koBgOnScaleInput(this.value)" onchange="koBgPersist()"
-                   style="flex:1;accent-color:var(--orange)">
+                   class="ko-range-flex">
             <span id="koBgScaleVal" style="font-size:10px;color:var(--text2);font-weight:600;min-width:36px;text-align:right">100%</span>
           </div>
           <div class="ko-bg-zoom">
             <span style="font-size:10px;color:var(--text3);min-width:30px">Giro</span>
             <input id="koBgRotation" type="range" min="-180" max="180" step="1" value="0"
                    oninput="koBgOnRotationInput(this.value)" onchange="koBgPersist()"
-                   style="flex:1;accent-color:var(--orange)">
+                   class="ko-range-flex">
             <span id="koBgRotationVal" style="font-size:10px;color:var(--text2);font-weight:600;min-width:42px;text-align:right">0°</span>
           </div>
           <button class="btn btn-ghost" onclick="koBgCenter()" style="padding:5px 10px;font-size:10px">Centrar</button>
@@ -354,7 +381,7 @@
         </div>
         <div style="font-size:10px;color:var(--text3);line-height:1.5;margin-top:6px">Arrastrá la imagen para reposicionarla · rueda del mouse para zoom. El recuadro punteado marca el área real del teclado.</div>
       </div>
-      <div id="koBgEditorHint" style="display:none;margin-top:10px;font-size:10px;color:var(--text3);line-height:1.5;background:rgba(0,0,0,.25);border:1px dashed var(--border2);border-radius:8px;padding:12px">Activá el overlay con el toggle de arriba para previsualizar y ajustar la posición del fondo en vivo.</div>
+      <div id="koBgEditorHint" class="ko-hint" style="display:none;margin-top:10px;background:rgba(0,0,0,.25);border:1px dashed var(--border2);border-radius:var(--radius);padding:12px">Activá el overlay con el toggle de arriba para previsualizar y ajustar la posición del fondo en vivo.</div>
     </div>
   </section>
 

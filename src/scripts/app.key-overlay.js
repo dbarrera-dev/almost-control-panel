@@ -797,6 +797,27 @@ async function koResetKeyStyle() {
   await api.keyOverlaySetConfig(koConfig);
 }
 
+// Copia los 3 colores de la tecla en edición a todas las teclas activas.
+async function koApplyColorsToSelected() {
+  const keyColor = document.getElementById('koEditKeyColor')?.value || '';
+  const bgColor = document.getElementById('koEditBgColor')?.value || '';
+  const accentColor = document.getElementById('koEditAccentColor')?.value || '';
+  const targets = (koConfig.selectedKeys || []).map(String);
+  if (!targets.length) {
+    if (typeof toast === 'function') toast('Activá al menos una tecla para aplicarle los colores.', 'warn');
+    return;
+  }
+  koConfig.keyStyles = koConfig.keyStyles || {};
+  targets.forEach((kc) => {
+    const cur = koConfig.keyStyles[kc] || {};
+    koConfig.keyStyles[kc] = { ...cur, keyColor, bgColor, accentColor };
+  });
+  koApplyKeyEditorUI();
+  koBgPreviewPush();
+  await api.keyOverlaySetConfig(koConfig);
+  if (typeof toast === 'function') toast(`Colores aplicados a ${targets.length} tecla${targets.length !== 1 ? 's' : ''} activa${targets.length !== 1 ? 's' : ''}.`, 'ok');
+}
+
 async function koCenterKeyImage() {
   const img = koSetCurrentKeyImageOffset(0, 0);
   if (!img) {

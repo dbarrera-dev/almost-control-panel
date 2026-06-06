@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Almost Control</title>
+<style>
+  :root {
+    --bg1:#0d0e10; --border:#1a1c20; --border2:#262a30;
+    --orange:#E07000; --orange2:#FF8C00;
+    --text:#eaedf2; --text1:#c0c5ce; --text2:#7a8190; --text3:#454b57;
+    --red:#f87171;
+    --mono:'JetBrains Mono', ui-monospace, 'Consolas', monospace;
+  }
+  * { box-sizing:border-box; }
+  html, body { height:100%; margin:0; overflow:hidden; }
+  body {
+    background:var(--bg1); border:1px solid var(--border2);
+    -webkit-user-select:none; user-select:none; cursor:default;
+  }
+
+  .menu {
+    display:flex; flex-direction:column; gap:1px;
+    padding:0 9px 11px;
+  }
+
+  .brand {
+    display:flex; align-items:center; gap:10px;
+    height:42px; margin:0 -9px 6px; padding:0 14px;
+    border-bottom:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .brand-word { font-family:var(--mono); font-weight:800; font-size:13px; letter-spacing:1px; color:var(--text); }
+  .brand-word b { color:var(--orange2); font-weight:800; }
+
+  .nav-label {
+    font-family:var(--mono); font-size:8px; font-weight:600; letter-spacing:2px;
+    text-transform:uppercase; color:var(--text3); padding:6px 11px 5px;
+  }
+  .nav-label-sep { margin-top:6px; }
+
+  .tab {
+    display:flex; align-items:center; gap:11px; width:100%;
+    padding:0 11px; height:30px;
+    border:none; background:transparent; border-radius:0; cursor:pointer;
+    color:var(--text2); text-align:left;
+    font-family:var(--mono); font-weight:500; font-size:10px; letter-spacing:1.1px;
+    text-transform:uppercase; white-space:nowrap;
+    transition:background .12s, color .12s;
+  }
+  .tab-icon { width:14px; height:14px; flex-shrink:0; opacity:.6; transition:opacity .12s; }
+  .tab-label { flex:1; overflow:hidden; text-overflow:ellipsis; }
+  .tab:hover { color:#0a0b0d; background:var(--orange2); font-weight:700; }
+  .tab:hover .tab-icon { opacity:1; }
+</style>
+</head>
+<body>
+  <div class="menu">
+    <div class="brand">
+      <span class="brand-word">ALMOST<b>.CTRL</b></span>
+    </div>
+
+    <div class="nav-label">// Navegación</div>
+
+    <button class="tab" onclick="act('show')">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>
+      <span class="tab-label">Mostrar</span>
+    </button>
+
+    <button class="tab" onclick="act('sorteos')">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="5.64" y1="5.64" x2="18.36" y2="18.36"/><line x1="18.36" y1="5.64" x2="5.64" y2="18.36"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+      <span class="tab-label">Sorteos</span>
+    </button>
+
+    <button class="tab" onclick="act('spotify')">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+      <span class="tab-label">Música</span>
+    </button>
+
+    <button class="tab" onclick="act('kick')">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M1.333 0h8v5.333H12V2.667h2.667V0h8v8H20v2.667h-2.667v2.666H20V16h2.667v8h-8v-2.667H12v-2.666H9.333V24h-8Z"/></svg>
+      <span class="tab-label">Kick</span>
+    </button>
+
+    <button class="tab" onclick="act('keys')">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="M6 8h.01"/><path d="M10 8h.01"/><path d="M14 8h.01"/><path d="M18 8h.01"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/><path d="M7 16h10"/></svg>
+      <span class="tab-label">Teclas</span>
+    </button>
+
+    <button class="tab" onclick="act('config')">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span class="tab-label">Config</span>
+    </button>
+
+    <div class="nav-label nav-label-sep">// Sistema</div>
+
+    <button class="tab" onclick="act('quit')">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+      <span class="tab-label">Salir</span>
+    </button>
+  </div>
+
+  <script>
+    function act(a) { window.trayApi?.action(a); }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.trayApi?.action('cancel'); });
+    function reportSize() {
+      const card = document.querySelector('.menu');
+      if (card) window.trayApi?.setSize(Math.ceil(card.getBoundingClientRect().height) + 6);
+    }
+    window.addEventListener('load', reportSize);
+  </script>
+</body>
+</html>

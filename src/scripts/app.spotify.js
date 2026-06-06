@@ -184,7 +184,7 @@ async function _loadSpotifyImpl() {
     document.getElementById('spStatusBadge').className   = spConnected ? 'badge badge-on' : 'badge badge-off';
     document.getElementById('spNotConnected').classList.toggle('hidden',  spConnected);
     document.getElementById('spConnected').classList.toggle('hidden',    !spConnected);
-    document.getElementById('spBadgeTab').classList.toggle('hidden',     !spConnected);
+    document.getElementById('spBadgeTab')?.classList.toggle('hidden',    !spConnected);
     document.getElementById('spConnectedWrap').classList.toggle('hidden', !spConnected);
     _spUpdateSubnav(spConnected);
 

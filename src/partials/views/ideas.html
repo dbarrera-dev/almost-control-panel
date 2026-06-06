@@ -1,0 +1,133 @@
+<div class="view" id="view-ideas">
+  <header class="page-head">
+    <div class="page-head-main">
+      <div class="page-eyebrow">// Módulo 05</div>
+      <h1 class="page-title">Ideas</h1>
+      <p class="page-sub">Base de contenido con notas ricas, imágenes y referencias.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-orange btn-ico" onclick="ideaOpenModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nueva idea
+      </button>
+    </div>
+  </header>
+
+  <div class="ops-stats content-stats">
+    <div class="ops-stat">
+      <div class="ops-stat-l">Ideas</div>
+      <div class="ops-stat-n" id="ideaStatTotal">0</div>
+    </div>
+    <div class="ops-stat">
+      <div class="ops-stat-l">Categorías</div>
+      <div class="ops-stat-n" id="ideaStatCategories">0</div>
+    </div>
+    <div class="ops-stat">
+      <div class="ops-stat-l">Referencias</div>
+      <div class="ops-stat-n accent" id="ideaStatRefs">0</div>
+    </div>
+  </div>
+
+  <section class="ops-panel content-list-card">
+    <div class="ops-panel-head">
+      <span class="ops-panel-title"><span class="tick"></span>Banco de ideas</span>
+      <span class="ops-panel-meta">
+        <span id="ideaCountLabel"></span>
+        <button class="btn btn-ghost todo-mini-btn" onclick="loadIdeas()" title="Recargar">↻</button>
+      </span>
+    </div>
+    <div class="ops-panel-body">
+      <div class="content-toolbar">
+        <input id="ideaSearchInput" type="text" placeholder="Buscar por título, categoría o notas..." oninput="ideaRender()" />
+        <select id="ideaCategoryFilter" data-uisel onchange="ideaRender()">
+          <option value="">Todas las categorías</option>
+        </select>
+      </div>
+      <div id="ideaList" class="content-list-body">
+        <div class="empty content-empty">
+          <div class="empty-ico">+</div>
+          <p>No hay ideas todavía.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="s-modal hidden" id="ideaModal" onclick="if(event.target===this)ideaCloseModal()">
+    <div class="s-modal-card s-modal-card-wide">
+      <header class="s-modal-head">
+        <div class="s-modal-title" id="ideaModalTitle">Nueva idea</div>
+        <button class="s-modal-close" onclick="ideaCloseModal()" aria-label="Cerrar">✕</button>
+      </header>
+      <div class="s-modal-body">
+        <div class="s-form-grid">
+          <div class="ig">
+            <label>Título</label>
+            <input id="ideaTitle" type="text" placeholder="Ej: Reto de Rocket League..." />
+          </div>
+          <div class="ig">
+            <label>Categoría</label>
+            <input id="ideaCategory" type="text" placeholder="Shorts, Directos, Guías..." list="ideaCategoryList" />
+            <datalist id="ideaCategoryList"></datalist>
+          </div>
+        </div>
+
+        <div class="ig">
+          <label>Notas</label>
+          <div class="rt-toolbar">
+            <button type="button" onclick="ideaRtCmd('bold')" title="Negrita"><b>B</b></button>
+            <button type="button" onclick="ideaRtCmd('italic')" title="Itálica"><i>I</i></button>
+            <span class="rt-sep"></span>
+            <button type="button" onclick="ideaRtCmd('insertUnorderedList')" title="Lista">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
+            <button type="button" onclick="ideaRtLink()" title="Enlace">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </button>
+            <span class="rt-sep"></span>
+            <button type="button" onclick="ideaRtCmd('removeFormat')" title="Limpiar formato">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M5 20h6"/><path d="M13 4 8 20"/><line x1="15" y1="15" x2="20" y2="20"/><line x1="20" y1="15" x2="15" y2="20"/></svg>
+            </button>
+          </div>
+          <div id="ideaNotes" class="rt-editor" contenteditable="true" aria-label="Notas de la idea"></div>
+        </div>
+
+        <div class="content-form-grid">
+          <div class="ig">
+            <label>Imágenes</label>
+            <div class="content-add-row">
+              <input id="ideaImageUrl" type="text" placeholder="Pegar URL de imagen..." onkeydown="if(event.key==='Enter'){event.preventDefault();ideaAddImageUrl()}" />
+              <button type="button" class="content-icon-btn" onclick="ideaAddImageUrl()" title="Añadir URL" aria-label="Añadir URL">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <button type="button" class="content-icon-btn" onclick="document.getElementById('ideaImageFile').click()" title="Subir imagen" aria-label="Subir imagen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </button>
+              <input id="ideaImageFile" type="file" accept="image/*" class="content-file-hidden" onchange="ideaUploadImage(this)" />
+            </div>
+            <div id="ideaImagesPreview" class="content-image-grid"></div>
+          </div>
+
+          <div class="ig">
+            <label>Enlaces de referencia</label>
+            <div class="content-add-row">
+              <input id="ideaRefUrl" type="text" placeholder="https://..." onkeydown="if(event.key==='Enter'){event.preventDefault();ideaAddRefLink()}" />
+              <button type="button" class="content-icon-btn" onclick="ideaAddRefLink()" title="Añadir enlace" aria-label="Añadir enlace">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+            </div>
+            <div id="ideaRefsPreview" class="content-link-list"></div>
+          </div>
+        </div>
+
+        <div id="ideaModalMsg" class="content-msg"></div>
+        <div class="s-modal-actions s-modal-actions-end">
+          <button class="btn btn-ghost" onclick="ideaCloseModal()">Cancelar</button>
+          <button class="btn btn-orange btn-ico" id="ideaSaveBtn" onclick="ideaSave()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Guardar idea
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
