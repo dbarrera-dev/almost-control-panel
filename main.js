@@ -106,6 +106,28 @@ function setupDiagnostics(win) {
     }
   });
 }
+
+function appendDiagnosticLine(msg) {
+  try {
+    const diagPath = path.join(app.getPath('userData'), 'diagnostic.log');
+    fs.mkdirSync(path.dirname(diagPath), { recursive: true });
+    fs.appendFileSync(diagPath, `${new Date().toISOString()} ${msg}\n`);
+  } catch {}
+}
+
+function setupProcessDiagnostics() {
+  process.on('uncaughtException', (error) => {
+    const stack = error?.stack || error?.message || String(error);
+    appendDiagnosticLine(`uncaughtException ${stack}`);
+    try { saveLog?.('error', `[fatal] uncaughtException: ${error?.message || error}`); } catch {}
+  });
+  process.on('unhandledRejection', (reason) => {
+    const stack = reason?.stack || reason?.message || String(reason);
+    appendDiagnosticLine(`unhandledRejection ${stack}`);
+    try { saveLog?.('error', `[fatal] unhandledRejection: ${reason?.message || reason}`); } catch {}
+  });
+}
+setupProcessDiagnostics();
 const { createConfigStore } = require('./main/config');
 const {
   getSpotifyTokenRowId,

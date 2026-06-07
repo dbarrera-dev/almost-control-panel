@@ -1,6 +1,5 @@
 const fs = require('fs');
 const http = require('http');
-const net = require('net');
 const path = require('path');
 const { WebSocket, WebSocketServer } = require('ws');
 
@@ -569,13 +568,10 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
   let overlayServer = null;
   let overlayWss = null;
   let apiWs = null;
-  let apiTcp = null;
-  let apiTcpBuffer = '';
   let reconnectTimer = null;
-  let wsFallbackTimer = null;
   let connectionStatusVisibilityTimer = null;
   let currentTransport = null;
-  let preferredStatsApiTransport = null;
+  let started = false;
   const loggedOnce = new Set();
 
   function log(type, msg) {
@@ -1166,45 +1162,13 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
 
   function closeStatsApi() {
     clearReconnect();
-    if (wsFallbackTimer) clearTimeout(wsFallbackTimer);
-    wsFallbackTimer = null;
     try {
       apiWs?.removeAllListeners?.();
       apiWs?.on?.('error', () => {});
     } catch {}
     try { apiWs?.terminate?.(); } catch {}
     apiWs = null;
-    try { apiTcp?.removeAllListeners?.(); } catch {}
-    try { apiTcp?.destroy?.(); } catch {}
-    apiTcp = null;
-    apiTcpBuffer = '';
     currentTransport = null;
-  }
-
-  function connectTcp(port, options = {}) {
-    currentTransport = 'tcp';
-    setConnectionStatus('reconnecting', { smoothTransient: true });
-    emitUpdate();
-    try {
-      apiTcp = net.createConnection({ host: '127.0.0.1', port });
-    } catch {
-      scheduleReconnect();
-      return;
-    }
-    apiTcp.on('connect', () => {
-      preferredStatsApiTransport = 'tcp';
-      setConnectionStatus('waiting-match');
-      emitUpdate();
-      logOnce('info', 'stats-api-tcp-connected', `Stats API TCP conectada en ${port}`);
-    });
-    apiTcp.on('data', (chunk) => {
-      apiTcpBuffer += String(chunk || '');
-      const parsed = parseConcatenatedJsonMessages(apiTcpBuffer);
-      apiTcpBuffer = parsed.leftover || '';
-      for (const message of parsed.messages) handleRawMessage(message);
-    });
-    apiTcp.on('close', scheduleReconnect);
-    apiTcp.on('error', scheduleReconnect);
   }
 
   function connectStatsApi(options = {}) {
@@ -1217,61 +1181,28 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     }
     const port = Number(config.statsApiPort || DEFAULT_CONFIG.statsApiPort);
     closeStatsApi();
-    if (preferredStatsApiTransport === 'tcp') {
-      connectTcp(port, options);
-      return;
-    }
     currentTransport = 'ws';
     setConnectionStatus('reconnecting', { smoothTransient: true });
     emitUpdate();
     logOnce('info', 'stats-api-connecting', `Conectando Stats API en ws://127.0.0.1:${port}`);
 
-    let opened = false;
-    let fellBack = false;
-    wsFallbackTimer = setTimeout(() => {
-      if (opened || fellBack) return;
-      fellBack = true;
-      try { apiWs?.terminate?.(); } catch {}
-      apiWs = null;
-      connectTcp(port, options);
-    }, 1500);
-
     try {
       apiWs = new WebSocket(`ws://127.0.0.1:${port}`);
     } catch {
-      if (wsFallbackTimer) clearTimeout(wsFallbackTimer);
-      connectTcp(port, options);
+      scheduleReconnect();
       return;
     }
 
     apiWs.on('open', () => {
-      opened = true;
-      preferredStatsApiTransport = 'ws';
-      if (wsFallbackTimer) clearTimeout(wsFallbackTimer);
-      wsFallbackTimer = null;
       setConnectionStatus('waiting-match');
       emitUpdate();
       logOnce('info', 'stats-api-ws-connected', `Stats API WS conectada en ${port}`);
     });
     apiWs.on('message', handleRawMessage);
     apiWs.on('close', () => {
-      if (wsFallbackTimer) clearTimeout(wsFallbackTimer);
-      wsFallbackTimer = null;
-      if (!opened && !fellBack) {
-        fellBack = true;
-        connectTcp(port);
-        return;
-      }
       scheduleReconnect();
     });
     apiWs.on('error', () => {
-      if (wsFallbackTimer) clearTimeout(wsFallbackTimer);
-      wsFallbackTimer = null;
-      if (!opened && !fellBack) {
-        fellBack = true;
-        connectTcp(port);
-        return;
-      }
       scheduleReconnect();
     });
   }
@@ -1310,6 +1241,11 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
   }
 
   function start() {
+    if (started) {
+      startOverlayServer();
+      return snapshot();
+    }
+    started = true;
     loadStore();
     startOverlayServer();
     if (config.autoConnectStatsApi !== false) {
@@ -1333,7 +1269,6 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
       closeStatsApi();
       setConnectionStatus('disconnected');
     } else if (Number(config.statsApiPort) !== prevStatsPort || !prevAutoConnect) {
-      preferredStatsApiTransport = null;
       connectStatsApi({ force: false });
     }
     if (Number(config.overlayPort) !== prevOverlayPort) {
@@ -1366,6 +1301,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
   }
 
   function destroy() {
+    started = false;
     closeStatsApi();
     clearConnectionStatusVisibilityTimer();
     try { overlayWss?.close?.(); } catch {}
