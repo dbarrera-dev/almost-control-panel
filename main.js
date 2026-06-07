@@ -1185,7 +1185,12 @@ app.whenReady().then(async () => {
     sendToSplash('splash-status', { msg: 'Actualizando, un momento...' });
     setTimeout(() => autoUpdater.quitAndInstall(true, true), 2000);
   });
-  autoUpdater.on('error', () => done());
+  autoUpdater.on('error', (err) => {
+    const msg = err?.message || String(err || 'error desconocido');
+    saveLog('warn', `[Updater] No se pudo actualizar: ${msg}`);
+    sendToSplash('splash-status', { msg: 'No se pudo descargar la actualización. Abriendo versión actual...', type: 'warn' });
+    setTimeout(done, 1800);
+  });
 
   splashWindow.webContents.on('did-finish-load', () => {
     sendToSplash('splash-version', app.getVersion());
