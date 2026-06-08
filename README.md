@@ -28,7 +28,7 @@ El instalador aparece en `dist/Almost Control Setup 1.0.0.exe`
 - Todo se guarda en Supabase → se refleja en OBS al instante
 
 ### 🚗 Rocket League Live
-- Lee la Stats API local de Rocket League desde `Port=49123`
+- Stats API local de Rocket League deshabilitada para evitar crashes
 - Sirve un marcador broadcast para OBS en `http://localhost:9003/broadcast`
 - Sirve un overlay compacto de sesión en `http://localhost:9003/stats`
 - Nombres, logos y colores de equipos se guardan en archivo local de la app

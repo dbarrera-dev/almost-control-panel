@@ -5,16 +5,16 @@
     <div class="page-head-main">
       <div class="page-eyebrow">// Módulo 09</div>
       <h1 class="page-title">Rocket League</h1>
-      <p class="page-sub">Stats API local · overlays para OBS · estadísticas y coaching por sesión.</p>
+      <p class="page-sub">Overlays para OBS · marcador y configuración local.</p>
     </div>
     <div class="page-actions">
-      <button class="btn btn-ghost btn-ico" onclick="rlRefresh(this)" title="Reconectar la Stats API local">
+      <button class="btn btn-ghost btn-ico" onclick="rlRefresh(this)" title="Actualizar datos locales">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Reconectar API
+        Actualizar
       </button>
-      <button class="btn btn-ghost btn-ico" onclick="rlOpenSetup()" title="Configuración de la conexión local">
+      <button class="btn btn-ghost btn-ico" onclick="rlOpenSetup()" title="Configuración local">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
-        Conexión
+        Configuración
       </button>
       <button class="btn btn-ghost btn-ico" onclick="rlClearLive(this)" title="Borra reloj, score del feed, jugadores y boost. No toca equipos, logos ni la serie.">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -30,7 +30,7 @@
     <span class="s-bar-statetxt">Rocket League Live</span>
     <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
       <span id="rlStatusBadge" class="badge badge-off">Cargando...</span>
-      <span id="rlApiBadge" class="badge badge-off">Stats API</span>
+      <span id="rlApiBadge" class="badge badge-off">Stats API deshabilitada</span>
     </span>
   </div>
 
@@ -302,6 +302,11 @@
     <section class="ops-panel">
       <div class="ops-panel-head"><span class="ops-panel-title"><span class="tick"></span>Resumen de estadísticas</span></div>
       <div class="ops-panel-body">
+        <div class="rl-player-tabs-head">
+          <div id="rlPlayerTabs" class="rl-player-tabs"><span class="rl-player-tab-empty">Esperando jugadores del feed</span></div>
+          <span id="rlPlayerStatsMeta" class="rl-player-stats-meta">Sesión general</span>
+        </div>
+        <div id="rlPlayerLiveStats" class="rl-live-stat-strip"></div>
         <div class="stats" style="grid-template-columns:repeat(4,1fr)">
           <div class="stat"><div class="stat-n" id="rlStatMatches">0</div><div class="stat-l">Partidos</div></div>
           <div class="stat"><div class="stat-n" id="rlStatWinrate">0%</div><div class="stat-l">Winrate</div></div>
@@ -349,23 +354,22 @@
           <div class="rl-help-item">
             <div class="rl-help-num">1</div>
             <div class="rl-help-body">
-              <strong>Activá la Stats API</strong>
-              <span>Editá <code>TAGame\Config\DefaultStatsAPI.ini</code> en la instalación de Rocket League. Si no existe, usá o creá <code>Documents\My Games\Rocket League\TAGame\Config\TAStatsAPI.ini</code>.</span>
-              <div class="rl-help-codes"><code>PacketSendRate=30</code><code>Port=49123</code></div>
+              <strong>Stats API deshabilitada</strong>
+              <span>Almost no intenta conectarse a Rocket League. El overlay queda disponible para configuración local y datos guardados.</span>
             </div>
           </div>
           <div class="rl-help-item">
             <div class="rl-help-num">2</div>
             <div class="rl-help-body">
-              <strong>Reiniciá Rocket League</strong>
-              <span>El juego lee ese archivo al iniciar. Si lo editás con el juego abierto, cerralo y abrilo otra vez.</span>
+              <strong>Configurá el overlay</strong>
+              <span>Definí equipos, colores, logos y etiqueta del evento desde la pantalla de Rocket League.</span>
             </div>
           </div>
           <div class="rl-help-item">
             <div class="rl-help-num">3</div>
             <div class="rl-help-body">
               <strong>Configurá tu jugador</strong>
-              <span>Usá tu nombre exacto o PrimaryId para que Almost sepa qué jugador seguir cuando llegan los eventos.</span>
+              <span>El nombre y PrimaryId quedan guardados localmente, sin abrir conexiones a la API del juego.</span>
             </div>
           </div>
           <div class="rl-help-item">
@@ -402,25 +406,25 @@
           <div class="rl-help-item">
             <div class="rl-help-body">
               <strong>Durante el partido</strong>
-              <span><code>UpdateState</code> alimenta boost, velocidad, score, tiempo, touches y las métricas de performance.</span>
+              <span>La conexión automática al feed de Rocket League está apagada para evitar crashes.</span>
             </div>
           </div>
           <div class="rl-help-item">
             <div class="rl-help-body">
               <strong>Gol</strong>
-              <span><code>GoalScored</code> actualiza el último goleador y datos visibles del marcador.</span>
+              <span>Los datos en vivo no se leen desde la API del juego.</span>
             </div>
           </div>
           <div class="rl-help-item">
             <div class="rl-help-body">
               <strong>Final</strong>
-              <span><code>MatchEnded</code> compara <code>WinnerTeamNum</code> con tu <code>TeamNum</code>, suma win/loss y usa <code>MatchGuid</code> para no duplicar.</span>
+              <span>El historial local se conserva, pero no se suman partidas desde eventos de Rocket League.</span>
             </div>
           </div>
           <div class="rl-help-item">
             <div class="rl-help-body">
-              <strong>Reconexión</strong>
-              <span>Si Rocket League se cierra o cambia el puerto, Almost intenta reconectar. Usá “Reconectar API” después de cambiar configuración.</span>
+              <strong>Sin reconexión</strong>
+              <span>Almost no reintenta conexiones a Rocket League aunque cambie el puerto.</span>
             </div>
           </div>
         </div>
@@ -451,16 +455,11 @@
       </header>
       <div class="s-modal-body">
         <div class="s-form-grid">
-          <div class="ig">
-            <label>Puerto Stats API</label>
-            <input type="number" min="1" max="65535" id="rlStatsApiPort" value="49123" oninput="rlMarkDirty()" />
-          </div>
-          <div class="ig">
-            <label>Conexión automática</label>
-            <label class="rl-toggle" style="height:38px;margin:0;align-items:center">
-              <input type="checkbox" id="rlAutoConnectStatsApi" onchange="rlMarkDirty()" />
-              <span>Auto conectar Stats API</span>
-            </label>
+          <input type="hidden" id="rlStatsApiPort" value="49123" />
+          <input type="checkbox" id="rlAutoConnectStatsApi" class="hidden" />
+          <div class="ig" style="grid-column:1/-1">
+            <label>Stats API de Rocket League</label>
+            <div class="info-box">Deshabilitada. Almost no abre conexiones al juego ni reintenta reconectar.</div>
           </div>
           <div class="ig">
             <label>Nombre jugador</label>

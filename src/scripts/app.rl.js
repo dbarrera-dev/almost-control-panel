@@ -1,9 +1,10 @@
-// Rocket League Live overlay powered by the local Stats API.
+// Rocket League Live overlay. The Rocket League Stats API connection is disabled.
 let rlCfg = null;
 let rlState = null;
 let rlLoaded = false;
 let rlDirty = false;
 let rlSection = 'summary';
+let rlSelectedPlayerKey = '';
 
 const RL_SECTIONS = ['summary', 'scoreboard', 'session', 'stats', 'help', 'debug'];
 const RL_THEMES = ['broadcast', 'slate', 'minimal', 'neon', 'classic', 'arena'];
@@ -11,7 +12,7 @@ const RL_DEFAULT_CONFIG = {
   playerName: '',
   primaryId: '',
   statsApiPort: 49123,
-  autoConnectStatsApi: true,
+  autoConnectStatsApi: false,
   overlayPort: 9003,
   eventLabel: 'Rocket League',
   seriesLabel: '',
@@ -144,13 +145,7 @@ function rlApplyStatus(status) {
   }
   if (apiBadge) {
     const state = status?.connectionStatus || rlState?.connectionStatus || 'disconnected';
-    const autoConnect = status?.autoConnectStatsApi ?? rlState?.config?.autoConnectStatsApi ?? rlCfg?.autoConnectStatsApi ?? true;
-    apiBadge.textContent =
-      state === 'connected' ? 'Stats API conectada' :
-      state === 'waiting-match' ? 'Esperando partida' :
-      state === 'reconnecting' ? 'Reconectando Stats API' :
-      autoConnect === false ? 'Stats API manual' :
-      'Stats API offline';
+    apiBadge.textContent = 'Stats API deshabilitada';
     apiBadge.className = state === 'connected' || state === 'waiting-match' ? 'badge badge-on' : 'badge badge-off';
   }
 }
@@ -222,7 +217,7 @@ function rlReadForm() {
   rlCfg = _rlNormalizeConfig({
     ...rlCfg,
     statsApiPort: numberVal('rlStatsApiPort', 49123),
-    autoConnectStatsApi: _rlEl('rlAutoConnectStatsApi') ? !!_rlEl('rlAutoConnectStatsApi').checked : (rlCfg?.autoConnectStatsApi !== false),
+    autoConnectStatsApi: false,
     playerName: _rlEl('rlPlayerName')?.value?.trim() || '',
     primaryId: _rlEl('rlPrimaryId')?.value?.trim() || '',
     eventLabel: _rlEl('rlEventLabel')?.value?.trim() || 'Rocket League',
@@ -336,6 +331,72 @@ function rlAvg(total, matches) {
   return matches ? `${(_rlNum(total) / matches).toFixed(1)} / partido` : '0.0 / partido';
 }
 
+function rlGetPlayerProfiles(state) {
+  return Array.isArray(state?.playerStats?.players) ? state.playerStats.players : [];
+}
+
+function rlGetSelectedPlayerProfile(state) {
+  const profiles = rlGetPlayerProfiles(state);
+  if (!profiles.length) return null;
+  if (!rlSelectedPlayerKey || !profiles.some((player) => player.key === rlSelectedPlayerKey)) {
+    rlSelectedPlayerKey = state?.playerStats?.activeKey || profiles[0].key;
+  }
+  return profiles.find((player) => player.key === rlSelectedPlayerKey) || profiles[0] || null;
+}
+
+function rlSelectPlayerStats(key) {
+  rlSelectedPlayerKey = String(key || '');
+  if (rlState) rlRenderState(rlState);
+}
+
+function rlRenderPlayerTabs(state) {
+  const root = _rlEl('rlPlayerTabs');
+  const meta = _rlEl('rlPlayerStatsMeta');
+  const liveRoot = _rlEl('rlPlayerLiveStats');
+  if (!root) return;
+  const profiles = rlGetPlayerProfiles(state);
+  if (!profiles.length) {
+    root.innerHTML = '<span class="rl-player-tab-empty">Esperando jugadores del feed</span>';
+    if (meta) meta.textContent = 'Sesión general';
+    if (liveRoot) liveRoot.innerHTML = '';
+    return;
+  }
+  const selected = rlGetSelectedPlayerProfile(state);
+  root.innerHTML = profiles.map((player) => {
+    const sideClass = player.teamSide === 'orange' ? ' orange' : player.teamSide === 'blue' ? ' blue' : '';
+    const liveClass = player.live ? ' live' : '';
+    const onClass = player.key === selected?.key ? ' on' : '';
+    const stats = player.dailyStats || {};
+    const label = `${_rlEscape(player.name || 'Jugador')}`;
+    const subtitle = player.teamName ? `${_rlEscape(player.teamName)} · ${_rlNum(stats.matchesPlayed)}P` : `${_rlNum(stats.matchesPlayed)}P`;
+    return `<button type="button" class="rl-player-tab${sideClass}${liveClass}${onClass}" onclick="rlSelectPlayerStats(decodeURIComponent('${encodeURIComponent(player.key)}'))">
+      <strong>${label}</strong>
+      <span>${subtitle}</span>
+    </button>`;
+  }).join('');
+  if (meta) {
+    const live = selected?.live ? 'En vivo' : 'Histórico';
+    const team = selected?.teamName ? ` · ${selected.teamName}` : '';
+    meta.textContent = `${live}${team}`;
+  }
+  if (liveRoot) {
+    const live = selected?.live;
+    if (!live) {
+      liveRoot.innerHTML = '<span class="rl-muted">Sin datos en vivo para este jugador.</span>';
+    } else {
+      liveRoot.innerHTML = [
+        ['Score', live.score],
+        ['Goles', live.goals],
+        ['Asist.', live.assists],
+        ['Saves', live.saves],
+        ['Shots', live.shots],
+        ['Demos', live.demos],
+        ['Boost', live.boost == null ? '—' : `${live.boost}%`]
+      ].map(([label, value]) => `<span><b>${_rlEscape(value)}</b><em>${_rlEscape(label)}</em></span>`).join('');
+    }
+  }
+}
+
 async function rlSeriesAction(action, okMessage) {
   try {
     const payload = await api.rlOverlaySeriesAction(action);
@@ -432,6 +493,15 @@ function rlRenderState(state) {
   const wins = _rlNum(daily.wins);
   const losses = _rlNum(daily.losses);
   const winrate = matches ? Math.round((wins / matches) * 100) : 0;
+  rlRenderPlayerTabs(state);
+  const selectedPlayer = rlGetSelectedPlayerProfile(state);
+  const statDaily = selectedPlayer?.dailyStats || daily;
+  const statMatches = _rlNum(statDaily.matchesPlayed);
+  const statWins = _rlNum(statDaily.wins);
+  const statWinrate = statMatches ? Math.round((statWins / statMatches) * 100) : 0;
+  const statPerf = statDaily.performance?.trackedSeconds > 0
+    ? statDaily.performance
+    : selectedPlayer?.livePerformance || statDaily.performance || {};
 
   _rlText('rlBlueScore', scoreboard?.blueScore ?? 0);
   _rlText('rlOrangeScore', scoreboard?.orangeScore ?? 0);
@@ -441,10 +511,10 @@ function rlRenderState(state) {
   _rlText('rlSessionLosses', losses);
   _rlText('rlSessionGoals', daily.goals ?? 0);
   _rlText('rlSessionStreak', rlStreakText(daily));
-  _rlText('rlStatMatches', matches);
-  _rlText('rlStatWinrate', `${winrate}%`);
-  _rlText('rlStatBoostScore', Math.round(perf.boostDisciplineScore ?? 100));
-  _rlText('rlStatTouches', perf.touchesPerMinute || 0);
+  _rlText('rlStatMatches', statMatches);
+  _rlText('rlStatWinrate', `${statWinrate}%`);
+  _rlText('rlStatBoostScore', Math.round(statPerf.boostDisciplineScore ?? 100));
+  _rlText('rlStatTouches', statPerf.touchesPerMinute || 0);
   _rlText('rlSummaryWinrate', `${winrate}%`);
   _rlText('rlSummaryRecord', `${wins}V · ${losses}D`);
   _rlText('rlSummaryMatches', matches);
@@ -472,9 +542,9 @@ function rlRenderState(state) {
   rlRenderSeriesControls(state);
   rlRenderRecentForm(state);
   rlRenderInsights(state);
-  rlRenderCharts(state);
+  rlRenderCharts(state, selectedPlayer);
   rlRenderHistoryDays(state);
-  rlRenderHistory(state);
+  rlRenderHistory(state, selectedPlayer);
   rlRenderDebug(state);
   rlApplyStatus({ running: true, connectionStatus: state?.connectionStatus, url: state?.urls?.broadcast, statsUrl: state?.urls?.stats });
 
@@ -483,7 +553,7 @@ function rlRenderState(state) {
     if (!match) {
       detail.textContent = state?.connectionStatus === 'waiting-match'
         ? 'Stats API conectada. Esperando que empiece una partida.'
-        : `Esperando Rocket League en el puerto ${state?.config?.statsApiPort || rlCfg?.statsApiPort || 49123}.`;
+        : 'Stats API de Rocket League deshabilitada. El overlay queda disponible con datos manuales/locales guardados.';
     } else {
       const player = state?.currentPlayer?.Name ? ` · Jugador: ${state.currentPlayer.Name}` : '';
       const goal = match.lastGoal?.scorer ? ` · Último gol: ${match.lastGoal.scorer}` : '';
@@ -525,10 +595,12 @@ function rlRenderInsights(state) {
   `).join('');
 }
 
-function rlRenderCharts(state) {
-  const charts = state?.performanceCharts || {};
-  const daily = state?.dailyStats || {};
-  const perf = daily.performance || state?.currentMatch?.performance || {};
+function rlRenderCharts(state, playerProfile = null) {
+  const charts = playerProfile?.performanceCharts || state?.performanceCharts || {};
+  const daily = playerProfile?.dailyStats || state?.dailyStats || {};
+  const perf = daily.performance?.trackedSeconds > 0
+    ? daily.performance
+    : playerProfile?.livePerformance || state?.currentMatch?.performance || daily.performance || {};
   const last7 = state?.historyAnalytics?.last7?.charts || {};
   rlRenderBarChart('rlChart7', last7.goals || [], 'Goles');
   rlRenderBarChart('rlWinrateHistoryChart', last7.winrate || [], 'Winrate', 100);
@@ -614,10 +686,12 @@ function rlRenderHistoryDays(state) {
   }
 }
 
-function rlRenderHistory(state) {
+function rlRenderHistory(state, playerProfile = null) {
   const rows = _rlEl('rlHistoryRows');
   if (!rows) return;
-  const matches = Array.isArray(state?.matchHistory) ? state.matchHistory.slice(0, 24) : [];
+  const matches = Array.isArray(playerProfile?.matchHistory)
+    ? playerProfile.matchHistory.slice(0, 24)
+    : Array.isArray(state?.matchHistory) ? state.matchHistory.slice(0, 24) : [];
   if (!matches.length) {
     rows.innerHTML = '<tr><td colspan="7" style="color:var(--text3)">Sin partidas registradas todavía.</td></tr>';
     return;
@@ -671,6 +745,7 @@ function rlRenderDebug(state) {
       scoreboard: state?.scoreboard,
       seriesState: state?.seriesState,
       currentPlayer: state?.currentPlayer,
+      playerStats: state?.playerStats,
       dailyStats: state?.dailyStats,
       storePath: state?.storePath
     };
@@ -679,18 +754,18 @@ function rlRenderDebug(state) {
 }
 
 async function rlRefresh(btn) {
-  if (btn) { btn.disabled = true; btn.textContent = 'Reconectando...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Actualizando...'; }
   try {
     if (rlDirty) await rlSaveConfig();
     const payload = await api.rlOverlayRefresh();
     rlState = payload.state || payload || rlState;
     rlRenderState(rlState);
     rlApplyStatus(await api.rlOverlayStatus());
-    toast('Stats API reconectando', 'ok');
+    toast('Rocket League actualizado sin conectar API', 'ok');
   } catch {
-    toast('No se pudo reconectar Stats API', 'err');
+    toast('No se pudo actualizar Rocket League', 'err');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Reconectar API'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Actualizar'; }
   }
 }
 

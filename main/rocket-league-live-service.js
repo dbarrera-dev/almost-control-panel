@@ -8,7 +8,7 @@ const DEFAULT_CONFIG = {
   playerName: '',
   primaryId: '',
   statsApiPort: 49123,
-  autoConnectStatsApi: true,
+  autoConnectStatsApi: false,
   overlayPort: 9003,
   eventLabel: 'Rocket League',
   seriesLabel: '',
@@ -35,6 +35,7 @@ const DEFAULT_CONFIG = {
 
 const CONNECTION_STATUS_VISIBILITY_DELAY_MS = 4000;
 const RECONNECT_INTERVAL_MS = 5000;
+const ROCKET_LEAGUE_STATS_API_DISABLED = true;
 
 const SCOREBOARD_THEMES = ['broadcast', 'slate', 'minimal', 'neon', 'classic', 'arena'];
 
@@ -154,7 +155,7 @@ function normalizeConfig(config = {}) {
     playerName: String(config.playerName ?? DEFAULT_CONFIG.playerName),
     primaryId: String(config.primaryId ?? DEFAULT_CONFIG.primaryId),
     statsApiPort: Number(config.statsApiPort || DEFAULT_CONFIG.statsApiPort),
-    autoConnectStatsApi: config.autoConnectStatsApi !== false,
+    autoConnectStatsApi: false,
     overlayPort: Number.isFinite(overlayPort) ? overlayPort : DEFAULT_CONFIG.overlayPort,
     eventLabel: String(config.eventLabel ?? DEFAULT_CONFIG.eventLabel),
     seriesLabel: String(config.seriesLabel ?? DEFAULT_CONFIG.seriesLabel),
@@ -184,6 +185,18 @@ function normalizeDaily(daily = {}, date = dayKey()) {
     date: daily.date || date,
     countedMatchIds: Array.isArray(daily.countedMatchIds) ? daily.countedMatchIds : [],
     performance: normalizePerformance(daily.performance)
+  };
+}
+
+function normalizePlayerSession(session = {}) {
+  return {
+    key: String(session.key || ''),
+    name: String(session.name || 'Unknown'),
+    primaryId: String(session.primaryId || ''),
+    teamNum: Number.isFinite(Number(session.teamNum)) ? Number(session.teamNum) : null,
+    teamSide: session.teamSide === 'orange' ? 'orange' : session.teamSide === 'blue' ? 'blue' : '',
+    dailyStats: normalizeDaily(session.dailyStats, session.dailyStats?.date || dayKey()),
+    matchHistory: Array.isArray(session.matchHistory) ? session.matchHistory.slice(0, 250) : []
   };
 }
 
@@ -446,7 +459,14 @@ function readTeamScore(teams, teamNum) {
 function readPlayerName(playerOrName) {
   if (!playerOrName) return 'Unknown';
   if (typeof playerOrName === 'string') return playerOrName;
-  return playerOrName.Name || playerOrName.name || playerOrName.PrimaryId || playerOrName.id || 'Unknown';
+  return playerOrName.Name || playerOrName.name || playerOrName.PrimaryId || playerOrName.PrimaryID || playerOrName.primaryId || playerOrName.id || 'Unknown';
+}
+
+function playerKey(player) {
+  const primaryId = String(player?.PrimaryId || player?.PrimaryID || player?.primaryId || player?.id || '').trim();
+  if (primaryId) return `id:${primaryId.toLowerCase()}`;
+  const name = readPlayerName(player).trim();
+  return `name:${name.toLowerCase() || 'unknown'}`;
 }
 
 function firstFiniteNumber(...values) {
@@ -507,10 +527,21 @@ function readPlayers(payload = {}) {
   const raw = readRawPlayers(payload);
   return raw.map((player) => {
     const boost = firstFiniteNumber(player.Boost, player.boost);
+    const teamNum = firstFiniteNumber(player.TeamNum, player.Team, player.team, player.team_num);
     return {
+      key: playerKey(player),
       name: readPlayerName(player),
-      teamNum: firstFiniteNumber(player.TeamNum, player.Team, player.team, player.team_num),
-      boost: boost == null ? null : Math.max(0, Math.min(100, Math.round(boost)))
+      primaryId: String(player.PrimaryId || player.PrimaryID || player.primaryId || player.id || ''),
+      teamNum,
+      teamSide: teamNum === 0 ? 'blue' : teamNum === 1 ? 'orange' : '',
+      boost: boost == null ? null : Math.max(0, Math.min(100, Math.round(boost))),
+      score: numberOrZero(player.Score ?? player.score),
+      goals: numberOrZero(player.Goals ?? player.goals),
+      assists: numberOrZero(player.Assists ?? player.assists),
+      saves: numberOrZero(player.Saves ?? player.saves),
+      shots: numberOrZero(player.Shots ?? player.shots),
+      demos: numberOrZero(player.Demos ?? player.demos),
+      touches: numberOrZero(player.Touches ?? player.CarTouches ?? player.touches)
     };
   });
 }
@@ -560,7 +591,9 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
   let seriesState = normalizeSeriesState();
   let historyByDate = {};
   let matchHistory = [];
+  let playerSessions = {};
   let currentAccumulator = null;
+  let playerAccumulators = new Map();
   let currentMatch = null;
   let currentPlayer = null;
   let lastEvents = [];
@@ -632,6 +665,9 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
         Object.entries(parsed.historyByDate || {}).map(([date, stats]) => [date, normalizeDaily(stats, date)])
       );
       matchHistory = Array.isArray(parsed.matchHistory) ? parsed.matchHistory.slice(0, 250) : [];
+      playerSessions = Object.fromEntries(
+        Object.entries(parsed.playerSessions || {}).map(([key, session]) => [key, normalizePlayerSession({ ...session, key })])
+      );
     } catch (error) {
       log('warn', `No se pudo leer rocket-league-live.json: ${error?.message || error}`);
     }
@@ -640,7 +676,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
   function saveStore() {
     try {
       fs.mkdirSync(path.dirname(storePath), { recursive: true });
-      fs.writeFileSync(storePath, JSON.stringify({ config, dailyStats, seriesState, historyByDate, matchHistory }, null, 2));
+      fs.writeFileSync(storePath, JSON.stringify({ config, dailyStats, seriesState, historyByDate, matchHistory, playerSessions }, null, 2));
     } catch (error) {
       log('warn', `No se pudo guardar estado local: ${error?.message || error}`);
     }
@@ -652,6 +688,15 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
         historyByDate[dailyStats.date] = dailyStats;
       }
       dailyStats = normalizeDaily({ date: dayKey() });
+      for (const [key, session] of Object.entries(playerSessions || {})) {
+        const normalized = normalizePlayerSession(session);
+        if (normalized.dailyStats.date !== dayKey()) {
+          playerSessions[key] = normalizePlayerSession({
+            ...normalized,
+            dailyStats: { date: dayKey() }
+          });
+        }
+      }
       saveStore();
     }
   }
@@ -673,30 +718,35 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     };
   }
 
-  function buildPerformanceCharts() {
+  function buildPerformanceChartsFor(stats = dailyStats, history = matchHistory, accumulator = currentAccumulator) {
+    const daily = normalizeDaily(stats);
     return {
-      boostTimeline: currentAccumulator?.boostTimeline || [],
-      speedTimeline: currentAccumulator?.speedTimeline || [],
-      matchTrend: [...matchHistory].reverse().slice(-20).map((match, index) => ({
+      boostTimeline: accumulator?.boostTimeline || [],
+      speedTimeline: accumulator?.speedTimeline || [],
+      matchTrend: [...history].reverse().slice(-20).map((match, index) => ({
         label: `P${index + 1}`,
         value: numberOrZero(match.stats?.score),
         secondary: numberOrZero(match.performance?.avgBoost),
         result: match.result
       })),
       statAverages: [
-        { label: 'Goles', value: dailyStats.matchesPlayed ? round(dailyStats.goals / dailyStats.matchesPlayed) : 0 },
-        { label: 'Shots', value: dailyStats.matchesPlayed ? round(dailyStats.shots / dailyStats.matchesPlayed) : 0 },
-        { label: 'Saves', value: dailyStats.matchesPlayed ? round(dailyStats.saves / dailyStats.matchesPlayed) : 0 },
-        { label: 'Demos', value: dailyStats.matchesPlayed ? round(dailyStats.demos / dailyStats.matchesPlayed) : 0 },
-        { label: 'Touches/min', value: dailyStats.performance.touchesPerMinute || 0 },
-        { label: 'Boost score', value: dailyStats.performance.boostDisciplineScore || 0 }
+        { label: 'Goles', value: daily.matchesPlayed ? round(daily.goals / daily.matchesPlayed) : 0 },
+        { label: 'Shots', value: daily.matchesPlayed ? round(daily.shots / daily.matchesPlayed) : 0 },
+        { label: 'Saves', value: daily.matchesPlayed ? round(daily.saves / daily.matchesPlayed) : 0 },
+        { label: 'Demos', value: daily.matchesPlayed ? round(daily.demos / daily.matchesPlayed) : 0 },
+        { label: 'Touches/min', value: daily.performance.touchesPerMinute || 0 },
+        { label: 'Boost score', value: daily.performance.boostDisciplineScore || 0 }
       ]
     };
   }
 
-  function buildCoachInsights() {
-    const stats = dailyStats || normalizeDaily();
-    const perf = stats.performance?.trackedSeconds > 0 ? stats.performance : currentMatch?.performance || normalizePerformance();
+  function buildPerformanceCharts() {
+    return buildPerformanceChartsFor(dailyStats, matchHistory, currentAccumulator);
+  }
+
+  function buildCoachInsightsFor(stats = dailyStats, livePerformance = currentMatch?.performance) {
+    stats = normalizeDaily(stats);
+    const perf = stats.performance?.trackedSeconds > 0 ? stats.performance : livePerformance || normalizePerformance();
     if (!perf || perf.trackedSeconds <= 0) return [];
     const matches = Math.max(1, numberOrZero(stats.matchesPlayed));
     const shootingEfficiency = stats.shots > 0 ? round((stats.goals / stats.shots) * 100) : numberOrZero(perf.shootingEfficiency);
@@ -752,6 +802,10 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     ];
   }
 
+  function buildCoachInsights() {
+    return buildCoachInsightsFor(dailyStats, currentMatch?.performance);
+  }
+
   function buildScoreboardState() {
     const match = currentMatch || {};
     const physicalBlueScore = Number.isFinite(Number(match.blueScore)) ? Number(match.blueScore) : 0;
@@ -791,6 +845,51 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     };
   }
 
+  function buildPlayerStatsSnapshot(scoreboard = buildScoreboardState()) {
+    const livePlayers = Array.isArray(currentMatch?.players) ? currentMatch.players : [];
+    const byKey = new Map(Object.entries(playerSessions || {}).map(([key, session]) => [key, normalizePlayerSession({ ...session, key })]));
+    for (const player of livePlayers) {
+      const session = getPlayerSession(player);
+      byKey.set(session.key, session);
+    }
+    const players = [...byKey.values()].map((session) => {
+      const live = livePlayers.find((player) => player.key === session.key) || null;
+      const accumulator = live ? playerAccumulators.get(session.key) || null : null;
+      const livePerformance = accumulator ? summarizeAccumulator(accumulator) : null;
+      const teamSide = live?.teamSide || session.teamSide;
+      const teamName = teamSide === 'blue'
+        ? scoreboard.blueTeam?.name
+        : teamSide === 'orange'
+          ? scoreboard.orangeTeam?.name
+          : '';
+      return {
+        key: session.key,
+        name: live?.name || session.name,
+        primaryId: live?.primaryId || session.primaryId,
+        teamNum: live?.teamNum ?? session.teamNum,
+        teamSide,
+        teamName,
+        live,
+        livePerformance,
+        dailyStats: session.dailyStats,
+        matchHistory: session.matchHistory,
+        performanceCharts: buildPerformanceChartsFor(session.dailyStats, session.matchHistory, accumulator),
+        coachInsights: buildCoachInsightsFor(session.dailyStats, livePerformance)
+      };
+    }).sort((a, b) => {
+      const liveDelta = (b.live ? 1 : 0) - (a.live ? 1 : 0);
+      if (liveDelta) return liveDelta;
+      const teamDelta = numberOrZero(a.teamNum) - numberOrZero(b.teamNum);
+      if (teamDelta) return teamDelta;
+      return String(a.name).localeCompare(String(b.name));
+    });
+    const currentKey = currentPlayer ? playerKey(currentPlayer) : '';
+    return {
+      activeKey: players.some((player) => player.key === currentKey) ? currentKey : players[0]?.key || '',
+      players
+    };
+  }
+
   function snapshot() {
     ensureDailyBoundary();
     const scoreboard = buildScoreboardState();
@@ -803,6 +902,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
       seriesState: normalizeSeriesState(seriesState),
       currentPlayer,
       dailyStats,
+      playerStats: buildPlayerStatsSnapshot(scoreboard),
       matchHistory,
       performanceCharts: buildPerformanceCharts(),
       historyAnalytics: buildHistoryAnalytics(),
@@ -837,11 +937,71 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     const playerName = config.playerName.trim().toLowerCase();
     const primaryId = config.primaryId.trim().toLowerCase();
     return (
-      players.find((player) => primaryId && String(player.PrimaryId || '').toLowerCase() === primaryId) ||
+      players.find((player) => primaryId && String(player.PrimaryId || player.PrimaryID || player.primaryId || '').toLowerCase() === primaryId) ||
       players.find((player) => playerName && String(player.Name || '').toLowerCase() === playerName) ||
       players[0] ||
       null
     );
+  }
+
+  function getPlayerSession(player) {
+    const key = player.key || playerKey(player);
+    const existing = normalizePlayerSession(playerSessions[key] || { key });
+    const teamNum = Number.isFinite(Number(player.teamNum ?? player.TeamNum ?? player.Team)) ? Number(player.teamNum ?? player.TeamNum ?? player.Team) : existing.teamNum;
+    const session = normalizePlayerSession({
+      ...existing,
+      key,
+      name: readPlayerName(player) || existing.name,
+      primaryId: String(player.primaryId || player.PrimaryId || player.PrimaryID || existing.primaryId || ''),
+      teamNum,
+      teamSide: teamNum === 0 ? 'blue' : teamNum === 1 ? 'orange' : existing.teamSide
+    });
+    playerSessions[key] = session;
+    return session;
+  }
+
+  function getPlayerAccumulator(player, matchGuid) {
+    const key = player.key || playerKey(player);
+    const existing = playerAccumulators.get(key);
+    if (!existing || (matchGuid && existing.id && existing.id !== matchGuid)) {
+      const next = createAccumulator(matchGuid);
+      playerAccumulators.set(key, next);
+      return next;
+    }
+    if (matchGuid && !existing.id) existing.id = matchGuid;
+    return existing;
+  }
+
+  function updateAccumulatorFromPlayer(accumulator, player) {
+    if (!player || !accumulator) return;
+    const now = Date.now();
+    const delta = clampDelta(accumulator.lastWallTime ? (now - accumulator.lastWallTime) / 1000 : 0);
+    accumulator.lastWallTime = now;
+    const boost = firstFiniteNumber(player.Boost, player.boost) ?? 0;
+    const speed = firstFiniteNumber(player.Speed, player.speed) ?? 0;
+    accumulator.duration += delta;
+    accumulator.boostWeighted += boost * delta;
+    accumulator.speedWeighted += speed * delta;
+    accumulator.minBoost = Math.min(accumulator.minBoost, boost);
+    accumulator.zeroBoostSeconds += boost <= 0 ? delta : 0;
+    accumulator.lowBoostSeconds += boost <= LOW_BOOST_THRESHOLD ? delta : 0;
+    accumulator.supersonicSeconds += bool(player.bSupersonic) || speed >= SUPERSONIC_SPEED ? delta : 0;
+    accumulator.groundSeconds += bool(player.bOnGround) ? delta : 0;
+    accumulator.wallSeconds += bool(player.bOnWall) ? delta : 0;
+    accumulator.powerslideSeconds += bool(player.bPowersliding) ? delta : 0;
+    accumulator.demolishedSeconds += bool(player.bDemolished) ? delta : 0;
+    accumulator.boostWhileSupersonicSeconds += bool(player.bBoosting) && (bool(player.bSupersonic) || speed >= SUPERSONIC_SPEED) ? delta : 0;
+    accumulator.touches = Math.max(accumulator.touches, numberOrZero(player.Touches ?? player.CarTouches ?? player.touches));
+    accumulator.carTouches = Math.max(accumulator.carTouches, numberOrZero(player.CarTouches ?? player.touches));
+    accumulator.score = numberOrZero(player.Score ?? player.score);
+    accumulator.goals = numberOrZero(player.Goals ?? player.goals);
+    accumulator.assists = numberOrZero(player.Assists ?? player.assists);
+    accumulator.saves = numberOrZero(player.Saves ?? player.saves);
+    accumulator.shots = numberOrZero(player.Shots ?? player.shots);
+    accumulator.demos = numberOrZero(player.Demos ?? player.demos);
+    const label = labelFromSeconds(accumulator.duration);
+    pushTimelinePoint(accumulator.boostTimeline, { label, value: Math.round(boost) });
+    pushTimelinePoint(accumulator.speedTimeline, { label, value: Math.round(speed) });
   }
 
   function processUpdateState(payload) {
@@ -854,6 +1014,10 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     }
     if (matchGuid && currentAccumulator && !currentAccumulator.id) currentAccumulator.id = matchGuid;
     addTelemetrySample(me);
+    for (const player of players) {
+      getPlayerSession(player);
+      updateAccumulatorFromPlayer(getPlayerAccumulator(player, matchGuid), player);
+    }
     currentPlayer = me || currentPlayer;
     const detectedBlueTeam = readTeamMeta(teams, players, 0, config.blueTeam);
     const detectedOrangeTeam = readTeamMeta(teams, players, 1, config.orangeTeam);
@@ -886,34 +1050,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
 
   function addTelemetrySample(player) {
     if (!player || !currentAccumulator) return;
-    const now = Date.now();
-    const delta = clampDelta(currentAccumulator.lastWallTime ? (now - currentAccumulator.lastWallTime) / 1000 : 0);
-    currentAccumulator.lastWallTime = now;
-    const boost = typeof player.Boost === 'number' ? player.Boost : 0;
-    const speed = typeof player.Speed === 'number' ? player.Speed : 0;
-    currentAccumulator.duration += delta;
-    currentAccumulator.boostWeighted += boost * delta;
-    currentAccumulator.speedWeighted += speed * delta;
-    currentAccumulator.minBoost = Math.min(currentAccumulator.minBoost, boost);
-    currentAccumulator.zeroBoostSeconds += boost <= 0 ? delta : 0;
-    currentAccumulator.lowBoostSeconds += boost <= LOW_BOOST_THRESHOLD ? delta : 0;
-    currentAccumulator.supersonicSeconds += bool(player.bSupersonic) || speed >= SUPERSONIC_SPEED ? delta : 0;
-    currentAccumulator.groundSeconds += bool(player.bOnGround) ? delta : 0;
-    currentAccumulator.wallSeconds += bool(player.bOnWall) ? delta : 0;
-    currentAccumulator.powerslideSeconds += bool(player.bPowersliding) ? delta : 0;
-    currentAccumulator.demolishedSeconds += bool(player.bDemolished) ? delta : 0;
-    currentAccumulator.boostWhileSupersonicSeconds += bool(player.bBoosting) && (bool(player.bSupersonic) || speed >= SUPERSONIC_SPEED) ? delta : 0;
-    currentAccumulator.touches = Math.max(currentAccumulator.touches, numberOrZero(player.Touches ?? player.CarTouches));
-    currentAccumulator.carTouches = Math.max(currentAccumulator.carTouches, numberOrZero(player.CarTouches));
-    currentAccumulator.score = numberOrZero(player.Score);
-    currentAccumulator.goals = numberOrZero(player.Goals);
-    currentAccumulator.assists = numberOrZero(player.Assists);
-    currentAccumulator.saves = numberOrZero(player.Saves);
-    currentAccumulator.shots = numberOrZero(player.Shots);
-    currentAccumulator.demos = numberOrZero(player.Demos);
-    const label = labelFromSeconds(currentAccumulator.duration);
-    pushTimelinePoint(currentAccumulator.boostTimeline, { label, value: Math.round(boost) });
-    pushTimelinePoint(currentAccumulator.speedTimeline, { label, value: Math.round(speed) });
+    updateAccumulatorFromPlayer(currentAccumulator, player);
   }
 
   function processGoalScored(payload) {
@@ -957,6 +1094,66 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
       blueGoalAdjust: 0,
       orangeGoalAdjust: 0
     };
+  }
+
+  function addPlayerMatchResult(player, matchGuid, finalScoreboard, winnerTeamNum) {
+    if (!player || !matchGuid) return;
+    const session = getPlayerSession(player);
+    if (session.dailyStats.countedMatchIds.includes(matchGuid)) return;
+    const teamNum = Number(player.teamNum);
+    const result = Number.isFinite(winnerTeamNum) && Number.isFinite(teamNum)
+      ? winnerTeamNum === teamNum ? 'WIN' : 'LOSS'
+      : undefined;
+    const playerStats = {
+      goals: numberOrZero(player.goals),
+      assists: numberOrZero(player.assists),
+      saves: numberOrZero(player.saves),
+      shots: numberOrZero(player.shots),
+      demos: numberOrZero(player.demos),
+      score: numberOrZero(player.score)
+    };
+    const performance = summarizeAccumulator(playerAccumulators.get(session.key));
+    const daily = normalizeDaily(session.dailyStats);
+    daily.matchesPlayed += 1;
+    if (result === 'WIN' || result === 'LOSS') {
+      const won = result === 'WIN';
+      daily.wins += won ? 1 : 0;
+      daily.losses += won ? 0 : 1;
+      daily.currentStreak = daily.currentStreakType === (won ? 'W' : 'L') ? daily.currentStreak + 1 : 1;
+      daily.currentStreakType = won ? 'W' : 'L';
+      daily.lastResult = result;
+      if (won) daily.bestWinStreak = Math.max(numberOrZero(daily.bestWinStreak), numberOrZero(daily.currentStreak));
+    }
+    daily.goals += playerStats.goals;
+    daily.assists += playerStats.assists;
+    daily.saves += playerStats.saves;
+    daily.shots += playerStats.shots;
+    daily.demos += playerStats.demos;
+    daily.score += playerStats.score;
+    daily.performance = combinePerformance(daily.performance, performance);
+    daily.countedMatchIds.push(matchGuid);
+    daily.countedMatchIds = daily.countedMatchIds.slice(-250);
+    playerSessions[session.key] = normalizePlayerSession({
+      ...session,
+      name: player.name || session.name,
+      primaryId: player.primaryId || session.primaryId,
+      teamNum: Number.isFinite(teamNum) ? teamNum : session.teamNum,
+      teamSide: player.teamSide || session.teamSide,
+      dailyStats: daily,
+      matchHistory: [{
+        id: matchGuid,
+        date: new Date().toISOString(),
+        arena: currentMatch?.arena,
+        result,
+        blueScore: finalScoreboard.blueScore ?? 0,
+        orangeScore: finalScoreboard.orangeScore ?? 0,
+        playerName: player.name || session.name,
+        playerTeamNum: Number.isFinite(teamNum) ? teamNum : null,
+        winnerTeamNum,
+        stats: playerStats,
+        performance
+      }, ...session.matchHistory].slice(0, 250)
+    });
   }
 
   function applySeriesAction(action = {}) {
@@ -1070,6 +1267,9 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     dailyStats.performance = combinePerformance(dailyStats.performance, performance);
     dailyStats.countedMatchIds.push(matchGuid);
     dailyStats.countedMatchIds = dailyStats.countedMatchIds.slice(-250);
+    for (const player of Array.isArray(currentMatch?.players) ? currentMatch.players : []) {
+      addPlayerMatchResult(player, matchGuid, finalScoreboard, winnerTeamNum);
+    }
     matchHistory = [{
       id: matchGuid,
       date: new Date().toISOString(),
@@ -1087,6 +1287,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
       performance
     }, ...matchHistory].slice(0, 250);
     currentAccumulator = null;
+    playerAccumulators = new Map();
     resetCurrentGoalAdjustments();
     saveStore();
   }
@@ -1118,6 +1319,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
         currentMatch = null;
         currentPlayer = null;
         currentAccumulator = null;
+        playerAccumulators = new Map();
         resetCurrentGoalAdjustments();
         saveStore();
         setConnectionStatus('waiting-match');
@@ -1154,6 +1356,12 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
   }
 
   function scheduleReconnect() {
+    if (ROCKET_LEAGUE_STATS_API_DISABLED) {
+      closeStatsApi();
+      setConnectionStatus('disconnected', { smoothTransient: true });
+      emitUpdate();
+      return;
+    }
     if (reconnectTimer) return;
     if (config.autoConnectStatsApi === false) {
       closeStatsApi();
@@ -1242,6 +1450,12 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
   }
 
   function connectStatsApi(options = {}) {
+    if (ROCKET_LEAGUE_STATS_API_DISABLED) {
+      closeStatsApi();
+      setConnectionStatus('disconnected');
+      emitUpdate();
+      return;
+    }
     const force = options?.force === true;
     if (config.autoConnectStatsApi === false && !force) {
       closeStatsApi();
@@ -1326,7 +1540,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     started = true;
     loadStore();
     startOverlayServer();
-    if (config.autoConnectStatsApi !== false) {
+    if (!ROCKET_LEAGUE_STATS_API_DISABLED && config.autoConnectStatsApi !== false) {
       connectStatsApi({ force: false });
     } else {
       setConnectionStatus('disconnected');
@@ -1338,15 +1552,13 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
   function setConfig(nextConfig = {}) {
     const prevStatsPort = Number(config.statsApiPort);
     const prevOverlayPort = Number(config.overlayPort);
-    const prevAutoConnect = config.autoConnectStatsApi !== false;
     config = normalizeConfig({ ...config, ...nextConfig });
     saveStore();
     broadcast({ type: 'config', data: config });
-    const nextAutoConnect = config.autoConnectStatsApi !== false;
-    if (!nextAutoConnect) {
+    if (ROCKET_LEAGUE_STATS_API_DISABLED) {
       closeStatsApi();
       setConnectionStatus('disconnected');
-    } else if (Number(config.statsApiPort) !== prevStatsPort || !prevAutoConnect) {
+    } else if (Number(config.statsApiPort) !== prevStatsPort) {
       connectStatsApi({ force: false });
     }
     if (Number(config.overlayPort) !== prevOverlayPort) {
@@ -1357,6 +1569,8 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
 
   function resetSession() {
     dailyStats = normalizeDaily({ date: dayKey() });
+    playerSessions = {};
+    playerAccumulators = new Map();
     saveStore();
     return emitUpdate();
   }
@@ -1367,6 +1581,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
     currentMatch = null;
     currentPlayer = null;
     currentAccumulator = null;
+    playerAccumulators = new Map();
     lastEvents = [];
     resetCurrentGoalAdjustments();
     saveStore();
@@ -1374,7 +1589,9 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
   }
 
   function refresh() {
-    connectStatsApi({ force: true });
+    closeStatsApi();
+    setConnectionStatus('disconnected');
+    emitUpdate();
     return snapshot();
   }
 
@@ -1397,7 +1614,7 @@ function createRocketLeagueLiveService({ app, saveLog, getMainWindow, overlayPat
       connectionStatus: visibleConnectionStatus,
       rawConnectionStatus: connectionStatus,
       transport: currentTransport,
-      autoConnectStatsApi: config.autoConnectStatsApi !== false,
+      autoConnectStatsApi: false,
       url: `http://localhost:${config.overlayPort}/broadcast`,
       statsUrl: `http://localhost:${config.overlayPort}/stats`,
       statsApiPort: config.statsApiPort,

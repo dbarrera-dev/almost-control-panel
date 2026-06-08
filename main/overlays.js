@@ -557,6 +557,7 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
   let rlRealtimeSocketPort = null;
   let rlRealtimeReconnectTimer = null;
   const RL_REALTIME_RECONNECT_MS = 3000;
+  const RL_API_DISABLED = true;
   const rlRealtime = {
     connected: false,
     playerName: '',
@@ -574,7 +575,7 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
       platform: cfg.platform || 'epic',
       username: cfg.username || '',
       playlistId: Number(cfg.playlistId || 13),
-      realtimeEnabled: cfg.realtimeEnabled !== false,
+      realtimeEnabled: false,
       statsApiPort: Number(cfg.statsApiPort || 49123),
       style: {
         bg: cfg.style?.bg || 'rgba(15,15,20,0.92)',
@@ -657,23 +658,7 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
   }
 
   async function fetchRLStats() {
-    state.rlOverlayConfig = normalizeRlOverlayConfig(state.rlOverlayConfig);
-    if (!state.rlOverlayConfig.username) return null;
-    const { platform, username, playlistId } = state.rlOverlayConfig;
-    const url = `https://api.tracker.gg/api/v2/rocket-league/standard/profile/${platform}/${encodeURIComponent(username)}`;
-    try {
-      const res = await fetch(url, {
-        headers: {
-          'TRN-Api-Key': '',
-          'User-Agent': 'Mozilla/5.0',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept': 'application/json'
-        }
-      });
-      if (!res.ok) return null;
-      const json = await res.json();
-      return parseRLStats(json, playlistId);
-    } catch { return null; }
+    return null;
   }
 
   function defaultRlSessionSummary() {
@@ -903,6 +888,7 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
   }
 
   function scheduleRlRealtimeReconnect() {
+    if (RL_API_DISABLED) return;
     if (rlRealtimeReconnectTimer) return;
     rlRealtimeReconnectTimer = setTimeout(() => {
       rlRealtimeReconnectTimer = null;
@@ -979,6 +965,7 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
   }
 
   function connectRlRealtimeTcp(port) {
+    if (RL_API_DISABLED) return;
     const net = require('net');
     closeRlRealtimeTransports();
     rlRealtimeTransport = 'tcp';
@@ -1018,7 +1005,7 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
 
   function startRlRealtimeFeed() {
     state.rlOverlayConfig = normalizeRlOverlayConfig(state.rlOverlayConfig);
-    if (state.rlOverlayConfig.realtimeEnabled === false) {
+    if (RL_API_DISABLED || state.rlOverlayConfig.realtimeEnabled === false) {
       if (rlRealtimeReconnectTimer) {
         clearTimeout(rlRealtimeReconnectTimer);
         rlRealtimeReconnectTimer = null;
@@ -1107,7 +1094,7 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
   async function refreshRLStats() {
     if (rlRefreshTimer) { clearTimeout(rlRefreshTimer); rlRefreshTimer = null; }
     state.rlOverlayConfig = normalizeRlOverlayConfig(state.rlOverlayConfig);
-    if (state.rlOverlayConfig.realtimeEnabled !== false) {
+    if (!RL_API_DISABLED && state.rlOverlayConfig.realtimeEnabled !== false) {
       startRlRealtimeFeed();
     }
     const stats = await fetchRLStats();
@@ -1167,8 +1154,10 @@ function createOverlays({ state, http, fs, path, os, saveLog, spotifyNowPlayingD
       rlOverlayHttpServer.listen(9003, '127.0.0.1', () => {
         state.rlOverlayRunning = true;
         state.rlOverlayConfig = normalizeRlOverlayConfig(state.rlOverlayConfig);
-        startRlRealtimeFeed();
-        startRLWatcher();
+        if (!RL_API_DISABLED) {
+          startRlRealtimeFeed();
+          startRLWatcher();
+        }
         refreshRLStats();
       });
       rlOverlayHttpServer.on('error', () => {});

@@ -662,7 +662,7 @@ let rlOverlayConfig = {
   platform: 'epic', // epic | steam | psn | xbl
   username: '',
   playlistId: 13, // Ranked Doubles por defecto
-  realtimeEnabled: true,
+  realtimeEnabled: false,
   statsApiPort: 49123,
   style: { bg: 'rgba(15,15,20,0.92)', text: '#ffffff', accent: '#2563eb', radius: 12 }
 };
